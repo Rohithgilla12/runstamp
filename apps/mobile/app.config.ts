@@ -24,6 +24,18 @@ const config: ExpoConfig = {
   scheme: 'runstamp',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
+  // EAS Update channel. The url ties to the EAS projectId (b9335526-…) so
+  // OTA updates published with `eas update --branch production` reach
+  // installed builds. The `appVersion` policy means a new native build is
+  // required only when the `version` field above bumps — patch JS over the
+  // air without resubmission. Auto-added by `eas-cli build` for static
+  // app.json projects; on dynamic app.config.ts we add it by hand.
+  updates: {
+    url: 'https://u.expo.dev/b9335526-0c71-4dc2-957a-17967b4958f9'
+  },
+  runtimeVersion: {
+    policy: 'appVersion'
+  },
   icon: './assets/icon.png',
   splash: {
     image: './assets/splash-icon.png',
