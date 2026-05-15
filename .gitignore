@@ -14,10 +14,13 @@ build
 apps/mobile/ios
 apps/mobile/android
 
-# Firebase config files — public, but project-specific. Drop them into
-# apps/mobile/ from the Firebase console, or inject via EAS Secrets in CI.
-apps/mobile/GoogleService-Info.plist
-apps/mobile/google-services.json
+# NOTE: GoogleService-Info.plist + google-services.json are intentionally
+# NOT gitignored. Google's own docs confirm those config files are not
+# secrets — the API key in them is the *public* Firebase Web API key
+# and is restricted by bundle ID + Firebase Security Rules. Keeping them
+# in the repo simplifies onboarding new devs and CI. The actual secrets
+# (Firebase Admin service-account JSON, Strava client SECRET) stay on the
+# server side only — see apps/api/.env.example.
 
 ios/Pods
 ios/build
