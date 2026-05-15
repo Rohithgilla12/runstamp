@@ -1,21 +1,27 @@
 /**
  * Strava OAuth wiring for Runstamp.
  *
- * How to plug in real credentials (do this before shipping):
+ * Architecture (per PRD §6.8 — "we are a reader, not a writer"):
  *
- *   1. Open `apps/mobile/app.json`.
- *   2. Inside the `"expo"` block, add an `"extra"` field:
+ *   ┌─────────────┐  PKCE auth   ┌────────────────┐
+ *   │  RN app     │─────────────►│  Strava OAuth  │
+ *   │             │◄─────────────│  (browser)     │
+ *   └──────┬──────┘   code       └────────────────┘
+ *          │ POST { code, verifier }
+ *          ▼
+ *   ┌─────────────────────┐ exchange w/ secret  ┌────────┐
+ *   │  Runstamp API       │────────────────────►│ Strava │
+ *   │  /v1/auth/strava/   │◄────────────────────│ /token │
+ *   │  exchange           │   tokens            └────────┘
+ *   └─────────────────────┘
  *
- *        "extra": {
- *          "stravaClientId": "<your-strava-client-id>",
- *          "stravaClientSecret": "<your-strava-client-secret>"
- *        }
+ * The mobile app never sees the Strava client SECRET. It only knows the public
+ * client ID and our backend's base URL — both come in via EXPO_PUBLIC_* env
+ * vars wired up in `app.config.ts`. The server holds the secret, runs the
+ * exchange, persists tokens, and hands back a session.
  *
- *   3. `Constants.expoConfig?.extra` will then expose those values at runtime.
- *
- * The client secret should NOT ship in a production mobile build — the token
- * exchange belongs server-side (see PRD §6.8). For local development against
- * Strava's web/test client it's tolerable; revisit in M1.
+ * Local dev: copy `apps/mobile/.env.example` to `.env`, set
+ * EXPO_PUBLIC_STRAVA_CLIENT_ID and EXPO_PUBLIC_API_BASE_URL.
  */
 
 import { useMemo } from 'react';
@@ -26,43 +32,41 @@ import {
   useAuthRequest,
   type AuthRequestPromptOptions,
   type AuthSessionResult,
-  type DiscoveryDocument,
+  type DiscoveryDocument
 } from 'expo-auth-session';
 import Constants from 'expo-constants';
 
 export const STRAVA_SCOPES = [
   'activity:read',
   'activity:read_all',
-  'profile:read_all',
+  'profile:read_all'
 ];
 
 const STRAVA_DISCOVERY: DiscoveryDocument = {
   authorizationEndpoint: 'https://www.strava.com/oauth/authorize',
-  tokenEndpoint: 'https://www.strava.com/oauth/token',
+  tokenEndpoint: 'https://www.strava.com/oauth/token'
 };
 
-// TODO(creds): add stravaClientId / stravaClientSecret to app.json's "expo.extra" before shipping.
-interface StravaExtra {
+interface RuntimeConfig {
   stravaClientId?: string;
-  stravaClientSecret?: string;
+  apiBaseUrl?: string;
 }
 
-const extra = (Constants.expoConfig?.extra ?? {}) as StravaExtra;
+const extra = (Constants.expoConfig?.extra ?? {}) as RuntimeConfig;
 
-export const STRAVA_CLIENT_ID: string =
-  extra.stravaClientId ?? 'YOUR_STRAVA_CLIENT_ID';
-export const STRAVA_CLIENT_SECRET: string =
-  extra.stravaClientSecret ?? 'YOUR_STRAVA_CLIENT_SECRET';
+export const STRAVA_CLIENT_ID: string = extra.stravaClientId ?? '';
+export const API_BASE_URL: string = extra.apiBaseUrl ?? 'http://localhost:8080';
 
 export interface UseStravaAuth {
   request: AuthRequest | null;
   response: AuthSessionResult | null;
   promptAsync: (options?: AuthRequestPromptOptions) => Promise<AuthSessionResult>;
+  redirectUri: string;
 }
 
 /**
  * Wraps `useAuthRequest` for Strava's authorization-code + PKCE flow.
- * The redirect URI is built from the app's custom scheme (`runstamp`).
+ * Redirect URI is built from the app's custom scheme (`runstamp`).
  */
 export function useStravaAuth(): UseStravaAuth {
   const redirectUri = useMemo(
@@ -76,55 +80,50 @@ export function useStravaAuth(): UseStravaAuth {
       scopes: STRAVA_SCOPES,
       redirectUri,
       responseType: ResponseType.Code,
-      usePKCE: true,
+      usePKCE: true
     },
     STRAVA_DISCOVERY
   );
 
-  return { request, response, promptAsync };
+  return { request, response, promptAsync, redirectUri };
 }
 
-export interface StravaTokenResponse {
-  token_type?: string;
-  expires_at?: number;
-  expires_in?: number;
-  refresh_token?: string;
-  access_token?: string;
-  athlete?: Record<string, unknown>;
-  [key: string]: unknown;
+export interface StravaAthleteSummary {
+  id: number;
+  firstname?: string;
+  lastname?: string;
+  username?: string;
+  profile?: string;
+}
+
+export interface StravaExchangeResult {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  athlete: StravaAthleteSummary;
 }
 
 /**
- * Exchange an authorization code (plus PKCE verifier) for tokens.
- *
- * TODO(M1): persist tokens via secure storage and move the exchange behind
- * the Runstamp backend so the client secret never ships in the binary.
+ * Hand the authorization code to OUR backend; the backend completes the
+ * client-secret-bearing token exchange with Strava and returns a normalised
+ * result. We never ship the Strava client secret in the binary.
  */
-export async function exchangeStravaCode(
-  code: string,
-  codeVerifier: string
-): Promise<StravaTokenResponse> {
-  const body = new URLSearchParams({
-    client_id: STRAVA_CLIENT_ID,
-    client_secret: STRAVA_CLIENT_SECRET,
-    code,
-    code_verifier: codeVerifier,
-    grant_type: 'authorization_code',
-  });
-
-  const res = await fetch(STRAVA_DISCOVERY.tokenEndpoint as string, {
+export async function exchangeStravaCode(params: {
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}): Promise<StravaExchangeResult> {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/strava/exchange`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
     },
-    body: body.toString(),
+    body: JSON.stringify(params)
   });
-
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Strava token exchange failed (${res.status}): ${text}`);
+    throw new Error(`Strava exchange failed (${res.status}): ${text}`);
   }
-
-  return (await res.json()) as StravaTokenResponse;
+  return (await res.json()) as StravaExchangeResult;
 }

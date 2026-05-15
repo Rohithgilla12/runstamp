@@ -25,7 +25,17 @@ pnpm install
 pnpm mobile:start          # Expo dev server
 pnpm mobile:ios            # boot iOS simulator
 pnpm mobile:android        # boot Android emulator
+pnpm mobile:test           # vitest unit tests
+
+# Backend
+cp apps/api/.env.example apps/api/.env
+pnpm api:run               # `go run` the API on :8080
+pnpm api:up                # full stack (postgres+postgis, redis, api) via docker compose
 ```
+
+## Secrets
+
+The Strava client SECRET (and any other server-side credential) lives **only in `apps/api/.env`** — never in the mobile bundle. The mobile app's public values (client ID, API base URL) come in via `EXPO_PUBLIC_*` env vars; see `apps/mobile/.env.example`.
 
 ## License
 

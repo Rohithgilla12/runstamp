@@ -1,0 +1,54 @@
+# Local-dev stack for the Runstamp backend. Brings up Postgres (with PostGIS
+# baked in) and Redis on host ports, plus the API itself. Mirrors the
+# production topology from PRD §4 so the only diff is "real domains and a
+# Cloudflared tunnel".
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: runstamp
+      POSTGRES_PASSWORD: runstamp
+      POSTGRES_DB: runstamp
+    ports:
+      - "5432:5432"
+    volumes:
+      - runstamp_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runstamp -d runstamp"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - runstamp_redis:/data
+
+  api:
+    build:
+      context: .
+      args:
+        VERSION: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      RUNSTAMP_PORT: 8080
+      RUNSTAMP_ENV: development
+      RUNSTAMP_ALLOWED_ORIGINS: "http://localhost:8081,exp://*"
+      DATABASE_URL: "postgres://runstamp:runstamp@postgres:5432/runstamp?sslmode=disable"
+      REDIS_URL: "redis://redis:6379/0"
+      STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID:-}"
+      STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET:-}"
+      STRAVA_WEBHOOK_VERIFY_TOKEN: "${STRAVA_WEBHOOK_VERIFY_TOKEN:-}"
+    ports:
+      - "8080:8080"
+
+volumes:
+  runstamp_pg:
+  runstamp_redis:
