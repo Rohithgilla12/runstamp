@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+.turbo
+.expo
+dist
+build
+*.log
+.DS_Store
+.env
+.env.local
+ios/Pods
+ios/build
+android/.gradle
+android/build
+android/app/build
+android/app/release
+design.bin

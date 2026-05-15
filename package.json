@@ -1,0 +1,19 @@
+{
+  "name": "runstamp",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "mobile": "pnpm -F @runstamp/mobile",
+    "mobile:start": "pnpm -F @runstamp/mobile start",
+    "mobile:ios": "pnpm -F @runstamp/mobile ios",
+    "mobile:android": "pnpm -F @runstamp/mobile android",
+    "mobile:web": "pnpm -F @runstamp/mobile web",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.7",
+    "typescript": "5.9.2"
+  }
+}

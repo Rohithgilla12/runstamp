@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Runstamp",
+    "slug": "runstamp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "runstamp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fun.gilla.runstamp"
+    },
+    "android": {
+      "package": "fun.gilla.runstamp",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "experiments": {
+      "typedRoutes": false
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
