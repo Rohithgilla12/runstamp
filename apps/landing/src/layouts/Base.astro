@@ -1,0 +1,174 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "Runstamp — Collect a stamp for every run",
+  description =
+    "Turn your Strava and Apple Health runs into beautiful share cards, a passport of cities, and a catalogue of stamps earned. Free and open source.",
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3ede2" />
+    <link rel="canonical" href={canonicalURL} />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL("/og.svg", Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Runstamp" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL("/og.svg", Astro.site)} />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json" is:inline>
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Runstamp",
+        "description": "Post-run share card editor, analytics, and stamp catalogue for runners. Free, open-source, iOS and Android.",
+        "url": "https://runstamp.gilla.fun",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "iOS, Android",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Rohith Gilla",
+          "url": "https://github.com/Rohithgilla12"
+        }
+      }
+    </script>
+
+    <!-- Fonts: preconnect first, then load with font-display:swap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <style is:global>
+      :root {
+        --paper: #f3ede2;
+        --paper-2: #ebe3d3;
+        --paper-3: #e2d8c4;
+        --ink: #14110d;
+        --ink-2: #3a342b;
+        --ink-3: #75695a;
+        --solar: #e85d2f;
+        --solar-deep: #c44a1e;
+        --moss: #4a6b3a;
+        --line: rgba(20, 17, 13, 0.1);
+        --line-2: rgba(20, 17, 13, 0.06);
+
+        --font-serif: "Instrument Serif", Georgia, serif;
+        --font-sans: "Geist", -apple-system, system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
+          monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px;
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+        overflow-x: hidden;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      img,
+      svg {
+        display: block;
+        max-width: 100%;
+      }
+
+      /* Utility classes */
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 500;
+        color: var(--ink-3);
+      }
+
+      .mono {
+        font-family: var(--font-mono);
+        font-feature-settings:
+          "tnum" 1,
+          "zero" 1;
+      }
+
+      .serif-italic {
+        font-family: var(--font-serif);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

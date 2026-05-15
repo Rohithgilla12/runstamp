@@ -1,0 +1,110 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Runstamp — Privacy"
+  description="What Runstamp does and doesn't do with your data. Read-only with Strava and Apple Health. No analytics, no ads, no third-party sharing."
+>
+  <header class="legal-header">
+    <div class="container">
+      <a href="/" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </a>
+    </div>
+  </header>
+
+  <main class="legal">
+    <div class="container">
+      <p class="eyebrow">Privacy Policy</p>
+      <h1 class="legal-headline">Your runs are <em>yours</em>.</h1>
+      <p class="legal-updated">Last updated 2026-05-15 · v0.1</p>
+
+      <p class="lede">Runstamp is built and operated by Rohith Gilla as a side project. This is a plain-English description of what Runstamp does with your data. The whole codebase is public at <a href="https://github.com/Rohithgilla12/runstamp">github.com/Rohithgilla12/runstamp</a> if you want to read it yourself.</p>
+
+      <h2>What we collect</h2>
+
+      <h3>From you, directly</h3>
+      <ul>
+        <li><strong>Email address + display name</strong> when you sign in with Apple, Google, or email/password. Stored in Firebase Authentication.</li>
+        <li><strong>Photos you choose to include in a share card.</strong> Photos stay on your device — composed into the share card on-device and saved to your camera roll. We never upload your photo library or the raw photos to our servers.</li>
+      </ul>
+
+      <h3>From Strava (only when you connect it)</h3>
+      <ul>
+        <li>Your athlete profile (id, name, photo).</li>
+        <li>Your <strong>activity history</strong> — distance, time, pace, heart rate, GPS route, splits, calories, elevation. Read-only; Runstamp never writes anything back to Strava.</li>
+        <li>An encrypted copy of your Strava access + refresh tokens, used to fetch new activities on your behalf. Encryption is AES-256-GCM with a server-side key.</li>
+      </ul>
+
+      <h3>From Apple Health (only when you grant permission, only on iOS)</h3>
+      <ul>
+        <li>Running workouts, heart rate, route, active energy, running power, vertical oscillation, ground contact time, stride length, cadence, VO2 max.</li>
+        <li><strong>Read-only.</strong> Apple requires us to declare a "write" permission to read; we never actually write anything back to Health.</li>
+        <li>Downsampled to ≤500 points per stream before leaving your device.</li>
+      </ul>
+
+      <h2>What we DON'T collect</h2>
+      <ul>
+        <li>Analytics or behavioural tracking (no Google Analytics, no Firebase Analytics, no Aptabase, no Mixpanel — nothing).</li>
+        <li>Crash reports beyond your device's native logging unless you opt in (we'll prompt before enabling Crashlytics, currently disabled).</li>
+        <li>Your contacts, calendar, microphone, or any data outside running.</li>
+        <li>Ad identifiers (IDFA / GAID). Runstamp does not show ads.</li>
+      </ul>
+
+      <h2>What we share</h2>
+      <p><strong>Nothing.</strong> Runstamp has no third-party data partners, no ad networks, no analytics SaaS. Sharing a run happens on your device — you tap "Save to camera roll" and post the resulting image to Instagram, WhatsApp, or X yourself. Runstamp never posts on your behalf and never sees those posts.</p>
+
+      <h2>Where the data lives</h2>
+      <ul>
+        <li><strong>Authentication</strong>: Firebase (Google Cloud) — your sign-in identity only.</li>
+        <li><strong>Activities + tokens</strong>: a PostgreSQL database on a private VPS (Oracle Cloud, Mumbai region), only reachable through a Cloudflare Tunnel. The database is not exposed to the public internet.</li>
+        <li><strong>Photos for share cards</strong>: never leave your device.</li>
+      </ul>
+
+      <h2>How long we keep it</h2>
+      <p>For as long as your account exists. Account deletion is a single tap in the Runstamp app: Settings → Delete account. We hard-delete your user row + cascade-delete every connected account + every activity within 30 days. Backups roll forward within 60 days so a deleted record disappears from the backup line within two months.</p>
+
+      <h2>Disconnecting Strava</h2>
+      <p>Settings → Connections → Strava → Disconnect. This <strong>hard-deletes</strong> your encrypted Strava tokens from our database. Already-imported activities remain in Runstamp unless you also tap "Clear my imported activities" — that's a separate decision.</p>
+
+      <h2>Children</h2>
+      <p>Runstamp is not directed at children under 13. We do not knowingly collect data from anyone under 13.</p>
+
+      <h2>Security</h2>
+      <ul>
+        <li>OAuth tokens are AES-256-GCM encrypted at rest.</li>
+        <li>HTTPS-only via Cloudflare; no plaintext API traffic.</li>
+        <li>Firebase ID tokens are short-lived JWTs verified server-side on every request.</li>
+        <li>The Strava client secret never ships in the mobile app — token exchange happens on the server.</li>
+      </ul>
+
+      <h2>Changes</h2>
+      <p>If this policy changes materially we'll bump the "Last updated" date at the top and surface a notice in the app on next launch.</p>
+
+      <h2>Contact</h2>
+      <p>Privacy questions, deletion requests, or anything else: email <strong>privacy@gilla.fun</strong>, or open an issue at <a href="https://github.com/Rohithgilla12/runstamp/issues">github.com/Rohithgilla12/runstamp/issues</a>.</p>
+    </div>
+  </main>
+
+  <style>
+    .legal-header { padding-block: 1.25rem; border-bottom: 1px solid var(--line); }
+    .container { width: 100%; max-width: 720px; margin-inline: auto; padding-inline: clamp(1.25rem, 5vw, 3rem); }
+    .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); text-decoration: none; }
+    .back-link:hover { color: var(--ink); }
+    .legal { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+    .legal-headline { font-family: var(--font-serif); font-weight: 400; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -0.02em; margin-block: 0.75rem 0.5rem; line-height: 1.05; color: var(--ink); }
+    .legal-headline em { font-style: italic; color: var(--solar); }
+    .legal-updated { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 1.75rem; }
+    .lede { font-size: 1.0625rem; color: var(--ink-2); line-height: 1.7; margin-bottom: 1.5rem; }
+    h2 { font-family: var(--font-serif); font-weight: 400; font-style: italic; font-size: 1.5rem; letter-spacing: -0.01em; margin-block: 2rem 0.75rem; color: var(--ink); }
+    h3 { font-family: var(--font-sans); font-weight: 600; font-size: 0.9375rem; margin-block: 1.25rem 0.5rem; color: var(--ink-2); }
+    p, li { font-size: 0.9375rem; color: var(--ink-2); line-height: 1.7; margin-bottom: 0.6rem; }
+    ul { padding-left: 1.4rem; margin-bottom: 0.6rem; }
+    li { margin-bottom: 0.4rem; }
+    strong { color: var(--ink); font-weight: 600; }
+    a { color: var(--solar); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { color: var(--solar-deep); }
+  </style>
+</Base>

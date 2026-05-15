@@ -1,0 +1,81 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Runstamp — Terms of Service"
+  description="Reasonable, read-only, side-project terms for using Runstamp."
+>
+  <header class="legal-header">
+    <div class="container">
+      <a href="/" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </a>
+    </div>
+  </header>
+
+  <main class="legal">
+    <div class="container">
+      <p class="eyebrow">Terms of Service</p>
+      <h1 class="legal-headline">Reasonable, <em>read-only</em>, side project terms.</h1>
+      <p class="legal-updated">Last updated 2026-05-15 · v0.1</p>
+
+      <p class="lede">Runstamp is an open-source side project ("the service") built and operated by Rohith Gilla. By installing or using it, you agree to the below.</p>
+
+      <h2>1. What Runstamp is</h2>
+      <p>A post-run companion that reads activities from Strava and Apple Health and turns them into shareable images and analytics. It is not a fitness tracker, it does not provide medical advice, and it does not replace anyone's training plan.</p>
+
+      <h2>2. Account</h2>
+      <p>You sign in with an email/Apple/Google account managed by Firebase Authentication. You're responsible for keeping your sign-in credentials safe. Sharing an account is fine; selling it is not.</p>
+
+      <h2>3. Third-party services</h2>
+      <ul>
+        <li>Connecting Strava means you've also agreed to <strong>Strava's terms</strong> and <strong>API agreement</strong>. Runstamp's access to your Strava data is read-only and bound by Strava's policies.</li>
+        <li>Connecting Apple Health means HealthKit data flows from your device to Runstamp's server per the <a href="/privacy">privacy policy</a>. Apple's HealthKit terms also apply.</li>
+      </ul>
+
+      <h2>4. Acceptable use</h2>
+      <ul>
+        <li>Use Runstamp with your own data, not someone else's.</li>
+        <li>Don't reverse-engineer to extract another user's data.</li>
+        <li>Don't abuse the API (rate-limited per athlete).</li>
+        <li>The source is AGPL-3.0 licensed — if you fork and run a hosted clone, the AGPL terms apply.</li>
+      </ul>
+
+      <h2>5. Cancellation</h2>
+      <p>Delete your account in-app any time. We hard-delete your account row + cascade-delete every connected account + every imported activity within 30 days.</p>
+
+      <h2>6. No warranty</h2>
+      <p>Runstamp is provided "as is." Side project; no SLA. The service may have bugs, may go down, may lose data, may be discontinued — though we'll do our best to give notice if it shutters.</p>
+
+      <h2>7. Limitation of liability</h2>
+      <p>To the maximum extent permitted by law, the operator (Rohith Gilla) is not liable for any indirect, incidental, or consequential damages arising from your use of the service. The total liability of the operator under these terms is capped at the amount you paid for Runstamp in the prior 12 months — which is currently zero.</p>
+
+      <h2>8. Changes</h2>
+      <p>If these terms change materially, the "Last updated" date will bump and the in-app first-launch notice will surface them.</p>
+
+      <h2>9. Contact</h2>
+      <p>Questions: <strong>privacy@gilla.fun</strong> or <a href="https://github.com/Rohithgilla12/runstamp/issues">github.com/Rohithgilla12/runstamp/issues</a>.</p>
+    </div>
+  </main>
+
+  <style>
+    .legal-header { padding-block: 1.25rem; border-bottom: 1px solid var(--line); }
+    .container { width: 100%; max-width: 720px; margin-inline: auto; padding-inline: clamp(1.25rem, 5vw, 3rem); }
+    .back-link { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); text-decoration: none; }
+    .back-link:hover { color: var(--ink); }
+    .legal { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+    .legal-headline { font-family: var(--font-serif); font-weight: 400; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -0.02em; margin-block: 0.75rem 0.5rem; line-height: 1.05; color: var(--ink); }
+    .legal-headline em { font-style: italic; color: var(--solar); }
+    .legal-updated { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 1.75rem; }
+    .lede { font-size: 1.0625rem; color: var(--ink-2); line-height: 1.7; margin-bottom: 1.5rem; }
+    h2 { font-family: var(--font-serif); font-weight: 400; font-style: italic; font-size: 1.5rem; letter-spacing: -0.01em; margin-block: 2rem 0.75rem; color: var(--ink); }
+    p, li { font-size: 0.9375rem; color: var(--ink-2); line-height: 1.7; margin-bottom: 0.6rem; }
+    ul { padding-left: 1.4rem; margin-bottom: 0.6rem; }
+    li { margin-bottom: 0.4rem; }
+    strong { color: var(--ink); font-weight: 600; }
+    a { color: var(--solar); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { color: var(--solar-deep); }
+  </style>
+</Base>

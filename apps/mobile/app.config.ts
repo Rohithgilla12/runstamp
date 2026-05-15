@@ -61,7 +61,8 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'fun.gilla.runstamp',
-    edgeToEdgeEnabled: true,
+    // Android 16 makes edge-to-edge mandatory; the legacy `edgeToEdgeEnabled`
+    // toggle is gone in Expo SDK 53+. No-op removal.
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#f3ede2'

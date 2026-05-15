@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Runstamp — collect a stamp for every run</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Open-source post-run companion. Beautiful share cards from your Strava + Apple Health data, every city you've run in on a passport, every PB earned as a stamp.">
+<meta property="og:title" content="Runstamp">
+<meta property="og:description" content="Collect a stamp for every run. Open-source share cards + analytics + places + stamps for runners on iOS and Android.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://runstamp.gilla.fun/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#f3ede2;--paper2:#ebe3d3;--ink:#14110d;--ink2:#3a342b;--ink3:#75695a;--solar:#e85d2f;--line:rgba(20,17,13,0.10)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:'Geist','-apple-system',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;flex-direction:column}
+  .grain{position:relative}
+  .grain::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,rgba(20,17,13,0.018) 0 1px,transparent 1px 2px);mix-blend-mode:multiply}
+  .wrap{max-width:680px;margin:0 auto;padding:48px 24px 32px;flex:1;width:100%}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink3)}
+  .sun{width:22px;height:22px}
+  nav a{color:var(--ink2);text-decoration:none;font-size:13px;margin-left:18px}
+  nav a:hover{color:var(--ink);text-decoration:underline}
+  h1{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:72px;line-height:1.02;letter-spacing:-0.02em;margin-bottom:24px}
+  h1 em{font-style:italic;color:var(--solar)}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink2);max-width:520px;margin-bottom:48px}
+  .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;margin-bottom:64px}
+  .pillar{padding:18px 16px;background:var(--paper2);border:1px solid var(--line);border-radius:12px}
+  .pillar .eyebrow{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--solar);margin-bottom:8px}
+  .pillar h3{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:20px;margin-bottom:4px;letter-spacing:-0.01em}
+  .pillar p{font-size:13px;color:var(--ink3);line-height:1.5}
+  .status{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3);padding:14px 16px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;margin-bottom:48px}
+  footer{padding:24px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);text-align:center}
+  footer a{color:var(--ink2);text-decoration:none;margin:0 10px}
+  footer a:hover{color:var(--ink);text-decoration:underline}
+  @media (max-width:560px){h1{font-size:48px}}
+</style>
+</head>
+<body class="grain">
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.8" fill="#e85d2f"/><g stroke="#e85d2f" stroke-width="1.6" stroke-linecap="round">
+        <line x1="19.2" y1="12" x2="22.5" y2="12"/><line x1="5.5" y1="12" x2="1.5" y2="12"/>
+        <line x1="12" y1="4.8" x2="12" y2="1.5"/><line x1="12" y1="19.2" x2="12" y2="22.5"/>
+        <line x1="17.1" y1="6.9" x2="19.4" y2="4.6"/><line x1="4.6" y1="19.4" x2="6.9" y2="17.1"/>
+        <line x1="17.1" y1="17.1" x2="19.4" y2="19.4"/><line x1="4.6" y1="4.6" x2="6.9" y2="6.9"/>
+      </g></svg>
+      Runstamp · v0.1
+    </div>
+    <nav>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </header>
+
+  <h1>Collect a stamp<br>for every <em>run</em>.</h1>
+
+  <p class="lede">An open-source post-run companion. Reads from Strava and Apple Health, turns each run into a beautifully designed share card, and slowly stamps every city you've run in onto a passport.</p>
+
+  <div class="pillars">
+    <div class="pillar">
+      <div class="eyebrow">Share</div>
+      <h3>Beautiful cards</h3>
+      <p>Postage, postmark, passport, customs form, wax seal — twelve template families, your run as a designed artifact.</p>
+    </div>
+    <div class="pillar">
+      <div class="eyebrow">Places</div>
+      <h3>A running passport</h3>
+      <p>Every city you've run in, on a world map. Stamps for new countries, share cards for each year.</p>
+    </div>
+    <div class="pillar">
+      <div class="eyebrow">Stamps</div>
+      <h3>Earned, not gamified</h3>
+      <p>Sub-3:45 marathon. Boston qualifier. 1000 km year. Common, rare, mythic — earned by what you've done.</p>
+    </div>
+  </div>
+
+  <div class="status">
+    Currently in private TestFlight beta · iOS first · Android shortly after · <br>
+    <a style="color:var(--solar);text-decoration:none" href="https://github.com/Rohithgilla12/runstamp">github.com/Rohithgilla12/runstamp</a> · AGPL-3.0
+  </div>
+</div>
+
+<footer>
+  <a href="/privacy">Privacy</a> ·
+  <a href="/terms">Terms</a> ·
+  <a href="https://runstamp-api.gilla.fun/healthz">API health</a> ·
+  © 2026 Rohith Gilla
+</footer>
+</body>
+</html>

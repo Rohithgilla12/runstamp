@@ -1,0 +1,1108 @@
+---
+import Base from "../layouts/Base.astro";
+
+const sunRayAngles = Array.from({ length: 8 }, (_, i) => (i * Math.PI * 2) / 8);
+
+const formRows = [
+  { label: "DISTANCE DECLARED", value: "21.1 KM" },
+  { label: "PACE DECLARED", value: "5:12 / KM" },
+  { label: "TIME DECLARED", value: "1:49:43" },
+  { label: "ELEVATION GAIN", value: "312 M" },
+  { label: "PURPOSE OF VISIT", value: "LONG RUN" },
+  { label: "CITY OF ORIGIN", value: "TOKYO" },
+  { label: "COUNTRY", value: "JAPAN" },
+];
+
+const airmailStripes = Array.from({ length: 20 }, (_, i) => i);
+const halftoneRows = Array.from({ length: 8 }, (_, row) =>
+  Array.from({ length: 12 }, (_, col) => ({ row, col }))
+);
+
+// Perforated edge helpers — circle positions along each edge
+const perfSide = (count: number) =>
+  Array.from({ length: count }, (_, i) => i);
+---
+
+<Base>
+  <header class="site-header">
+    <div class="container">
+      <div class="wordmark" aria-label="Runstamp">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.8" fill="var(--solar)"></circle>
+          {sunRayAngles.map((a) => (
+            <line
+              x1={12 + Math.cos(a) * 7.2}
+              y1={12 + Math.sin(a) * 7.2}
+              x2={12 + Math.cos(a) * 10.5}
+              y2={12 + Math.sin(a) * 10.5}
+              stroke="var(--solar)"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          ))}
+        </svg>
+        <span>Runstamp</span>
+      </div>
+      <a href="#waitlist" class="header-cta">Join waitlist</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-headline">
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <p class="eyebrow hero-eyebrow">Open beta · 2026</p>
+          <h1 id="hero-headline" class="hero-headline">
+            Collect a stamp<br />for every run.
+          </h1>
+          <p class="hero-sub">
+            Turn your Strava and Apple Health runs into beautiful share cards, a
+            passport of cities you've run in, and a catalogue of stamps earned.
+            Free and open source.
+          </p>
+          <ul class="store-badges">
+            <li>
+              <a
+                href="#waitlist"
+                class="store-badge"
+                aria-label="App Store — coming soon, join waitlist"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M17.7 12.6c0-2.4 2-3.5 2.1-3.6-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.8C7.3 7.2 6 8.2 5.2 9.7c-1.7 2.9-.4 7.2 1.2 9.5.8 1.1 1.7 2.4 2.9 2.4 1.2 0 1.6-.7 3-.7s1.8.7 3.1.7c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.5 1.3-2.6-.1 0-2.5-.9-2.5-3.8zm-2.4-7c.6-.8 1-1.9.9-3-1 0-2.1.6-2.8 1.4-.6.7-1.1 1.8-1 2.9 1.1.1 2.3-.5 2.9-1.3z" />
+                </svg>
+                <span>
+                  <span class="badge-platform">App Store</span>
+                  <span class="badge-status">Coming soon</span>
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="#waitlist"
+                class="store-badge"
+                aria-label="Google Play — coming soon, join waitlist"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5-14 8.5C3.5 21.33 3 21.33 3 20.5z" />
+                </svg>
+                <span>
+                  <span class="badge-platform">Google Play</span>
+                  <span class="badge-status">Coming soon</span>
+                </span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Hero share card: Postage template mock -->
+        <div class="hero-card">
+          <figure aria-label="Sample Runstamp share card — Postage template" class="hero-card-figure">
+            <svg
+              viewBox="0 0 280 380"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              class="hero-card-svg"
+            >
+              <!-- Paper backing behind perforations -->
+              <rect width="280" height="380" fill="#f3ede2"></rect>
+              <!-- Card body fills inside the perforated border -->
+              <rect x="16" y="16" width="248" height="348" fill="#14110d"></rect>
+
+              <!-- Halftone dots (decorative texture) -->
+              {halftoneRows.map((row) =>
+                row.map(({ row: r, col: c }) => (
+                  <circle
+                    cx={28 + c * 20}
+                    cy={80 + r * 22}
+                    r={0.7 + ((r + c) % 3) * 0.25}
+                    fill="rgba(243,237,226,0.06)"
+                  />
+                ))
+              )}
+
+              <!-- Route polyline -->
+              <path
+                d="M50 300 Q75 265 100 280 Q125 295 150 255 Q175 215 200 235 Q225 255 248 220"
+                stroke="#e85d2f"
+                stroke-width="2.5"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                opacity="0.85"
+              ></path>
+
+              <!-- Country eyebrow -->
+              <text x="32" y="44" font-family="monospace" font-size="8" letter-spacing="3" fill="rgba(243,237,226,0.5)">JAPAN</text>
+              <!-- City -->
+              <text x="32" y="72" font-family="Georgia, serif" font-style="italic" font-size="28" fill="#f3ede2">Tokyo</text>
+              <!-- Run ID badge -->
+              <rect x="194" y="32" width="54" height="18" fill="none" stroke="rgba(243,237,226,0.3)" stroke-width="1" rx="2"></rect>
+              <text x="221" y="45" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.5)">NO. A0041</text>
+
+              <!-- Distance denomination -->
+              <text x="32" y="326" font-family="monospace" font-size="42" font-weight="500" fill="#f3ede2" letter-spacing="-2">21.1</text>
+              <text x="32" y="344" font-family="monospace" font-size="8.5" fill="rgba(243,237,226,0.45)" letter-spacing="2.5">KILOMETRES</text>
+
+              <!-- Pace + time -->
+              <text x="248" y="320" text-anchor="end" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.75)">5:12/km</text>
+              <text x="248" y="336" text-anchor="end" font-family="monospace" font-size="10" fill="rgba(243,237,226,0.45)">1:49:43</text>
+
+              <!-- Date stamp -->
+              <text x="248" y="352" text-anchor="end" font-family="monospace" font-size="8" fill="rgba(243,237,226,0.3)" letter-spacing="0.5">2026 · MAR · 15</text>
+
+              <!-- Perforated left edge circles punching through to cream paper -->
+              {perfSide(11).map((i) => (
+                <circle cx="16" cy={34 + i * 32} r="8" fill="#f3ede2" />
+              ))}
+              <!-- Perforated right edge -->
+              {perfSide(11).map((i) => (
+                <circle cx="264" cy={34 + i * 32} r="8" fill="#f3ede2" />
+              ))}
+              <!-- Perforated top edge -->
+              {perfSide(8).map((i) => (
+                <circle cx={36 + i * 32} cy="16" r="8" fill="#f3ede2" />
+              ))}
+              <!-- Perforated bottom edge -->
+              {perfSide(8).map((i) => (
+                <circle cx={36 + i * 32} cy="364" r="8" fill="#f3ede2" />
+              ))}
+            </svg>
+            <figcaption class="visually-hidden">
+              Sample Runstamp share card: Postage template — Tokyo half marathon, 21.1 km, pace 5:12/km, time 1:49:43
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT DOES -->
+    <section class="features" aria-labelledby="features-headline">
+      <div class="container">
+        <p class="eyebrow section-eyebrow">What it does</p>
+        <h2 id="features-headline" class="section-headline">
+          Three things. Done well.
+        </h2>
+
+        <ul class="features-grid">
+          <li class="feature-card">
+            <!-- Stamp-framed mini illustration: Editor -->
+            <div class="stamp-illus" aria-hidden="true">
+              <svg viewBox="0 0 90 90" width="90" height="90">
+                <rect width="90" height="90" fill="#14110d" rx="1"></rect>
+                <!-- Perf circles -->
+                {[0,1,2].map((i) => <circle cx="10" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx="80" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="10" r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="80" r="5.5" fill="#f3ede2" />)}
+                <!-- Editor icon: layers / cards -->
+                <rect x="25" y="28" width="32" height="40" fill="rgba(243,237,226,0.08)" stroke="rgba(243,237,226,0.3)" stroke-width="1" rx="1"></rect>
+                <rect x="30" y="24" width="32" height="40" fill="rgba(243,237,226,0.1)" stroke="rgba(243,237,226,0.4)" stroke-width="1" rx="1"></rect>
+                <rect x="35" y="20" width="32" height="40" fill="rgba(243,237,226,0.15)" stroke="rgba(243,237,226,0.5)" stroke-width="1" rx="1"></rect>
+                <line x1="40" y1="30" x2="62" y2="30" stroke="#e85d2f" stroke-width="1.5"></line>
+                <line x1="40" y1="37" x2="58" y2="37" stroke="rgba(243,237,226,0.3)" stroke-width="1"></line>
+                <line x1="40" y1="42" x2="55" y2="42" stroke="rgba(243,237,226,0.2)" stroke-width="1"></line>
+              </svg>
+            </div>
+            <h3 class="feature-title">Editor</h3>
+            <p class="feature-body">
+              Pick a template — postage stamp, postmark, passport entry, customs
+              form. Layer in your route map or a photo from the run. Export PNG
+              and share.
+            </p>
+          </li>
+
+          <li class="feature-card">
+            <!-- Stamp-framed mini illustration: Analytics -->
+            <div class="stamp-illus" aria-hidden="true">
+              <svg viewBox="0 0 90 90" width="90" height="90">
+                <rect width="90" height="90" fill="#4a6b3a" rx="1"></rect>
+                {[0,1,2].map((i) => <circle cx="10" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx="80" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="10" r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="80" r="5.5" fill="#f3ede2" />)}
+                <!-- Pace chart bars -->
+                <rect x="20" y="62" width="8" height="16" fill="rgba(243,237,226,0.35)" rx="1"></rect>
+                <rect x="32" y="50" width="8" height="28" fill="rgba(243,237,226,0.5)" rx="1"></rect>
+                <rect x="44" y="42" width="8" height="36" fill="rgba(243,237,226,0.65)" rx="1"></rect>
+                <rect x="56" y="34" width="8" height="44" fill="#f3ede2" rx="1"></rect>
+                <rect x="68" y="46" width="8" height="32" fill="rgba(243,237,226,0.55)" rx="1"></rect>
+                <text x="45" y="22" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(243,237,226,0.6)" letter-spacing="2">PACE</text>
+              </svg>
+            </div>
+            <h3 class="feature-title">Analytics</h3>
+            <p class="feature-body">
+              Pace, splits, HR zones, weekly volume, best efforts. The numbers
+              runners actually care about — not "calories burned," not "activity
+              score."
+            </p>
+          </li>
+
+          <li class="feature-card">
+            <!-- Stamp-framed mini illustration: Passport/map -->
+            <div class="stamp-illus" aria-hidden="true">
+              <svg viewBox="0 0 90 90" width="90" height="90">
+                <rect width="90" height="90" fill="#14110d" rx="1"></rect>
+                {[0,1,2].map((i) => <circle cx="10" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx="80" cy={20 + i * 28} r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="10" r="5.5" fill="#f3ede2" />)}
+                {[0,1,2].map((i) => <circle cx={20 + i * 28} cy="80" r="5.5" fill="#f3ede2" />)}
+                <!-- Globe outline -->
+                <circle cx="45" cy="46" r="26" fill="none" stroke="rgba(243,237,226,0.25)" stroke-width="1.2"></circle>
+                <ellipse cx="45" cy="46" rx="12" ry="26" fill="none" stroke="rgba(243,237,226,0.18)" stroke-width="1"></ellipse>
+                <line x1="19" y1="46" x2="71" y2="46" stroke="rgba(243,237,226,0.18)" stroke-width="1"></line>
+                <!-- City pin dots -->
+                <circle cx="32" cy="38" r="2.5" fill="#e85d2f"></circle>
+                <circle cx="55" cy="52" r="2.5" fill="#e85d2f"></circle>
+                <circle cx="48" cy="32" r="2.5" fill="#e85d2f"></circle>
+              </svg>
+            </div>
+            <h3 class="feature-title">Passport</h3>
+            <p class="feature-body">
+              Every city you've run in, pinned on a world map. A collection of
+              stamps you earned — distance milestones, streak badges, rare
+              Mythic stamps for the uncommonly obsessed.
+            </p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- STAMP CATALOGUE -->
+    <section class="stamps" aria-labelledby="stamps-headline">
+      <div class="container">
+        <p class="eyebrow section-eyebrow">Stamp catalogue</p>
+        <h2 id="stamps-headline" class="section-headline">
+          Earn them. Catalogue them.<br />Show them off — or don't.
+        </h2>
+
+        <ul class="stamp-row" aria-label="Example stamps from the catalogue">
+          <!-- 50 km distance -->
+          <li class="stamp-badge">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="50 km distance stamp" role="img">
+              <rect width="100" height="116" fill="#14110d" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+              <text x="50" y="40" text-anchor="middle" font-family="monospace" font-size="8.5" letter-spacing="3" fill="rgba(243,237,226,0.45)">DISTANCE</text>
+              <text x="50" y="72" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="34" fill="#f3ede2">50</text>
+              <text x="50" y="86" text-anchor="middle" font-family="monospace" font-size="9" fill="rgba(243,237,226,0.55)" letter-spacing="2">KM</text>
+              <rect x="24" y="94" width="52" height="1" fill="rgba(243,237,226,0.18)"></rect>
+              <text x="50" y="108" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.35)" letter-spacing="1.5">MILESTONE</text>
+            </svg>
+            <p class="stamp-label">50 km</p>
+          </li>
+
+          <!-- 7-day streak -->
+          <li class="stamp-badge">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="7-day streak stamp" role="img">
+              <rect width="100" height="116" fill="#4a6b3a" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+              <text x="50" y="40" text-anchor="middle" font-family="monospace" font-size="8.5" letter-spacing="3" fill="rgba(243,237,226,0.45)">STREAK</text>
+              <text x="50" y="72" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="34" fill="#f3ede2">7</text>
+              <text x="50" y="86" text-anchor="middle" font-family="monospace" font-size="9" fill="rgba(243,237,226,0.55)" letter-spacing="2">DAYS</text>
+              <rect x="24" y="94" width="52" height="1" fill="rgba(243,237,226,0.2)"></rect>
+              <text x="50" y="108" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.4)" letter-spacing="1.5">STREAK</text>
+            </svg>
+            <p class="stamp-label">7-day streak</p>
+          </li>
+
+          <!-- Tokyo city -->
+          <li class="stamp-badge">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="Tokyo city stamp" role="img">
+              <rect width="100" height="116" fill="#14110d" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+              <circle cx="50" cy="60" r="28" fill="none" stroke="rgba(243,237,226,0.22)" stroke-width="1.5"></circle>
+              <circle cx="50" cy="60" r="22" fill="none" stroke="rgba(243,237,226,0.12)" stroke-width="1"></circle>
+              <text x="50" y="56" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#f3ede2">Tokyo</text>
+              <line x1="28" y1="63" x2="72" y2="63" stroke="rgba(243,237,226,0.28)" stroke-width="1.2"></line>
+              <line x1="28" y1="69" x2="72" y2="69" stroke="rgba(243,237,226,0.28)" stroke-width="1.2"></line>
+              <text x="50" y="80" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(243,237,226,0.35)" letter-spacing="1.5">JAPAN</text>
+              <text x="50" y="108" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.35)" letter-spacing="1.5">CITY RUN</text>
+            </svg>
+            <p class="stamp-label">Tokyo</p>
+          </li>
+
+          <!-- Marathon 42.2 -->
+          <li class="stamp-badge">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="Marathon 42.2 km stamp" role="img">
+              <rect width="100" height="116" fill="#e85d2f" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+              <text x="50" y="40" text-anchor="middle" font-family="monospace" font-size="8" letter-spacing="2.5" fill="rgba(243,237,226,0.65)">MARATHON</text>
+              <text x="50" y="72" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="26" fill="#f3ede2">42.2</text>
+              <text x="50" y="86" text-anchor="middle" font-family="monospace" font-size="9" fill="rgba(243,237,226,0.65)" letter-spacing="2">KM</text>
+              <rect x="24" y="93" width="52" height="1" fill="rgba(243,237,226,0.3)"></rect>
+              <text x="50" y="108" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.55)" letter-spacing="1.5">FULL</text>
+            </svg>
+            <p class="stamp-label">Marathon</p>
+          </li>
+
+          <!-- Mythic 1000 km — foil treatment via gradient -->
+          <li class="stamp-badge stamp-badge--mythic">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="Mythic: 1000 km stamp" role="img" class="mythic-svg">
+              <defs>
+                <linearGradient id="foil" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#c9b05a"></stop>
+                  <stop offset="25%" stop-color="#e8d4a0"></stop>
+                  <stop offset="50%" stop-color="#a07840"></stop>
+                  <stop offset="75%" stop-color="#d4b870"></stop>
+                  <stop offset="100%" stop-color="#c9b05a"></stop>
+                </linearGradient>
+              </defs>
+              <rect width="100" height="116" fill="#1c1812" rx="1"></rect>
+              <rect x="1.5" y="1.5" width="97" height="113" fill="none" stroke="url(#foil)" stroke-width="1.5" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#1c1812" stroke="url(#foil)" stroke-width="1" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#1c1812" stroke="url(#foil)" stroke-width="1" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#1c1812" stroke="url(#foil)" stroke-width="1" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#1c1812" stroke="url(#foil)" stroke-width="1" />)}
+              <text x="50" y="36" text-anchor="middle" font-family="monospace" font-size="8" letter-spacing="3" fill="url(#foil)">MYTHIC</text>
+              <!-- 5-pointed star -->
+              <path d="M50 42 L52.9 51 L62 51 L54.6 56.5 L57.4 65.5 L50 60 L42.6 65.5 L45.4 56.5 L38 51 L47.1 51 Z" fill="url(#foil)"></path>
+              <text x="50" y="82" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="14" fill="url(#foil)">1,000 km</text>
+              <rect x="18" y="89" width="64" height="1" fill="url(#foil)" opacity="0.4"></rect>
+              <text x="50" y="104" text-anchor="middle" font-family="monospace" font-size="7.5" fill="url(#foil)" letter-spacing="2">OBSESSED</text>
+            </svg>
+            <p class="stamp-label">Mythic</p>
+          </li>
+
+          <!-- Sub-4 hour -->
+          <li class="stamp-badge">
+            <svg width="100" height="116" viewBox="0 0 100 116" aria-label="Sub-4 hour marathon personal best stamp" role="img">
+              <rect width="100" height="116" fill="#3a342b" rx="1"></rect>
+              {perfSide(3).map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+              {perfSide(3).map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+              <text x="50" y="38" text-anchor="middle" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(243,237,226,0.4)">BEST EFFORT</text>
+              <text x="50" y="66" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="20" fill="#f3ede2">Sub-4:00</text>
+              <text x="50" y="82" text-anchor="middle" font-family="monospace" font-size="8.5" fill="rgba(243,237,226,0.45)" letter-spacing="1.5">MARATHON</text>
+              <rect x="24" y="90" width="52" height="1" fill="rgba(243,237,226,0.15)"></rect>
+              <text x="50" y="108" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(243,237,226,0.35)" letter-spacing="1.5">PERSONAL BEST</text>
+            </svg>
+            <p class="stamp-label">Sub-4:00</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SAMPLE SHARE CARDS -->
+    <section class="cards" aria-labelledby="cards-headline">
+      <div class="container">
+        <p class="eyebrow section-eyebrow">Share cards</p>
+        <h2 id="cards-headline" class="section-headline">
+          Every run, a keepsake.
+        </h2>
+        <p class="section-sub">
+          Six templates. Route map or your own photo. Export as PNG, share
+          anywhere.
+        </p>
+
+        <div class="cards-grid">
+          <!-- Card 1: Postage -->
+          <figure class="share-card" aria-labelledby="card1-cap">
+            <svg viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="280" height="380" fill="#f3ede2"></rect>
+              <rect x="16" y="16" width="248" height="348" fill="#14110d"></rect>
+              {halftoneRows.map((row) =>
+                row.map(({ row: r, col: c }) => (
+                  <circle cx={28 + c * 20} cy={80 + r * 22} r={0.7 + ((r + c) % 3) * 0.25} fill="rgba(243,237,226,0.055)" />
+                ))
+              )}
+              <path d="M50 300 Q75 265 100 280 Q125 295 150 255 Q175 215 200 235 Q225 255 248 220" stroke="#e85d2f" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"></path>
+              <text x="32" y="44" font-family="monospace" font-size="8" letter-spacing="3" fill="rgba(243,237,226,0.5)">JAPAN</text>
+              <text x="32" y="72" font-family="Georgia, serif" font-style="italic" font-size="28" fill="#f3ede2">Tokyo</text>
+              <rect x="194" y="32" width="54" height="18" fill="none" stroke="rgba(243,237,226,0.28)" stroke-width="1" rx="2"></rect>
+              <text x="221" y="45" text-anchor="middle" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.5)">NO. A0041</text>
+              <text x="32" y="326" font-family="monospace" font-size="42" font-weight="500" fill="#f3ede2" letter-spacing="-2">21.1</text>
+              <text x="32" y="344" font-family="monospace" font-size="8.5" fill="rgba(243,237,226,0.45)" letter-spacing="2.5">KILOMETRES</text>
+              <text x="248" y="320" text-anchor="end" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.75)">5:12/km</text>
+              <text x="248" y="336" text-anchor="end" font-family="monospace" font-size="10" fill="rgba(243,237,226,0.45)">1:49:43</text>
+              <text x="248" y="352" text-anchor="end" font-family="monospace" font-size="8" fill="rgba(243,237,226,0.3)">2026 · MAR · 15</text>
+              {perfSide(11).map((i) => <circle cx="16" cy={34 + i * 32} r="8" fill="#f3ede2" />)}
+              {perfSide(11).map((i) => <circle cx="264" cy={34 + i * 32} r="8" fill="#f3ede2" />)}
+              {perfSide(8).map((i) => <circle cx={36 + i * 32} cy="16" r="8" fill="#f3ede2" />)}
+              {perfSide(8).map((i) => <circle cx={36 + i * 32} cy="364" r="8" fill="#f3ede2" />)}
+            </svg>
+            <figcaption id="card1-cap" class="card-caption eyebrow">Postage</figcaption>
+          </figure>
+
+          <!-- Card 2: Postmark -->
+          <figure class="share-card" aria-labelledby="card2-cap">
+            <svg viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="280" height="380" fill="#14110d"></rect>
+              <path d="M20 340 Q60 280 100 300 Q140 320 170 260 Q200 200 240 180" stroke="#e85d2f" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.2"></path>
+              <rect width="280" height="380" fill="rgba(14,13,11,0.58)"></rect>
+              <circle cx="140" cy="195" r="112" fill="none" stroke="rgba(243,237,226,0.75)" stroke-width="2"></circle>
+              <circle cx="140" cy="195" r="96" fill="none" stroke="rgba(243,237,226,0.35)" stroke-width="1"></circle>
+              <line x1="38" y1="188" x2="242" y2="188" stroke="rgba(243,237,226,0.5)" stroke-width="1.8"></line>
+              <line x1="38" y1="197" x2="242" y2="197" stroke="rgba(243,237,226,0.5)" stroke-width="1.8"></line>
+              <line x1="38" y1="206" x2="242" y2="206" stroke="rgba(243,237,226,0.5)" stroke-width="1.8"></line>
+              <text x="140" y="175" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Bangalore</text>
+              <text x="140" y="222" text-anchor="middle" font-family="monospace" font-size="8" letter-spacing="3" fill="rgba(243,237,226,0.45)">INDIA</text>
+              <text x="32" y="38" font-family="monospace" font-size="8" letter-spacing="2" fill="rgba(243,237,226,0.38)">DENOMINATION</text>
+              <text x="32" y="62" font-family="monospace" font-size="32" font-weight="500" fill="#f3ede2" letter-spacing="-1">32.0</text>
+              <text x="80" y="68" font-family="monospace" font-size="10" fill="rgba(243,237,226,0.48)">km</text>
+              <text x="32" y="340" font-family="monospace" font-size="8.5" fill="rgba(243,237,226,0.38)" letter-spacing="2">PACE</text>
+              <text x="32" y="356" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.8)">4:58/km</text>
+              <text x="140" y="340" text-anchor="middle" font-family="monospace" font-size="8.5" fill="rgba(243,237,226,0.38)" letter-spacing="2">TIME</text>
+              <text x="140" y="356" text-anchor="middle" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.8)">2:39:14</text>
+              <text x="248" y="340" text-anchor="end" font-family="monospace" font-size="7.5" fill="rgba(243,237,226,0.32)" letter-spacing="1">NO.</text>
+              <text x="248" y="356" text-anchor="end" font-family="monospace" font-size="11" fill="rgba(243,237,226,0.5)">B0089</text>
+            </svg>
+            <figcaption id="card2-cap" class="card-caption eyebrow">Postmark</figcaption>
+          </figure>
+
+          <!-- Card 3: Customs Declaration -->
+          <figure class="share-card" aria-labelledby="card3-cap">
+            <svg viewBox="0 0 280 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="280" height="380" fill="#f5eedf"></rect>
+              {airmailStripes.map((i) => (
+                <rect
+                  x={i * 28 - 20}
+                  y="0"
+                  width="12"
+                  height="380"
+                  fill={i % 2 === 0 ? "#e85d2f" : "#14110d"}
+                  opacity="0.09"
+                  transform="skewX(-15)"
+                />
+              ))}
+              <text x="28" y="44" font-family="Georgia, serif" font-style="italic" font-size="18" fill="#1c1812">Declaration of Run</text>
+              <line x1="18" y1="52" x2="262" y2="52" stroke="rgba(28,24,18,0.15)" stroke-width="1"></line>
+              {formRows.map(({ label, value }, i) => (
+                <>
+                  <text x="24" y={78 + i * 36} font-family="monospace" font-size="7.5" letter-spacing="1.5" fill="rgba(28,24,18,0.42)">{label}</text>
+                  <text x="256" y={78 + i * 36 + 14} text-anchor="end" font-family="monospace" font-size="12.5" fill="#1c1812">{value}</text>
+                  <line x1="18" y1={78 + i * 36 + 20} x2="262" y2={78 + i * 36 + 20} stroke="rgba(28,24,18,0.07)" stroke-width="1" stroke-dasharray="3,3" />
+                </>
+              ))}
+              <rect x="24" y="344" width="12" height="12" fill="none" stroke="#1c1812" stroke-width="1.2"></rect>
+              <text x="42" y="355" font-family="monospace" font-size="8" fill="rgba(28,24,18,0.5)">PERSONAL BEST</text>
+              <circle cx="220" cy="352" r="22" fill="none" stroke="rgba(232,93,47,0.42)" stroke-width="1.5"></circle>
+              <text x="220" y="349" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(232,93,47,0.55)" letter-spacing="1">2026</text>
+              <line x1="202" y1="355" x2="238" y2="355" stroke="rgba(232,93,47,0.3)" stroke-width="1"></line>
+              <text x="220" y="364" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(232,93,47,0.48)" letter-spacing="1">CLEARED</text>
+            </svg>
+            <figcaption id="card3-cap" class="card-caption eyebrow">Customs</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- WAITLIST / CTA -->
+    <section class="waitlist" id="waitlist" aria-labelledby="waitlist-headline">
+      <div class="container">
+        <div class="waitlist-inner">
+          <div class="postmark-decor" aria-hidden="true">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="64" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.18"></circle>
+              <circle cx="70" cy="70" r="52" fill="none" stroke="currentColor" stroke-width="1" opacity="0.1"></circle>
+              <line x1="14" y1="65" x2="126" y2="65" stroke="currentColor" stroke-width="1.4" opacity="0.18"></line>
+              <line x1="14" y1="73" x2="126" y2="73" stroke="currentColor" stroke-width="1.4" opacity="0.18"></line>
+              <line x1="14" y1="81" x2="126" y2="81" stroke="currentColor" stroke-width="1.4" opacity="0.18"></line>
+            </svg>
+          </div>
+          <p class="eyebrow waitlist-eyebrow">Early access</p>
+          <h2 id="waitlist-headline" class="waitlist-headline">
+            Be first on the start line.
+          </h2>
+          <p class="waitlist-sub">
+            App Store and Play Store listings coming later this year. Leave your
+            email and you'll hear when the door opens. One message. No
+            newsletters, no product updates.
+          </p>
+
+          <!-- TODO: wire to /v1/waitlist endpoint in next sprint -->
+          <form
+            class="waitlist-form"
+            action="mailto:rohith.gilla@fusang.co"
+            method="get"
+            enctype="text/plain"
+            aria-label="Join the waitlist"
+          >
+            <label for="waitlist-email" class="visually-hidden">Email address</label>
+            <input
+              id="waitlist-email"
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+              class="waitlist-input"
+              aria-describedby="waitlist-note"
+            />
+            <button type="submit" class="waitlist-submit">
+              Get early access
+            </button>
+          </form>
+          <p id="waitlist-note" class="waitlist-note eyebrow">No spam. One message when we launch.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <p class="footer-copy">&copy; 2026 Runstamp.</p>
+        <p class="footer-manifesto">
+          Your data is yours. The code is public. The runs are stamped.
+        </p>
+      </div>
+      <a
+        href="https://github.com/Rohithgilla12/runstamp"
+        class="footer-github"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Runstamp source code on GitHub"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2a10 10 0 00-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.15-1.1-1.46-1.1-1.46-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.56 9.56 0 015 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0012 2z" />
+        </svg>
+        GitHub
+      </a>
+    </div>
+  </footer>
+</Base>
+
+<style>
+  /* ── Layout container ─────────────────────────────── */
+  .container {
+    width: 100%;
+    max-width: 1160px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 5vw, 3rem);
+  }
+
+  /* ── Header ──────────────────────────────────────── */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .site-header .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1rem;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.125rem;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+
+  .header-cta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-decoration: none;
+    border: 1px solid var(--ink);
+    padding: 0.4rem 0.875rem;
+    border-radius: 2px;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .header-cta:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .header-cta:focus-visible {
+    outline: 2px solid var(--solar);
+    outline-offset: 2px;
+  }
+
+  /* ── Hero ─────────────────────────────────────────── */
+  .hero {
+    padding-block: clamp(4rem, 10vw, 8rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .hero-inner {
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+    }
+  }
+
+  .hero-eyebrow {
+    margin-bottom: 1.25rem;
+  }
+
+  .hero-headline {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(2.75rem, 6vw, 5.5rem);
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+    line-height: 1.0;
+  }
+
+  .hero-sub {
+    font-size: clamp(0.9375rem, 1.5vw, 1.0625rem);
+    color: var(--ink-2);
+    max-width: 44ch;
+    margin-bottom: 2.5rem;
+    line-height: 1.7;
+  }
+
+  .store-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    list-style: none;
+  }
+
+  .store-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 1rem;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.15s ease;
+  }
+
+  .store-badge::after {
+    content: "soon";
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--solar);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.175rem 0.35rem;
+    line-height: 1;
+  }
+
+  .store-badge:hover {
+    opacity: 0.82;
+  }
+
+  .store-badge:focus-visible {
+    outline: 2px solid var(--solar);
+    outline-offset: 2px;
+  }
+
+  .badge-platform {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .badge-status {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  .hero-card {
+    display: flex;
+    justify-content: center;
+  }
+
+  .hero-card-figure {
+    width: min(320px, 100%);
+  }
+
+  .hero-card-svg {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 4px 24px rgba(20, 17, 13, 0.14));
+  }
+
+  /* ── Section shared ──────────────────────────────── */
+  .section-eyebrow {
+    margin-bottom: 0.625rem;
+  }
+
+  .section-headline {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(1.75rem, 3.5vw, 3rem);
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+
+  .section-sub {
+    font-size: 1rem;
+    color: var(--ink-2);
+    max-width: 56ch;
+    margin-bottom: 3rem;
+    line-height: 1.7;
+  }
+
+  /* ── Features ─────────────────────────────────────── */
+  .features {
+    padding-block: clamp(3.5rem, 8vw, 6rem);
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+
+  .features .section-headline {
+    margin-bottom: 3rem;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  @media (min-width: 640px) {
+    .features-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .feature-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .stamp-illus {
+    border-radius: 1px;
+    box-shadow: 0 2px 8px rgba(20, 17, 13, 0.1);
+    width: fit-content;
+  }
+
+  .feature-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.375rem;
+    font-weight: 400;
+    color: var(--ink);
+  }
+
+  .feature-body {
+    font-size: 0.9375rem;
+    color: var(--ink-2);
+    line-height: 1.72;
+    max-width: 38ch;
+  }
+
+  /* ── Stamp catalogue ─────────────────────────────── */
+  .stamps {
+    padding-block: clamp(3.5rem, 8vw, 6rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stamps .section-headline {
+    margin-bottom: 3rem;
+  }
+
+  .stamp-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .stamp-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .stamp-badge svg {
+    box-shadow: 0 2px 8px rgba(20, 17, 13, 0.12);
+    border-radius: 1px;
+  }
+
+  .stamp-label {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mythic-svg {
+    filter: drop-shadow(0 0 10px rgba(201, 176, 90, 0.4));
+  }
+
+  /* ── Share cards ─────────────────────────────────── */
+  .cards {
+    padding-block: clamp(3.5rem, 8vw, 6rem);
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .cards-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .share-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .share-card svg {
+    width: 100%;
+    height: auto;
+    border-radius: 2px;
+    box-shadow:
+      0 2px 12px rgba(20, 17, 13, 0.1),
+      0 1px 3px rgba(20, 17, 13, 0.06);
+  }
+
+  .card-caption {
+    color: var(--ink-3);
+  }
+
+  /* ── Waitlist ─────────────────────────────────────── */
+  .waitlist {
+    padding-block: clamp(4rem, 10vw, 8rem);
+    border-bottom: 1px solid rgba(243, 237, 226, 0.1);
+    background: var(--ink);
+    color: var(--paper);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .waitlist::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      rgba(243, 237, 226, 0.024) 0px,
+      rgba(243, 237, 226, 0.024) 1px,
+      transparent 1px,
+      transparent 28px
+    );
+    pointer-events: none;
+  }
+
+  .waitlist-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+  }
+
+  .postmark-decor {
+    color: var(--paper);
+    margin-bottom: 1.5rem;
+  }
+
+  .waitlist-eyebrow {
+    color: var(--solar);
+    margin-bottom: 0.75rem;
+  }
+
+  .waitlist-headline {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 400;
+    color: var(--paper);
+    margin-bottom: 1rem;
+    line-height: 1.05;
+  }
+
+  .waitlist-sub {
+    font-size: 1rem;
+    color: rgba(243, 237, 226, 0.6);
+    max-width: 50ch;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  .waitlist-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (min-width: 480px) {
+    .waitlist-form {
+      flex-direction: row;
+    }
+  }
+
+  .waitlist-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    background: rgba(243, 237, 226, 0.07);
+    border: 1px solid rgba(243, 237, 226, 0.18);
+    border-radius: 2px;
+    color: var(--paper);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .waitlist-input::placeholder {
+    color: rgba(243, 237, 226, 0.28);
+  }
+
+  .waitlist-input:focus {
+    border-color: rgba(243, 237, 226, 0.45);
+  }
+
+  .waitlist-submit {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.75rem 1.25rem;
+    background: var(--solar);
+    color: var(--paper);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+  }
+
+  .waitlist-submit:hover {
+    background: var(--solar-deep);
+  }
+
+  .waitlist-submit:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 2px;
+  }
+
+  .waitlist-note {
+    color: rgba(243, 237, 226, 0.32);
+  }
+
+  /* ── Footer ──────────────────────────────────────── */
+  .site-footer {
+    padding-block: 2rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  @media (min-width: 640px) {
+    .footer-inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  .footer-copy {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+    margin-bottom: 0.2rem;
+  }
+
+  .footer-manifesto {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+    opacity: 0.6;
+  }
+
+  .footer-github {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .footer-github:hover {
+    color: var(--ink);
+  }
+
+  .footer-github:focus-visible {
+    outline: 2px solid var(--solar);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* ── Accessibility ───────────────────────────────── */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--solar);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+</style>
