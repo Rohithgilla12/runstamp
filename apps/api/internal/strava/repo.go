@@ -2,6 +2,7 @@ package strava
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -82,8 +83,8 @@ ON CONFLICT (user_id) DO UPDATE SET
 	if _, err := r.pool.Exec(ctx, q,
 		userID,
 		tok.Athlete.ID,
-		string(accessEnc),
-		string(refreshEnc),
+		base64.StdEncoding.EncodeToString(accessEnc),
+		base64.StdEncoding.EncodeToString(refreshEnc),
 		expires,
 		scope,
 		firstname,
@@ -114,7 +115,7 @@ func (r *Repository) Delete(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (r *Repository) queryOne(ctx context.Context, where string, arg interface{}) (*Connection, error) {
+func (r *Repository) queryOne(ctx context.Context, where string, arg any) (*Connection, error) {
 	const cols = `
   user_id, athlete_id, access_token_enc, refresh_token_enc, expires_at, scope,
   athlete_firstname, athlete_lastname, athlete_profile_url, created_at, refreshed_at
@@ -137,11 +138,19 @@ func (r *Repository) queryOne(ctx context.Context, where string, arg interface{}
 		}
 		return nil, fmt.Errorf("scan strava connection: %w", err)
 	}
-	access, err := r.sealer.Open([]byte(accessEnc))
+	accessCT, err := base64.StdEncoding.DecodeString(accessEnc)
+	if err != nil {
+		return nil, fmt.Errorf("decode access token: %w", err)
+	}
+	refreshCT, err := base64.StdEncoding.DecodeString(refreshEnc)
+	if err != nil {
+		return nil, fmt.Errorf("decode refresh token: %w", err)
+	}
+	access, err := r.sealer.Open(accessCT)
 	if err != nil {
 		return nil, fmt.Errorf("open access token: %w", err)
 	}
-	refresh, err := r.sealer.Open([]byte(refreshEnc))
+	refresh, err := r.sealer.Open(refreshCT)
 	if err != nil {
 		return nil, fmt.Errorf("open refresh token: %w", err)
 	}
