@@ -194,6 +194,22 @@ func (r *Repository) scanInsertResult(ctx context.Context, q rowQuerier, row pgx
 
 // InsertStream writes a downsampled stream for an activity. ON CONFLICT
 // replaces the existing row so a re-ingest overwrites the stale stream.
+// UpdateTitle changes only the user-editable title. Empty string clears it.
+func (r *Repository) UpdateTitle(ctx context.Context, activityID, title string) error {
+	titleArg := any(title)
+	if title == "" {
+		titleArg = nil
+	}
+	tag, err := r.pool.Exec(ctx, `UPDATE activities SET title = $2 WHERE id = $1`, activityID, titleArg)
+	if err != nil {
+		return fmt.Errorf("activities: update title: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // Stream is a single (type, jsonb-data) row from activity_streams.
 type Stream struct {
 	Type string          `json:"type"`

@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/activities"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
+	"github.com/go-chi/chi/v5"
 )
 
 // ActivitiesHandler serves the GET /v1/activities list endpoint that the
@@ -88,6 +92,57 @@ func (h *ActivitiesHandler) List(w http.ResponseWriter, r *http.Request) {
 		resp.Activities = append(resp.Activities, toActivityResponse(&rows[i]))
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+type patchActivityRequest struct {
+	Title *string `json:"title,omitempty"`
+}
+
+// Patch handles PATCH /v1/activities/:id — currently supports renaming.
+// Returns 404 when the caller doesn't own the row (don't leak existence).
+func (h *ActivitiesHandler) Patch(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil || user == nil {
+		writeError(w, http.StatusNotFound, "user not provisioned")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	owner, err := h.Activities.Repo().OwnerOf(r.Context(), id)
+	if err != nil {
+		h.Log.Error("activities patch: owner", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if owner == "" || owner != user.ID {
+		writeError(w, http.StatusNotFound, "activity not found")
+		return
+	}
+	var body patchActivityRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if body.Title != nil {
+		title := strings.TrimSpace(*body.Title)
+		if len(title) > 200 {
+			title = title[:200]
+		}
+		if err := h.Activities.Repo().UpdateTitle(r.Context(), id, title); err != nil {
+			if errors.Is(err, activities.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "activity not found")
+				return
+			}
+			h.Log.Error("activities patch: update title", "err", err, "activity_id", id)
+			writeError(w, http.StatusInternalServerError, "update failed")
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func parseLimit(raw string) int {

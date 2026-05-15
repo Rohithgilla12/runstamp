@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
+import { useAuth } from '../state/AuthContext';
 import { useActivities } from '../state/useActivities';
 import { useActivityStreams } from '../state/useActivityStreams';
+import { renameActivity } from '../services/activityEdit';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Button, Card, Chip } from '../design/atoms';
@@ -22,9 +24,36 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
   const id = route.params?.id;
-  const { activities, loading } = useActivities();
+  const { activities, loading, refresh: refreshActivities } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   const { route: realRoute, streams } = useActivityStreams(run?.id ?? null);
+  const { getIdToken } = useAuth();
+  const handleRename = useCallback(() => {
+    if (!run) return;
+    Alert.prompt(
+      'Rename run',
+      'Override the title from Strava / Apple Health. This stays on Runstamp.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (text?: string) => {
+            const next = (text ?? '').trim();
+            if (!next || next === run.title) return;
+            try {
+              const idToken = await getIdToken();
+              await renameActivity(run.id, next, idToken);
+              await refreshActivities();
+            } catch (e) {
+              Alert.alert('Couldn’t rename', e instanceof Error ? e.message : 'unknown');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      run.title,
+    );
+  }, [run, getIdToken, refreshActivities]);
   const liveHr = parseNumberStream(streams.heartrate?.data);
   const liveVelocity = parseNumberStream(streams.velocity?.data);
   // Strava velocity is m/s. Convert to seconds-per-km for the pace chart so
@@ -92,8 +121,10 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
           </View>
         </View>
         <View style={{ position: 'absolute', bottom: 14, left: 20, right: 20 }}>
-          <Eyebrow style={{ color: c.accent }}>{run.day.toUpperCase()} · MAY 17 · {run.time}</Eyebrow>
-          <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, color: c.ink, marginTop: 4 }}>{run.title}</TText>
+          <Eyebrow style={{ color: c.accent }}>{run.day.toUpperCase()} · {run.date} · {run.time}</Eyebrow>
+          <Pressable onLongPress={handleRename} delayLongPress={350}>
+            <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, color: c.ink, marginTop: 4 }}>{run.title}</TText>
+          </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <Icon.pin size={12} color={c.ink3} />
             <TText style={{ fontSize: 12, color: c.ink3 }}>{run.place}</TText>

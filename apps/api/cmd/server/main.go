@@ -233,6 +233,7 @@ func main() {
 			r.Get("/me", handlers.Me(usersRepo))
 			r.Delete("/me", accountHandler.Delete)
 			r.Get("/activities", activitiesHandler.List)
+			r.Patch("/activities/{id}", activitiesHandler.Patch)
 			r.Get("/activities/{id}/streams", streamsHandler.List)
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
