@@ -7,13 +7,15 @@ import (
 	"net/http"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 )
 
 // StravaHandler holds the dependencies the Strava routes need.
 type StravaHandler struct {
-	Client       *strava.Client
-	VerifyToken  string // for the webhook subscription GET handshake
-	Log          *slog.Logger
+	Client      *strava.Client
+	VerifyToken string // for the webhook subscription GET handshake
+	Log         *slog.Logger
+	Users       *users.Repo
 }
 
 type stravaExchangeReq struct {
@@ -27,6 +29,7 @@ type stravaExchangeRes struct {
 	RefreshToken string         `json:"refreshToken"`
 	ExpiresAt    int64          `json:"expiresAt"`
 	Athlete      strava.Athlete `json:"athlete"`
+	UserID       string         `json:"userId"`
 }
 
 // Exchange is POST /v1/auth/strava/exchange. The mobile app POSTs an
@@ -54,11 +57,19 @@ func (h *StravaHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := h.Users.UpsertStravaAccount(r.Context(), &tokens.Athlete, tokens)
+	if err != nil {
+		h.Log.Error("upsert strava account failed", "err", err)
+		writeError(w, http.StatusBadGateway, "failed to persist strava account")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, stravaExchangeRes{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 		ExpiresAt:    tokens.ExpiresAt,
 		Athlete:      tokens.Athlete,
+		UserID:       user.ID,
 	})
 }
 

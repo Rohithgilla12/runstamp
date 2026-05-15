@@ -33,6 +33,14 @@ pnpm api:run               # `go run` the API on :8080
 pnpm api:up                # full stack (postgres+postgis, redis, api) via docker compose
 ```
 
+## CI
+
+GitHub Actions runs on every push and pull request:
+
+- **Mobile** (`.github/workflows/mobile.yml`) — installs deps with pnpm, runs `tsc --noEmit` and `vitest` for `apps/mobile`, plus a non-blocking `expo-doctor` check.
+- **API** (`.github/workflows/api.yml`) — `go build`, `go vet`, and `go test ./... -race` against `apps/api` on Go 1.24.
+- **Docker API Build** (`.github/workflows/docker.yml`) — on push to `main` (when `apps/api/**` changes), builds the API Dockerfile locally on the runner to catch breakage; nothing is pushed to a registry.
+
 ## Secrets
 
 The Strava client SECRET (and any other server-side credential) lives **only in `apps/api/.env`** — never in the mobile bundle. The mobile app's public values (client ID, API base URL) come in via `EXPO_PUBLIC_*` env vars; see `apps/mobile/.env.example`.

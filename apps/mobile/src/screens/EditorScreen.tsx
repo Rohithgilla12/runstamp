@@ -17,11 +17,15 @@ import { RouteMap } from '../design/RouteMap';
 import { PostageTemplate } from '../design/templates/PostageTemplate';
 import { PostmarkTemplate } from '../design/templates/PostmarkTemplate';
 import { BoardingPassTemplate } from '../design/templates/BoardingPassTemplate';
+import { PassportTemplate } from '../design/templates/PassportTemplate';
+import { CustomsTemplate } from '../design/templates/CustomsTemplate';
+import { EngravedTemplate } from '../design/templates/EngravedTemplate';
+import { WaxSealTemplate } from '../design/templates/WaxSealTemplate';
 import type { RootStackProps } from '../nav/types';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
-type Template = 'stickers' | 'postage' | 'postmark' | 'boarding' | 'magazine' | 'minimal' | 'brutalist' | 'track' | 'newsprint' | 'topo';
+type Template = 'stickers' | 'postage' | 'postmark' | 'boarding' | 'passport' | 'customs' | 'engraved' | 'wax' | 'magazine' | 'minimal' | 'brutalist' | 'track' | 'newsprint' | 'topo';
 type TabKey = 'templates' | 'photo' | 'stats' | 'export';
 
 const CANVAS_PADDING = 24;
@@ -217,6 +221,22 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ width: canvasW, height: canvasH }}>
               <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} />
             </View>
+          ) : template === 'passport' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
+          ) : template === 'customs' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
+          ) : template === 'engraved' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
+          ) : template === 'wax' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
             width: canvasW, height: canvasH, borderRadius: 18, overflow: 'hidden',
@@ -293,6 +313,10 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['postage',   'Postage'],
                 ['postmark',  'Postmark'],
                 ['boarding',  'Boarding'],
+                ['passport',  'Passport'],
+                ['customs',   'Customs'],
+                ['engraved',  'Engraved'],
+                ['wax',       'Wax seal'],
                 ['magazine',  'Magazine'],
                 ['minimal',   'Minimal'],
                 ['brutalist', 'Brutalist'],
@@ -301,7 +325,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['topo',      'Topo']
               ] as const).map(([t, label]) => {
                 const active = template === t;
-                const ready = t === 'stickers' || t === 'postage' || t === 'postmark' || t === 'boarding';
+                const ready = t === 'stickers' || t === 'postage' || t === 'postmark' || t === 'boarding'
+                  || t === 'passport' || t === 'customs' || t === 'engraved' || t === 'wax';
                 return (
                   <Pressable key={t} onPress={() => setTemplate(t)} style={{
                     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,

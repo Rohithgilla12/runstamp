@@ -1,0 +1,42 @@
+name: Mobile
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -F @runstamp/mobile typecheck
+
+      - name: Test
+        run: pnpm -F @runstamp/mobile test
+
+      # expo-doctor surfaces SDK/peer-dep drift but occasionally flags issues
+      # outside our control (transitive deps, native module versions). Keep it
+      # informational so a yellow doctor warning doesn't block merges.
+      - name: Expo doctor
+        working-directory: apps/mobile
+        run: pnpm dlx expo-doctor
+        continue-on-error: true

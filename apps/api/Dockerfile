@@ -12,6 +12,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /out/runstamp-api ./cmd/server
 
 FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
 COPY --from=build /out/runstamp-api /usr/local/bin/runstamp-api
+COPY --from=build /src/migrations migrations
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/runstamp-api"]

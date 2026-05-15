@@ -46,6 +46,7 @@ type TokenResponse struct {
 	ExpiresIn    int64   `json:"expires_in"`
 	RefreshToken string  `json:"refresh_token"`
 	AccessToken  string  `json:"access_token"`
+	Scope        string  `json:"scope"`
 	Athlete      Athlete `json:"athlete"`
 }
 

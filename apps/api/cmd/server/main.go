@@ -21,9 +21,12 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/config"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/crypto"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 )
 
 // version is overridden at build time via `-ldflags "-X main.version=..."`.
@@ -39,11 +42,35 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := db.Migrate(cfg.DatabaseURL, "./migrations"); err != nil {
+		log.Error("migrations failed", "err", err)
+		os.Exit(1)
+	}
+
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Error("db pool failed", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	sealer, err := crypto.NewSealer(cfg.TokenEncKeyHex)
+	if err != nil {
+		log.Error("crypto sealer failed", "err", err)
+		os.Exit(1)
+	}
+
+	usersRepo := users.NewRepo(pool, sealer)
+
 	stravaClient := strava.New(cfg.StravaClientID, cfg.StravaClientSecret)
 	stravaHandler := &handlers.StravaHandler{
 		Client:      stravaClient,
 		VerifyToken: cfg.StravaWebhookToken,
 		Log:         log,
+		Users:       usersRepo,
 	}
 
 	r := chi.NewRouter()
@@ -75,7 +102,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	// Graceful shutdown on SIGINT / SIGTERM.
+	// Graceful shutdown on SIGINT / SIGTERM via the NotifyContext above.
 	go func() {
 		log.Info("starting", "addr", srv.Addr, "version", version)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -84,13 +111,12 @@ func main() {
 		}
 	}()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
+	<-ctx.Done()
+	stop()
 	log.Info("shutting down")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutCtx); err != nil {
 		log.Error("shutdown error", "err", err)
 		os.Exit(1)
 	}
