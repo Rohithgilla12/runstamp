@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, View, Dimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, Share, View, Dimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import { captureRef } from 'react-native-view-shot';
 import { ACT, distUnit, fmtDist, fmtPace, fmtTime } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
-import { Card } from '../design/atoms';
+import { Button, Card } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { PostmarkMark, SunMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
@@ -65,11 +67,44 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const [tab, setTab] = useState<TabKey>('templates');
   const [selected, setSelected] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const canvasRef = useRef<View>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [stickers, setStickers] = useState<StickerInstance[]>([
     { id: 's-distance', key: 'distance', x: 0.5, y: 0.18, scale: 1 },
     { id: 's-pace',     key: 'pace',     x: 0.2, y: 0.78, scale: 1 },
     { id: 's-time',     key: 'time',     x: 0.8, y: 0.78, scale: 1 }
   ]);
+
+  const handleExport = async (mode: ExportMode) => {
+    if (!canvasRef.current || exporting) return;
+    setSelected(null);
+    setExporting(true);
+    try {
+      // Capture at 2x for retina quality. Output PNG so the transparent
+      // watermark area composites cleanly.
+      const uri = await captureRef(canvasRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      let savedAssetUri: string | undefined;
+      let permissionDenied = false;
+      if (mode === 'save' || mode === 'stories') {
+        const perm = await MediaLibrary.requestPermissionsAsync(true);
+        if (perm.granted) {
+          const asset = await MediaLibrary.createAssetAsync(uri);
+          savedAssetUri = asset.uri;
+        } else {
+          permissionDenied = true;
+        }
+      }
+      if (mode === 'sheet') {
+        await Share.share({ url: uri, message: `My ${run.title} via Runstamp` });
+      }
+      setExportResult({ mode, tmpUri: uri, savedAssetUri, permissionDenied });
+    } catch (err) {
+      setExportResult({ mode, tmpUri: '', error: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -128,12 +163,17 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <Icon.x size={18} color={c.ink} />
           </Pressable>
           <Eyebrow>EDITOR</Eyebrow>
-          <Pressable onPress={() => setTab('export')} style={{
-            paddingHorizontal: 12, height: 38, borderRadius: 10, backgroundColor: c.ink,
-            alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6
-          }}>
-            <Icon.share size={14} color={c.paper} />
-            <TText style={{ fontSize: 13, color: c.paper, fontWeight: '500' }}>Share</TText>
+          <Pressable
+            onPress={() => handleExport('save')}
+            disabled={exporting}
+            style={({ pressed }) => [{
+              paddingHorizontal: 12, height: 38, borderRadius: 10, backgroundColor: c.ink,
+              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
+              opacity: exporting ? 0.6 : pressed ? 0.85 : 1
+            }]}
+          >
+            <Icon.download size={14} color={c.paper} />
+            <TText style={{ fontSize: 13, color: c.paper, fontWeight: '500' }}>{exporting ? 'Saving…' : 'Save'}</TText>
           </Pressable>
         </View>
 
@@ -162,6 +202,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
 
         {/* Canvas */}
         <View style={{ paddingHorizontal: CANVAS_PADDING, paddingTop: 20, alignItems: 'center' }}>
+          <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
               <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} />
@@ -217,6 +258,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             ))}
           </Pressable>
           )}
+          </View>
         </View>
 
         {/* Tabs */}
@@ -321,19 +363,28 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           {tab === 'export' && (
             <Card>
               <Eyebrow style={{ marginBottom: 12 }}>SHARE</Eyebrow>
-              {[
-                { label: 'Save to camera roll',     desc: 'PNG · 2160×3840' },
-                { label: 'Instagram Stories',       desc: 'instagram-stories://' },
-                { label: 'WhatsApp / X / Messages', desc: 'System share sheet' },
-                { label: 'Copy stat stickers',      desc: 'Transparent PNGs to clipboard' }
-              ].map((e, i, arr) => (
-                <View key={e.label} style={{ paddingVertical: 12, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: c.line2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View>
+              {([
+                { mode: 'save'    as const, label: 'Save to camera roll',     desc: 'PNG · captured at retina scale' },
+                { mode: 'stories' as const, label: 'Instagram Stories',       desc: 'Saves to roll, opens Instagram' },
+                { mode: 'sheet'   as const, label: 'WhatsApp / X / Messages', desc: 'System share sheet' }
+              ]).map((e, i) => (
+                <Pressable
+                  key={e.label}
+                  onPress={() => handleExport(e.mode)}
+                  disabled={exporting}
+                  style={({ pressed }) => [{
+                    paddingVertical: 14,
+                    borderTopWidth: i === 0 ? 0 : 1, borderTopColor: c.line2,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    opacity: exporting ? 0.6 : pressed ? 0.7 : 1
+                  }]}
+                >
+                  <View style={{ flex: 1 }}>
                     <TText style={{ fontSize: 14, fontWeight: '500', color: c.ink }}>{e.label}</TText>
                     <TText variant="mono" style={{ fontSize: 10.5, color: c.ink3, marginTop: 2 }}>{e.desc}</TText>
                   </View>
                   <Icon.chevR size={14} color={c.ink3} />
-                </View>
+                </Pressable>
               ))}
             </Card>
           )}
@@ -352,7 +403,101 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           </View>
         )}
       </ScrollView>
+
+      <Modal visible={!!exportResult} transparent animationType="slide" onRequestClose={() => setExportResult(null)}>
+        {exportResult && <ExportResultSheet result={exportResult} onClose={() => setExportResult(null)} onShareAgain={() => handleExport('sheet')} />}
+      </Modal>
     </GestureHandlerRootView>
+  );
+}
+
+type ExportMode = 'save' | 'stories' | 'sheet';
+interface ExportResult {
+  mode: ExportMode;
+  tmpUri: string;
+  savedAssetUri?: string;
+  permissionDenied?: boolean;
+  error?: string;
+}
+
+function ExportResultSheet({
+  result,
+  onClose,
+  onShareAgain
+}: {
+  result: ExportResult;
+  onClose: () => void;
+  onShareAgain: () => void;
+}) {
+  const c = useColors();
+  const insets = useSafeAreaInsets();
+
+  const title = result.error
+    ? 'Export failed'
+    : result.permissionDenied
+      ? 'Photo permission denied'
+      : result.savedAssetUri
+        ? 'Saved to camera roll'
+        : 'Ready to share';
+
+  const subtitle = result.error
+    ? result.error
+    : result.permissionDenied
+      ? 'Enable Photos access in Settings → Runstamp to save share cards directly.'
+      : result.savedAssetUri
+        ? 'PNG written. Post it to Instagram, WhatsApp, or X.'
+        : 'Your share card was passed to the system share sheet.';
+
+  return (
+    <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(14,13,11,0.65)', justifyContent: 'flex-end' }}>
+      <Pressable
+        onPress={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: c.paper,
+          borderTopLeftRadius: 22,
+          borderTopRightRadius: 22,
+          paddingHorizontal: 20,
+          paddingTop: 18,
+          paddingBottom: insets.bottom + 24
+        }}
+      >
+        <View style={{ width: 36, height: 4, backgroundColor: c.line, borderRadius: 2, alignSelf: 'center', marginBottom: 18 }} />
+        <Eyebrow style={{ color: result.error ? c.warn : c.accent }}>{result.error ? 'ERROR' : 'EXPORT'}</Eyebrow>
+        <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.6, color: c.ink, marginTop: 4 }}>{title}</TText>
+        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 6, lineHeight: 18 }}>{subtitle}</TText>
+
+        {result.tmpUri && !result.error && (
+          <View style={{
+            marginTop: 16,
+            alignSelf: 'center',
+            width: '60%',
+            aspectRatio: 9 / 16,
+            borderRadius: 14,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: c.line,
+            backgroundColor: c.paper2
+          }}>
+            <Image source={{ uri: result.tmpUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          </View>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+          <View style={{ flex: 1 }}>
+            <Button kind="ghost" full onPress={onClose}>Done</Button>
+          </View>
+          {!result.error && (
+            <View style={{ flex: 1 }}>
+              <Button kind="primary" full onPress={onShareAgain} icon={<Icon.share size={16} color={c.paper} />}>Share again</Button>
+            </View>
+          )}
+        </View>
+
+        <TText variant="mono" style={{ fontSize: 10, color: c.ink3, textAlign: 'center', marginTop: 14 }}>
+          {result.tmpUri ? `${Platform.OS === 'ios' ? 'iOS' : 'Android'} · view-shot · expo-media-library` : ''}
+        </TText>
+      </Pressable>
+    </Pressable>
   );
 }
 

@@ -9,7 +9,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "fun.gilla.runstamp"
+      "bundleIdentifier": "fun.gilla.runstamp",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Runstamp reads from your Photos so you can pin a real run photo to your share card. We never upload them.",
+        "NSPhotoLibraryAddUsageDescription": "Runstamp saves your finished share card to your camera roll so you can post it to Instagram, WhatsApp, or X."
+      }
     },
     "android": {
       "package": "fun.gilla.runstamp",
@@ -22,7 +26,21 @@
       "typedRoutes": false
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Runstamp saves finished share cards to your camera roll so you can post them.",
+          "savePhotosPermission": "Runstamp saves finished share cards to your camera roll so you can post them.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Runstamp reads from your Photos so you can pin a real run photo to your share card."
+        }
+      ]
     ]
   }
 }
