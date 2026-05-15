@@ -8,6 +8,7 @@ import {
 } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useActivityStreams } from '../state/useActivityStreams';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
@@ -319,11 +320,12 @@ const POST_RUN_HEIGHT = 380;
 function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => void; onShare: () => void }) {
   const c = useColors();
   const { units } = useAppState();
+  const { route: realRoute } = useActivityStreams(run.id);
   return (
     <Pressable onPress={onOpen} style={({ pressed }) => [{ borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, opacity: pressed ? 0.95 : 1 }]}>
       <View style={{ position: 'relative', height: POST_RUN_HEIGHT }}>
         <View style={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
-          <RouteMap points={run.route} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
+          <RouteMap points={realRoute ?? run.route} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
         </View>
         <LinearGradient
           colors={['rgba(14,13,11,0.4)', 'rgba(14,13,11,0.1)', 'rgba(14,13,11,0.85)']}

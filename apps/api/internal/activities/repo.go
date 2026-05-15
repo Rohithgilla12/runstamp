@@ -194,6 +194,46 @@ func (r *Repository) scanInsertResult(ctx context.Context, q rowQuerier, row pgx
 
 // InsertStream writes a downsampled stream for an activity. ON CONFLICT
 // replaces the existing row so a re-ingest overwrites the stale stream.
+// Stream is a single (type, jsonb-data) row from activity_streams.
+type Stream struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+// ListStreams returns every stream row for an activity. The mobile renderer
+// pulls latlng for the map; HR/altitude/velocity feed charts.
+func (r *Repository) ListStreams(ctx context.Context, activityID string) ([]Stream, error) {
+	rows, err := r.pool.Query(ctx, `SELECT type, data FROM activity_streams WHERE activity_id = $1`, activityID)
+	if err != nil {
+		return nil, fmt.Errorf("activities: list streams: %w", err)
+	}
+	defer rows.Close()
+	var out []Stream
+	for rows.Next() {
+		var s Stream
+		var raw []byte
+		if err := rows.Scan(&s.Type, &raw); err != nil {
+			return nil, err
+		}
+		s.Data = json.RawMessage(raw)
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// OwnerOf returns the user_id that owns an activity, or empty string if it
+// doesn't exist. Used by the streams handler to enforce caller authorization.
+func (r *Repository) OwnerOf(ctx context.Context, activityID string) (string, error) {
+	var userID string
+	if err := r.pool.QueryRow(ctx, `SELECT user_id FROM activities WHERE id = $1`, activityID).Scan(&userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("activities: owner of: %w", err)
+	}
+	return userID, nil
+}
+
 func (r *Repository) InsertStream(ctx context.Context, activityID, kind string, data []byte) error {
 	_, err := r.pool.Exec(ctx, `
 INSERT INTO activity_streams (activity_id, type, data)

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useActivityStreams } from '../state/useActivityStreams';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Button, Card, Chip } from '../design/atoms';
@@ -23,6 +24,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
+  const { route: realRoute } = useActivityStreams(run?.id ?? null);
   const [tab, setTab] = useState<Tab>('splits');
 
   if (!run) {
@@ -62,7 +64,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
     >
       {/* Hero map */}
       <View style={{ height: 340, position: 'relative' }}>
-        <RouteMap points={run.route} width={402} height={340} style={dark ? 'dark' : 'light'} accent={c.accent} />
+        <RouteMap points={realRoute ?? run.route} width={402} height={340} style={dark ? 'dark' : 'light'} accent={c.accent} />
         <LinearGradient
           colors={[`${c.paper}cc`, 'transparent', 'transparent', `${c.paper}f0`]}
           locations={[0, 0.25, 0.65, 1]}
