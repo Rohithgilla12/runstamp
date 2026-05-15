@@ -67,6 +67,7 @@ services:
       DATABASE_URL: "postgres://${POSTGRES_USER:-runstamp}:${POSTGRES_PASSWORD:-runstamp}@postgres:5432/${POSTGRES_DB:-runstamp}?sslmode=disable"
       REDIS_URL: "redis://redis:6379/0"
       RUNSTAMP_TOKEN_ENC_KEY: "${RUNSTAMP_TOKEN_ENC_KEY:?must be a 64-char hex (openssl rand -hex 32)}"
+      RUNSTAMP_WAITLIST_IP_SALT: "${RUNSTAMP_WAITLIST_IP_SALT:?must be a 32-char hex (openssl rand -hex 16)}"
       STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID:-}"
       STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET:-}"
       STRAVA_WEBHOOK_VERIFY_TOKEN: "${STRAVA_WEBHOOK_VERIFY_TOKEN:-}"
