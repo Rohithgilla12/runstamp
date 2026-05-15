@@ -14,6 +14,12 @@ build
 apps/api/secrets/
 firebase-service-account*.json
 
+# EAS local credentials — Android keystore + iOS dist cert. Real signing
+# secrets; anyone with these can sign apps as you. EAS docs explicitly say
+# to gitignore these when using local credentials mode.
+apps/mobile/credentials.json
+apps/mobile/credentials/
+
 # Generated native projects — Expo prebuild output, regenerable.
 apps/mobile/ios
 apps/mobile/android
