@@ -15,11 +15,13 @@ import { Icon } from '../design/Icon';
 import { PostmarkMark, SunMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
 import { PostageTemplate } from '../design/templates/PostageTemplate';
+import { PostmarkTemplate } from '../design/templates/PostmarkTemplate';
+import { BoardingPassTemplate } from '../design/templates/BoardingPassTemplate';
 import type { RootStackProps } from '../nav/types';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
-type Template = 'stickers' | 'postage' | 'postmark' | 'magazine' | 'minimal' | 'brutalist' | 'track' | 'newsprint' | 'topo';
+type Template = 'stickers' | 'postage' | 'postmark' | 'boarding' | 'magazine' | 'minimal' | 'brutalist' | 'track' | 'newsprint' | 'topo';
 type TabKey = 'templates' | 'photo' | 'stats' | 'export';
 
 const CANVAS_PADDING = 24;
@@ -207,6 +209,14 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ width: canvasW, height: canvasH }}>
               <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} />
             </View>
+          ) : template === 'postmark' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
+          ) : template === 'boarding' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+            </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
             width: canvasW, height: canvasH, borderRadius: 18, overflow: 'hidden',
@@ -282,6 +292,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['stickers',  'Stickers'],
                 ['postage',   'Postage'],
                 ['postmark',  'Postmark'],
+                ['boarding',  'Boarding'],
                 ['magazine',  'Magazine'],
                 ['minimal',   'Minimal'],
                 ['brutalist', 'Brutalist'],
@@ -290,7 +301,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['topo',      'Topo']
               ] as const).map(([t, label]) => {
                 const active = template === t;
-                const ready = t === 'stickers' || t === 'postage';
+                const ready = t === 'stickers' || t === 'postage' || t === 'postmark' || t === 'boarding';
                 return (
                   <Pressable key={t} onPress={() => setTemplate(t)} style={{
                     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,

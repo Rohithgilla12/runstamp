@@ -111,7 +111,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
             A swipeable card stack for every stamp earned this year — drops Dec 15 so it lands before the holiday post window.
           </TText>
           <View style={{ marginTop: 12 }}>
-            <Button kind="accent" full icon={<Icon.share size={16} color="#fff" />}>Preview the album</Button>
+            <Button kind="accent" full icon={<Icon.share size={16} color="#fff" />} onPress={() => navigation.navigate('YearInStamps')}>Preview the album</Button>
           </View>
         </Card>
       </View>

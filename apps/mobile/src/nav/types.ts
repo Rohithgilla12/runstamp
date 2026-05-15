@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Activity: { id: string };
   Editor: { id: string };
   Stamps: undefined;
+  YearInStamps: undefined;
 };
 
 export type TabParamList = {

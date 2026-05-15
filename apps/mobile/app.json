@@ -40,7 +40,8 @@
         {
           "photosPermission": "Runstamp reads from your Photos so you can pin a real run photo to your share card."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

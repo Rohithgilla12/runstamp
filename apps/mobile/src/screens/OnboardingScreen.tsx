@@ -8,6 +8,7 @@ import { Button } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { useAppState } from '../state/AppState';
+import { useStravaAuth } from '../services/strava';
 
 type Step = 'splash' | 'signin' | 'primer' | 'sync';
 type SyncPhase = 'idle' | 'connecting' | 'syncing' | 'done';
@@ -167,8 +168,22 @@ function ConnectRow({ color, iconNode, title, desc, required, subtle }: { color:
 
 function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
   const c = useColors();
+  const { response, promptAsync } = useStravaAuth();
   const [phase, setPhase] = useState<SyncPhase>('idle');
   const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!response) return;
+    if (response.type === 'success') {
+      setPhase('syncing');
+    } else if (
+      response.type === 'error' ||
+      response.type === 'dismiss' ||
+      response.type === 'cancel'
+    ) {
+      setPhase('idle');
+    }
+  }, [response]);
 
   useEffect(() => {
     if (phase === 'connecting') {
@@ -224,7 +239,7 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
         </View>
 
         <View style={{ flex: 1, minHeight: 16 }} />
-        <Button kind="accent" full onPress={() => setPhase('connecting')} icon={<Icon.strava size={20} color="#fff" />} style={{ backgroundColor: '#fc4c02', borderColor: '#fc4c02' }}>
+        <Button kind="accent" full onPress={() => { setPhase('connecting'); promptAsync(); }} icon={<Icon.strava size={20} color="#fff" />} style={{ backgroundColor: '#fc4c02', borderColor: '#fc4c02' }}>
           Authorize Strava
         </Button>
         <Pressable onPress={done} style={{ marginTop: 14, alignSelf: 'center' }}>

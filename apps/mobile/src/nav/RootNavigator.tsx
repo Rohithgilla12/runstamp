@@ -13,6 +13,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { ActivityScreen } from '../screens/ActivityScreen';
 import { EditorScreen } from '../screens/EditorScreen';
 import { StampsScreen } from '../screens/StampsScreen';
+import { YearInStampsScreen } from '../screens/YearInStampsScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -87,7 +88,8 @@ export function RootNavigator() {
       <Stack.Screen name="Tabs"     component={TabsNavigator} />
       <Stack.Screen name="Activity" component={ActivityScreen} options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="Editor"   component={EditorScreen}   options={{ presentation: 'modal',  animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Stamps"   component={StampsScreen}   options={{ presentation: 'card', animation: 'slide_from_right' }} />
+      <Stack.Screen name="Stamps"       component={StampsScreen}       options={{ presentation: 'card',  animation: 'slide_from_right' }} />
+      <Stack.Screen name="YearInStamps" component={YearInStampsScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 }
