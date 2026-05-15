@@ -8,7 +8,11 @@ name: runstamp
 
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    # `postgis/postgis:16-3.4` only ships amd64 layers and breaks under arm64
+    # emulation on Apple Silicon / Oracle Ampere VPSes. `imresamu/postgis` is
+    # the canonical multi-arch fork — same Debian base, PostGIS 3.4 / PG 16,
+    # natively built for arm64.
+    image: imresamu/postgis:16-3.4-alpine
     container_name: runstamp-postgres
     restart: unless-stopped
     environment:
