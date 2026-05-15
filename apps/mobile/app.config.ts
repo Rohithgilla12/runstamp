@@ -35,9 +35,11 @@ const config: ExpoConfig = {
     supportsTablet: false,
     bundleIdentifier: 'fun.gilla.runstamp',
     usesAppleSignIn: true,
-    // Drop GoogleService-Info.plist into apps/mobile/ next to this config.
-    // Keep it out of git (see .gitignore); developers / CI obtain it from the
-    // Firebase console or EAS Secrets.
+    // GoogleService-Info.plist sits next to this config. The file is
+    // committed to the repo per Google's own guidance (the API key inside
+    // is the *public* Firebase Web key, restricted by bundle id + Firebase
+    // Security Rules). For CI / EAS, GOOGLE_SERVICES_INFOPLIST overrides
+    // the path so an EAS file secret can be mounted at build time.
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFOPLIST ?? './GoogleService-Info.plist',
     // HealthKit entitlement (statically declared so EAS's capability syncer
@@ -75,12 +77,6 @@ const config: ExpoConfig = {
     bundler: 'metro',
     favicon: './assets/favicon.png'
   },
-  // `eas init` writes the real project id into this file after you run it
-  // once. For now we set EXPO_PUBLIC_EAS_PROJECT_ID via env so CI builds work
-  // before the local checkout is `eas init`-ed.
-  ...(process.env.EXPO_PUBLIC_EAS_PROJECT_ID
-    ? { extra: { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID } } }
-    : {}),
   experiments: {
     typedRoutes: false
   },
@@ -121,7 +117,10 @@ const config: ExpoConfig = {
   // source of truth. The web client id is public per Google's OAuth model.
   extra: {
     apiBaseUrl,
-    googleWebClientId
+    googleWebClientId,
+    eas: {
+      projectId: 'b9335526-0c71-4dc2-957a-17967b4958f9'
+    }
   }
 };
 
