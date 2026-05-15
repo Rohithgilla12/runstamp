@@ -64,20 +64,45 @@ docker compose up -d
 curl https://runstamp-api.gilla.fun/healthz   # should return { "status": "ok" }
 ```
 
-## 4. EAS Secrets (one-time, run locally)
+## 4. EAS env vars (one-time, run locally)
+
+EAS deprecated `secret:create` — use `env:create` and explicitly scope to each
+build environment (`production`, `preview`, `development`). The GoogleService-Info.plist
++ google-services.json are committed to the repo per Google's guidance, so the file-type
+env vars below are only needed if you ever decide to keep them out of the repo.
 
 ```bash
 cd apps/mobile
-pnpm dlx eas login                     # log in with your Expo account
-pnpm dlx eas init                      # creates the EAS project; writes projectId
+pnpm dlx eas-cli login                     # log in with your Expo account
+pnpm dlx eas-cli init                      # creates the EAS project; writes projectId into app.config.ts
 
-pnpm dlx eas secret:create --scope project --name GOOGLE_SERVICES_INFOPLIST --type file --value ./GoogleService-Info.plist --visibility secret
-pnpm dlx eas secret:create --scope project --name GOOGLE_SERVICES_JSON     --type file --value ./google-services.json     --visibility secret
-pnpm dlx eas secret:create --scope project --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value "<your-web-client-id>.apps.googleusercontent.com" --visibility plaintext
-pnpm dlx eas secret:create --scope project --name EXPO_PUBLIC_API_BASE_URL --value "https://runstamp-api.gilla.fun" --visibility plaintext
+# Both public env vars in all three EAS environments. --non-interactive avoids
+# the prompt that breaks pipes.
+pnpm dlx eas-cli env:create \
+  --name EXPO_PUBLIC_API_BASE_URL \
+  --value "https://runstamp-api.gilla.fun" \
+  --type string --visibility plaintext --scope project \
+  --environment production --environment preview --environment development \
+  --non-interactive
+
+pnpm dlx eas-cli env:create \
+  --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID \
+  --value "<...>.apps.googleusercontent.com" \
+  --type string --visibility plaintext --scope project \
+  --environment production --environment preview --environment development \
+  --non-interactive
+
+# (Optional) If you ever uncommit GoogleService-Info.plist / google-services.json,
+# put them in EAS as file-type variables. Skip while they're in the repo.
+# pnpm dlx eas-cli env:create --name GOOGLE_SERVICES_INFOPLIST --type file --value ./GoogleService-Info.plist --visibility secret --scope project --environment production
+# pnpm dlx eas-cli env:create --name GOOGLE_SERVICES_JSON     --type file --value ./google-services.json     --visibility secret --scope project --environment production
 ```
 
-`eas init` updates `app.config.ts` indirectly via env — the file is already wired to read `EXPO_PUBLIC_EAS_PROJECT_ID` if you want to control it explicitly. Either approach works.
+`eas init` writes the project id into `app.config.ts`'s `extra.eas.projectId` (or you can override via `EXPO_PUBLIC_EAS_PROJECT_ID` at config-eval time). Either works.
+
+**Common gotcha**: `pnpm dlx eas <cmd>` fails with `ERR_PNPM_DLX_NO_BIN`. The npm
+package name is `eas-cli`, the binary is `eas`. `pnpm dlx` wants the package
+name. Always `pnpm dlx eas-cli`.
 
 Edit `eas.json`'s `submit.production.ios` block — replace `REPLACE_WITH_APP_STORE_CONNECT_APP_ID` (numeric, from App Store Connect) and `REPLACE_WITH_APPLE_TEAM_ID` (10-char alphanumeric, from developer.apple.com → Membership).
 

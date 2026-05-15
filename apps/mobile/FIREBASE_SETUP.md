@@ -53,8 +53,8 @@ The service account JSON comes from *Project Settings → Service accounts → G
 For builds without committed plist files, EAS Secrets can inject them at build time:
 
 ```bash
-eas secret:create --scope project --name GOOGLE_SERVICES_INFOPLIST --type file --value ./local/GoogleService-Info.plist
-eas secret:create --scope project --name GOOGLE_SERVICES_JSON     --type file --value ./local/google-services.json
+pnpm dlx eas-cli env:create --name GOOGLE_SERVICES_INFOPLIST --type file --value ./local/GoogleService-Info.plist --visibility secret --scope project --environment production --non-interactive
+pnpm dlx eas-cli env:create --name GOOGLE_SERVICES_JSON     --type file --value ./local/google-services.json     --visibility secret --scope project --environment production --non-interactive
 ```
 
 `app.config.ts` reads the resolved path from the matching env vars (falls back to `./GoogleService-Info.plist` / `./google-services.json` for local dev).
