@@ -27,6 +27,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 )
@@ -94,6 +95,22 @@ func main() {
 
 	activitiesRepo := activities.NewRepository(pool)
 	activitiesService := activities.NewService(activitiesRepo)
+
+	stampsRepo := stamps.NewRepository(pool)
+	stampsEval := stamps.NewEvaluator(pool, stampsRepo, log)
+	activitiesService.SetPostIngest(func(ctx context.Context, userID string) {
+		// Stamps evaluator runs in the request goroutine — it's fast (handful
+		// of indexed queries) and we want awards visible by the time the
+		// HTTP response goes out. If we ever measure latency pain, move this
+		// onto an Asynq queue.
+		if _, err := stampsEval.EvaluateForUser(ctx, userID); err != nil {
+			log.Error("stamps: post-ingest eval failed", "user_id", userID, "err", err)
+		}
+	})
+	if err := stamps.Sync(ctx, pool); err != nil {
+		log.Error("stamps: catalog sync failed at boot", "err", err)
+		os.Exit(1)
+	}
 
 	stravaClient := strava.New(cfg.StravaClientID, cfg.StravaClientSecret)
 	stravaRepo := strava.NewRepository(pool, sealer)
@@ -164,10 +181,18 @@ func main() {
 			Users:      usersRepo,
 			Log:        log,
 		}
+		stampsHandler := &handlers.StampsHandler{
+			Stamps:    stampsRepo,
+			Evaluator: stampsEval,
+			Users:     usersRepo,
+			Log:       log,
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
 			r.Get("/activities", activitiesHandler.List)
+			r.Get("/stamps", stampsHandler.List)
+			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
 		})
 	})
 

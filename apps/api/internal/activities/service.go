@@ -5,16 +5,31 @@ import (
 	"fmt"
 )
 
+// PostIngestHook fires after a successful ingest (commit returned without
+// error). The hook receives the user id whose data has changed so it can
+// trigger derived work — stamp evaluation, place geocoding, push
+// notifications. Hook errors must never propagate; the ingest already
+// committed and we don't want to leak transient side-effect failures into
+// the request response.
+type PostIngestHook func(ctx context.Context, userID string)
+
 // Service is a thin layer above Repository that provides the Ingest method.
 // It is the only entry point callers outside this package should use for
 // writing activities — it enforces the dedup contract atomically.
 type Service struct {
-	repo *Repository
+	repo       *Repository
+	postIngest PostIngestHook
 }
 
 // NewService constructs a Service.
 func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
+}
+
+// SetPostIngest registers a hook to fire after every successful Ingest.
+// Wire stamp evaluation here.
+func (s *Service) SetPostIngest(h PostIngestHook) {
+	s.postIngest = h
 }
 
 // Ingest writes a candidate activity while enforcing the cross-source dedup
@@ -60,6 +75,7 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return nil, false, fmt.Errorf("activities: commit strava-wins flip: %w", commitErr)
 			}
+			s.firePostIngest(ctx, candidate.UserID)
 			return inserted, true, nil
 		}
 
@@ -72,6 +88,7 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 		if commitErr := tx.Commit(ctx); commitErr != nil {
 			return nil, false, fmt.Errorf("activities: commit dupe insert: %w", commitErr)
 		}
+		s.firePostIngest(ctx, candidate.UserID)
 		return match, true, nil
 	}
 
@@ -83,7 +100,15 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 	if commitErr := tx.Commit(ctx); commitErr != nil {
 		return nil, false, fmt.Errorf("activities: commit insert: %w", commitErr)
 	}
+	s.firePostIngest(ctx, candidate.UserID)
 	return inserted, false, nil
+}
+
+func (s *Service) firePostIngest(ctx context.Context, userID string) {
+	if s.postIngest == nil {
+		return
+	}
+	s.postIngest(ctx, userID)
 }
 
 // Repo exposes the underlying repository for callers that need direct
