@@ -9,6 +9,16 @@ build
 .env
 .env.*
 !.env.example
+
+# Generated native projects — Expo prebuild output, regenerable.
+apps/mobile/ios
+apps/mobile/android
+
+# Firebase config files — public, but project-specific. Drop them into
+# apps/mobile/ from the Firebase console, or inject via EAS Secrets in CI.
+apps/mobile/GoogleService-Info.plist
+apps/mobile/google-services.json
+
 ios/Pods
 ios/build
 android/.gradle
