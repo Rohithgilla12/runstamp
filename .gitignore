@@ -10,6 +10,10 @@ build
 .env.*
 !.env.example
 
+# Server-side Firebase Admin service account — genuine secret, never commit.
+apps/api/secrets/
+firebase-service-account*.json
+
 # Generated native projects — Expo prebuild output, regenerable.
 apps/mobile/ios
 apps/mobile/android

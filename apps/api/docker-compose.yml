@@ -1,18 +1,29 @@
-# Local-dev stack for the Runstamp backend. Brings up Postgres (with PostGIS
-# baked in) and Redis on host ports, plus the API itself. Mirrors the
-# production topology from PRD §4 so the only diff is "real domains and a
-# Cloudflared tunnel".
+# Runstamp backend stack. Same shape locally + on the VPS — only the .env
+# values differ. Container names mirror the cadence-* convention so multiple
+# services can coexist on one host without collision.
+#
+# Project name `runstamp` (set top-level) means containers get prefixed
+# `runstamp-` by docker compose regardless of which directory you `up` from.
+name: runstamp
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
+    container_name: runstamp-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: runstamp
-      POSTGRES_PASSWORD: runstamp
-      POSTGRES_DB: runstamp
+      POSTGRES_USER: ${POSTGRES_USER:-runstamp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-runstamp}
+      POSTGRES_DB: ${POSTGRES_DB:-runstamp}
+    # Bind to 127.0.0.1 only so the DB isn't accidentally exposed on the
+    # public VPS interface. Cloudflared tunnels reach the API container
+    # by service name (postgres:5432), not the host port.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - runstamp_pg:/var/lib/postgresql/data
+    networks:
+      - runstamp-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U runstamp -d runstamp"]
       interval: 5s
@@ -21,17 +32,24 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: runstamp-redis
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    # Localhost-bound; only the API container talks to redis.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - runstamp_redis:/data
+    networks:
+      - runstamp-internal
 
   api:
     build:
       context: .
       args:
-        VERSION: dev
+        VERSION: ${RUNSTAMP_VERSION:-dev}
+    container_name: runstamp-api
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,17 +57,38 @@ services:
         condition: service_started
     environment:
       RUNSTAMP_PORT: 8080
-      RUNSTAMP_ENV: development
-      RUNSTAMP_ALLOWED_ORIGINS: "http://localhost:8081,exp://*"
-      DATABASE_URL: "postgres://runstamp:runstamp@postgres:5432/runstamp?sslmode=disable"
+      RUNSTAMP_ENV: ${RUNSTAMP_ENV:-production}
+      RUNSTAMP_PUBLIC_BASE_URL: ${RUNSTAMP_PUBLIC_BASE_URL:-http://localhost:8080}
+      RUNSTAMP_ALLOWED_ORIGINS: ${RUNSTAMP_ALLOWED_ORIGINS:-runstamp://*}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-runstamp}:${POSTGRES_PASSWORD:-runstamp}@postgres:5432/${POSTGRES_DB:-runstamp}?sslmode=disable"
       REDIS_URL: "redis://redis:6379/0"
+      RUNSTAMP_TOKEN_ENC_KEY: "${RUNSTAMP_TOKEN_ENC_KEY:?must be a 64-char hex (openssl rand -hex 32)}"
       STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID:-}"
       STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET:-}"
       STRAVA_WEBHOOK_VERIFY_TOKEN: "${STRAVA_WEBHOOK_VERIFY_TOKEN:-}"
-      RUNSTAMP_TOKEN_ENC_KEY: "${RUNSTAMP_TOKEN_ENC_KEY:-}"
+      STRAVA_SUCCESS_DEEPLINK: ${STRAVA_SUCCESS_DEEPLINK:-runstamp://strava/connected}
+      STRAVA_FAILURE_DEEPLINK: ${STRAVA_FAILURE_DEEPLINK:-runstamp://strava/error}
+      FIREBASE_PROJECT_ID: "${FIREBASE_PROJECT_ID:-}"
+      FIREBASE_CREDENTIALS_PATH: "${FIREBASE_CREDENTIALS_PATH:-/run/secrets/firebase-service-account.json}"
+      FIREBASE_AUTH_OPTIONAL: "${FIREBASE_AUTH_OPTIONAL:-}"
+    # Mount the Firebase Admin service-account JSON read-only at the path
+    # `FIREBASE_CREDENTIALS_PATH` points at. The host path defaults to
+    # ./secrets/firebase-service-account.json which is gitignored.
+    volumes:
+      - ${FIREBASE_CREDENTIALS_HOST_PATH:-./secrets/firebase-service-account.json}:/run/secrets/firebase-service-account.json:ro
+    # Localhost-bound — Cloudflared in front handles public reachability.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    networks:
+      - runstamp-internal
+
+networks:
+  runstamp-internal:
+    name: runstamp-internal
+    driver: bridge
 
 volumes:
   runstamp_pg:
+    name: runstamp_pg
   runstamp_redis:
+    name: runstamp_redis
