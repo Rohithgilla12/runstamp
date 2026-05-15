@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useBestEfforts } from '../state/useBestEfforts';
+import type { BestEffort } from '../services/bestEfforts';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -97,14 +99,42 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
   const filtered = useMemo(() => filterByScope(activities, scope), [activities, scope]);
   const all = useMemo(() => aggregate(activities), [activities]);
   const scoped = useMemo(() => aggregate(filtered), [filtered]);
+  const { efforts } = useBestEfforts();
 
   return (
     <View>
       {scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} /> : <LifetimeHero agg={all} />}
+      {efforts.length > 0 && (
+        <>
+          <SectionHeader title="Personal bests" />
+          <View style={{ gap: 6 }}>
+            {efforts.map((e) => <BestEffortRow key={e.label} effort={e} />)}
+          </View>
+        </>
+      )}
       <SectionHeader title="Recent activity" />
       <View style={{ gap: 6 }}>
         {filtered.slice(0, 10).map((a) => <Row key={a.id} a={a} />)}
         {filtered.length === 0 && <NoneInScope scope={scope} />}
+      </View>
+    </View>
+  );
+}
+
+function BestEffortRow({ effort }: { effort: BestEffort }) {
+  const c = useColors();
+  const date = new Date(effort.achievedAt);
+  const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return (
+    <View style={{
+      backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+    }}>
+      <Eyebrow style={{ width: 88, color: c.ink3 }}>{effort.label.toUpperCase()}</Eyebrow>
+      <View style={{ flex: 1, alignItems: 'flex-end' }}>
+        <TText variant="monoMedium" style={{ fontSize: 18, color: c.ink, letterSpacing: -0.2 }}>{fmtTime(effort.timeSeconds)}</TText>
+        <TText style={{ fontSize: 10, color: c.ink3 }}>{dateLabel}</TText>
       </View>
     </View>
   );

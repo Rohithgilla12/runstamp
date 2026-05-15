@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { STAMPS, type Stamp, type StampTier } from '../data/sample';
+import { type Stamp, type StampTier } from '../data/sample';
+import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Button, Card } from '../design/atoms';
@@ -17,23 +18,24 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('all');
+  const { stamps, loading } = useStamps();
 
   const byTier = useMemo(() => {
-    const out: Record<StampTier, { earned: number; total: number; stamps: Stamp[] }> = {
+    const out: Record<StampTier, { earned: number; total: number; stamps: CatalogStamp[] }> = {
       common: { earned: 0, total: 0, stamps: [] },
       rare:   { earned: 0, total: 0, stamps: [] },
       mythic: { earned: 0, total: 0, stamps: [] }
     };
-    for (const s of STAMPS) {
+    for (const s of stamps) {
       out[s.tier].total += 1;
       if (s.earnedAt) out[s.tier].earned += 1;
       out[s.tier].stamps.push(s);
     }
     return out;
-  }, []);
+  }, [stamps]);
 
-  const totalEarned = STAMPS.filter((s) => !!s.earnedAt).length;
-  const visible = filter === 'all' ? STAMPS : byTier[filter].stamps;
+  const totalEarned = stamps.filter((s) => !!s.earnedAt).length;
+  const visible = filter === 'all' ? stamps : byTier[filter].stamps;
   const earnedFirst = [...visible].sort((a, b) => Number(!!b.earnedAt) - Number(!!a.earnedAt));
 
   return (
@@ -68,7 +70,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
           <Eyebrow>EARNED</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
             <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 36, letterSpacing: -1, color: c.ink }}>{totalEarned}</TText>
-            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>/ {STAMPS.length}</TText>
+            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>/ {stamps.length}</TText>
           </View>
         </View>
         {TIER_ORDER.map((t) => (
@@ -119,7 +121,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
   );
 }
 
-function StampRow({ stamp }: { stamp: Stamp }) {
+function StampRow({ stamp }: { stamp: Stamp | CatalogStamp }) {
   const c = useColors();
   const earned = !!stamp.earnedAt;
   return (

@@ -187,12 +187,18 @@ func main() {
 			Users:     usersRepo,
 			Log:       log,
 		}
+		bestEffortsHandler := &handlers.BestEffortsHandler{
+			Pool:  pool,
+			Users: usersRepo,
+			Log:   log,
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
 			r.Get("/activities", activitiesHandler.List)
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
+			r.Get("/best-efforts", bestEffortsHandler.List)
 		})
 	})
 

@@ -8,6 +8,8 @@ import {
 } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useStamps, type CatalogStamp } from '../state/useStamps';
+import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Delta } from '../design/atoms';
@@ -46,6 +48,7 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
           latest={latest}
           onOpenActivity={(id) => navigation.navigate('Activity', { id })}
           onOpenEditor={(id) => navigation.navigate('Editor', { id })}
+          onOpenStamps={() => navigation.navigate('Stamps')}
         />
       ) : (
         <EmptyHome loading={loading} onConnect={() => navigation.navigate('Profile')} />
@@ -59,15 +62,18 @@ function ConnectedHome({
   latest,
   onOpenActivity,
   onOpenEditor,
+  onOpenStamps,
 }: {
   activities: Activity[];
   latest: Activity;
   onOpenActivity: (id: string) => void;
   onOpenEditor: (id: string) => void;
+  onOpenStamps: () => void;
 }) {
   const c = useColors();
   const { units } = useAppState();
   const weekStats = computeWeekStats(activities, units === 'mi');
+  const { earned } = useStamps();
 
   return (
     <>
@@ -81,6 +87,19 @@ function ConnectedHome({
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.moss }} />
             <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{activities.length} RUNS</TText>
           </View>
+          {earned.length > 0 && (
+            <Pressable
+              onPress={onOpenStamps}
+              style={({ pressed }) => [{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+                backgroundColor: c.ink, opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <Icon.spark size={12} color={c.accent} />
+              <TText variant="mono" style={{ fontSize: 11, color: c.paper }}>{earned.length} STAMPS</TText>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -96,6 +115,8 @@ function ConnectedHome({
       <View style={{ paddingHorizontal: 20 }}>
         <WeekSummary stats={weekStats} />
       </View>
+
+      {earned.length > 0 && <RecentlyEarned earned={earned} onOpenStamps={onOpenStamps} />}
 
       <SectionHeader title="Recent runs" />
       <View style={{ paddingHorizontal: 20, gap: 8 }}>
@@ -121,6 +142,48 @@ function ConnectedHome({
           </Pressable>
         ))}
       </View>
+    </>
+  );
+}
+
+function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOpenStamps: () => void }) {
+  const c = useColors();
+  const recent = [...earned]
+    .sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))
+    .slice(0, 6);
+  return (
+    <>
+      <SectionHeader
+        title="Recently earned"
+        right={
+          <Pressable onPress={onOpenStamps}>
+            <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
+          </Pressable>
+        }
+      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+      >
+        {recent.map((s) => (
+          <Pressable
+            key={s.id}
+            onPress={onOpenStamps}
+            style={({ pressed }) => [{
+              alignItems: 'center', width: 110,
+              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 14,
+              paddingVertical: 12, paddingHorizontal: 6,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+          >
+            <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={64} />
+            <TText style={{ fontSize: 11, fontWeight: '500', color: c.ink, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
+              {s.name}
+            </TText>
+          </Pressable>
+        ))}
+      </ScrollView>
     </>
   );
 }
