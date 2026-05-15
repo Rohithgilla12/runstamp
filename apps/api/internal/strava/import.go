@@ -38,11 +38,12 @@ type ImportStatus struct {
 
 // Importer owns the full import lifecycle for Strava deep history.
 type Importer struct {
-	pool           *pgxpool.Pool
-	client         *Client
-	stravaRepo     *Repository
-	activitiesRepo *activities.Repository
-	log            *slog.Logger
+	pool              *pgxpool.Pool
+	client            *Client
+	stravaRepo        *Repository
+	activitiesRepo    *activities.Repository
+	activitiesService *activities.Service
+	log               *slog.Logger
 }
 
 // NewImporter constructs an Importer.
@@ -50,15 +51,16 @@ func NewImporter(
 	pool *pgxpool.Pool,
 	client *Client,
 	stravaRepo *Repository,
-	activitiesRepo *activities.Repository,
+	activitiesService *activities.Service,
 	log *slog.Logger,
 ) *Importer {
 	return &Importer{
-		pool:           pool,
-		client:         client,
-		stravaRepo:     stravaRepo,
-		activitiesRepo: activitiesRepo,
-		log:            log,
+		pool:              pool,
+		client:            client,
+		stravaRepo:        stravaRepo,
+		activitiesRepo:    activitiesService.Repo(),
+		activitiesService: activitiesService,
+		log:               log,
 	}
 }
 
@@ -260,11 +262,17 @@ func (im *Importer) advanceListing(ctx context.Context, userID string) error {
 		return im.finishListing(ctx, userID, summaryCount)
 	}
 
+	// Route through Service.Ingest so:
+	//   1. cross-source dedup contract runs (Apple Health pairing)
+	//   2. post-ingest hook fires (stamps evaluation + async geocoding)
+	// Each call is its own transaction; that's fine — 500 activities at
+	// ~10ms per insert is 5s of DB work, comfortably under our rate-limit
+	// pacing.
 	inserted := 0
 	for _, s := range summaries {
 		act := summaryToActivity(userID, &s)
-		if _, err := im.activitiesRepo.Insert(callCtx, act); err != nil {
-			im.log.Warn("strava importer: insert summary", "activity_id", s.ID, "err", err)
+		if _, _, err := im.activitiesService.Ingest(callCtx, act); err != nil {
+			im.log.Warn("strava importer: ingest summary", "activity_id", s.ID, "err", err)
 			continue
 		}
 		inserted++

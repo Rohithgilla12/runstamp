@@ -138,7 +138,7 @@ func main() {
 	stravaService := strava.NewService(stravaClient, stravaRepo, cfg.PublicBaseURL)
 	stravaService.SetActivities(activitiesService)
 
-	stravaImporter := strava.NewImporter(pool, stravaClient, stravaRepo, activitiesRepo, log)
+	stravaImporter := strava.NewImporter(pool, stravaClient, stravaRepo, activitiesService, log)
 
 	stravaHandler := &handlers.StravaHandler{
 		Service:         stravaService,
