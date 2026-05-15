@@ -33,11 +33,25 @@ const config: ExpoConfig = {
     // Firebase console or EAS Secrets.
     googleServicesFile:
       process.env.GOOGLE_SERVICES_INFOPLIST ?? './GoogleService-Info.plist',
+    // HealthKit entitlement (statically declared so EAS's capability syncer
+    // enables HealthKit on the App ID and the provisioning profile carries
+    // the matching entitlement). Background delivery is what lets new runs
+    // sync without the user opening the app.
+    entitlements: {
+      'com.apple.developer.healthkit': true,
+      'com.apple.developer.healthkit.access': [],
+      'com.apple.developer.healthkit.background-delivery': true
+    },
     infoPlist: {
       NSPhotoLibraryUsageDescription:
         'Runstamp reads from your Photos so you can pin a real run photo to your share card. We never upload them.',
       NSPhotoLibraryAddUsageDescription:
-        'Runstamp saves your finished share card to your camera roll so you can post it to Instagram, WhatsApp, or X.'
+        'Runstamp saves your finished share card to your camera roll so you can post it to Instagram, WhatsApp, or X.',
+      NSHealthShareUsageDescription:
+        'Runstamp reads your running workouts, heart rate, and routes so it can show your runs and stamps. We never write back to Health.',
+      NSHealthUpdateUsageDescription:
+        'Runstamp does not write to Health. This permission is requested by the system but never used.',
+      UIBackgroundModes: ['fetch', 'processing', 'remote-notification']
     }
   },
   android: {
@@ -73,6 +87,7 @@ const config: ExpoConfig = {
     ],
     'expo-web-browser',
     ['expo-apple-authentication', {}],
+    '@kingstinct/react-native-healthkit',
     // Native Firebase + auth plugins (per @react-native-firebase docs).
     '@react-native-firebase/app',
     '@react-native-firebase/auth',

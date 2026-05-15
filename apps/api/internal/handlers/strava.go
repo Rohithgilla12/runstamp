@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
@@ -159,15 +161,73 @@ func (h *StravaHandler) WebhookSubscription(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, map[string]string{"hub.challenge": q.Get("hub.challenge")})
 }
 
-// WebhookEvent — POST /v1/strava/webhook (PUBLIC). Acknowledge fast; ingest
-// happens asynchronously in M1.
+// WebhookEvent — POST /v1/strava/webhook (PUBLIC).
+// Strava requires a response within 2 seconds. We decode the event body, write
+// 200 immediately, then ingest in a goroutine. The goroutine uses a fresh
+// context (context.Background + 60-second timeout) so the response flush does
+// not cancel it. Ingest errors are logged; we never return them to Strava
+// (that would trigger an infinite retry loop on a persistent failure).
 func (h *StravaHandler) WebhookEvent(w http.ResponseWriter, r *http.Request) {
-	var raw json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil && !errors.Is(err, http.ErrBodyReadAfterClose) {
+	var evt strava.WebhookEvent
+	if err := json.NewDecoder(r.Body).Decode(&evt); err != nil && !errors.Is(err, http.ErrBodyReadAfterClose) {
 		h.Log.Warn("strava webhook: bad body", "err", err)
+		w.WriteHeader(http.StatusOK)
+		return
 	}
-	h.Log.Info("strava webhook event received", "bytes", len(raw))
 	w.WriteHeader(http.StatusOK)
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		if err := h.Service.IngestFromWebhook(ctx, evt); err != nil {
+			h.Log.Error("strava webhook: ingest failed",
+				"aspect_type", evt.AspectType,
+				"object_id", evt.ObjectID,
+				"owner_id", evt.OwnerID,
+				"err", err,
+			)
+		}
+	}()
+}
+
+// Backfill — POST /v1/strava/backfill (auth-gated).
+// Kicks off a 90-day historical backfill for the authenticated user. The
+// backfill itself runs in a goroutine so this endpoint returns 202 immediately.
+// The future /v1/strava/status endpoint will surface progress once M1 ships
+// a background-job table.
+func (h *StravaHandler) Backfill(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil {
+		h.Log.Error("strava backfill: find user", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if user == nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]bool{"started": true})
+
+	go func() {
+		// Backfill may issue up to 100 Strava HTTP calls (the rate-limit
+		// ceiling). Allow 5 minutes so a slow network doesn't cut it short;
+		// the rate-limiter in the service stops us hitting Strava harder than
+		// 100 calls / 15 min regardless.
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		count, err := h.Service.Backfill(ctx, user.ID, 90)
+		if err != nil {
+			h.Log.Error("strava backfill: failed", "user_id", user.ID, "err", err)
+			return
+		}
+		h.Log.Info("strava backfill: complete", "user_id", user.ID, "inserted", count)
+	}()
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

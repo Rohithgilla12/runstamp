@@ -6,6 +6,7 @@ import { NavigationContainer, type Theme as NavTheme, DefaultTheme, DarkTheme } 
 import { StatusBar } from 'expo-status-bar';
 import { AppStateProvider, useAppState } from './state/AppState';
 import { AuthProvider, useAuth } from './state/AuthContext';
+import { HealthProvider } from './state/HealthContext';
 import { ThemeCtx, paletteFor } from './design/theme';
 import { useAppFonts } from './design/fonts';
 import { RootNavigator } from './nav/RootNavigator';
@@ -25,7 +26,9 @@ export default function App() {
       <SafeAreaProvider>
         <AppStateProvider>
           <AuthProvider>
-            <Shell />
+            <HealthProvider>
+              <Shell />
+            </HealthProvider>
           </AuthProvider>
         </AppStateProvider>
       </SafeAreaProvider>

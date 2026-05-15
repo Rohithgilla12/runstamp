@@ -20,6 +20,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/activities"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/config"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/crypto"
@@ -91,9 +92,14 @@ func main() {
 		verifier = auth.NewNullVerifier(log)
 	}
 
+	activitiesRepo := activities.NewRepository(pool)
+	activitiesService := activities.NewService(activitiesRepo)
+
 	stravaClient := strava.New(cfg.StravaClientID, cfg.StravaClientSecret)
 	stravaRepo := strava.NewRepository(pool, sealer)
 	stravaService := strava.NewService(stravaClient, stravaRepo, cfg.PublicBaseURL)
+	stravaService.SetActivities(activitiesService)
+
 	stravaHandler := &handlers.StravaHandler{
 		Service:         stravaService,
 		Users:           usersRepo,
@@ -132,6 +138,19 @@ func main() {
 				r.Post("/connect", stravaHandler.Connect)
 				r.Get("/status", stravaHandler.Status)
 				r.Delete("/connection", stravaHandler.Disconnect)
+				r.Post("/backfill", stravaHandler.Backfill)
+			})
+		})
+		// Apple Health ingestion — all routes are auth-gated.
+		healthHandler := &handlers.HealthHandler{
+			Activities: activitiesService,
+			Users:      usersRepo,
+			Log:        log,
+		}
+		r.Route("/health", func(r chi.Router) {
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireFirebaseAuth(verifier, log))
+				r.Post("/workouts", healthHandler.Sync)
 			})
 		})
 		// Protected non-strava routes.

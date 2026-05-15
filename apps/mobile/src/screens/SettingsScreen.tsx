@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
+import { useHealth } from '../state/HealthContext';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -233,6 +234,35 @@ function ShoesScreen({ back }: { back: () => void }) {
 
 function ConnectionsScreen({ back }: { back: () => void }) {
   const c = useColors();
+  const { status: healthStatus, syncing, lastSyncAt, resync } = useHealth();
+  const { getIdToken } = useAuth();
+
+  const healthConnected = healthStatus === 'granted';
+
+  const healthStatusLabel = (() => {
+    if (healthStatus === 'unavailable') return 'Unavailable on this device';
+    if (healthStatus === 'denied') return 'Access denied · tap to fix';
+    if (healthStatus === 'unknown') return 'Not connected';
+    if (syncing) return 'Syncing now…';
+    if (lastSyncAt) {
+      const diffMin = Math.round((Date.now() - lastSyncAt.getTime()) / 60_000);
+      return `Connected · last sync ${diffMin}m ago`;
+    }
+    return 'Connected · fallback';
+  })();
+
+  const healthSub = (() => {
+    if (!healthConnected) return 'Read-only — tap to connect';
+    return 'Read-only · runs deduplicated against Strava';
+  })();
+
+  async function handleResync() {
+    if (!healthConnected || syncing) return;
+    const idToken = await getIdToken();
+    if (!idToken) return;
+    await resync();
+  }
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
       <SubHeader back={back} title="CONNECTIONS" />
@@ -249,12 +279,28 @@ function ConnectionsScreen({ back }: { back: () => void }) {
           counts={[['612', 'runs'], ['4,287', 'km'], ['—', 'errors']]}
         />
         <ConnCard
-          bg="#fb466c"
-          iconNode={<Icon.heart size={24} color="#fff" />}
+          bg={healthConnected ? '#fb466c' : c.paper2}
+          iconNode={<Icon.heart size={24} color={healthConnected ? '#fff' : c.ink2} />}
           name="Apple Health"
-          status="Connected · fallback"
-          sub="Read-only · 14 deduped against Strava"
-          counts={[['218', 'workouts'], ['8', 'dupes'], ['—', 'errors']]}
+          status={healthStatusLabel}
+          statusConnected={healthConnected}
+          sub={healthSub}
+          counts={healthConnected ? [['—', 'workouts'], ['—', 'dupes'], ['—', 'errors']] : undefined}
+          action={healthConnected ? (
+            <Pressable
+              onPress={handleResync}
+              disabled={syncing}
+              style={({ pressed }) => [{
+                marginTop: 10, paddingTop: 10,
+                borderTopWidth: 1, borderTopColor: c.line2,
+                opacity: pressed || syncing ? 0.5 : 1,
+              }]}
+            >
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
+                {syncing ? 'SYNCING…' : 'RE-SYNC NOW'}
+              </TText>
+            </Pressable>
+          ) : undefined}
         />
         <View style={{ padding: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: c.line, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: c.paper2, alignItems: 'center', justifyContent: 'center' }}>
@@ -275,40 +321,49 @@ function ConnCard({
   iconNode,
   name,
   status,
+  statusConnected = true,
   sub,
-  counts
+  counts,
+  action,
 }: {
   bg: string;
   iconNode: React.ReactNode;
   name: string;
   status: string;
+  statusConnected?: boolean;
   sub: string;
-  counts: [string, string][];
+  counts?: [string, string][];
+  action?: React.ReactNode;
 }) {
   const c = useColors();
+  const dotColor = statusConnected ? c.moss : c.ink3;
+  const labelColor = statusConnected ? c.moss : c.ink3;
   return (
     <Card>
       <View style={{ flexDirection: 'row', gap: 14 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: statusConnected ? 0 : 1, borderColor: c.line }}>
           {iconNode}
         </View>
         <View style={{ flex: 1 }}>
           <TText style={{ fontSize: 16, fontWeight: '500', color: c.ink }}>{name}</TText>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.moss }} />
-            <Eyebrow style={{ color: c.moss }}>{status}</Eyebrow>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dotColor }} />
+            <Eyebrow style={{ color: labelColor }}>{status}</Eyebrow>
           </View>
           <TText style={{ fontSize: 11, color: c.ink3, marginTop: 6 }}>{sub}</TText>
         </View>
       </View>
-      <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line, flexDirection: 'row', gap: 10 }}>
-        {counts.map(([v, l], i) => (
-          <View key={i} style={{ flex: 1 }}>
-            <TText variant="monoMedium" style={{ fontSize: 18, color: c.ink }}>{v}</TText>
-            <Eyebrow style={{ fontSize: 9 }}>{l}</Eyebrow>
-          </View>
-        ))}
-      </View>
+      {counts && counts.length > 0 && (
+        <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line, flexDirection: 'row', gap: 10 }}>
+          {counts.map(([v, l], i) => (
+            <View key={i} style={{ flex: 1 }}>
+              <TText variant="monoMedium" style={{ fontSize: 18, color: c.ink }}>{v}</TText>
+              <Eyebrow style={{ fontSize: 9 }}>{l}</Eyebrow>
+            </View>
+          ))}
+        </View>
+      )}
+      {action}
     </Card>
   );
 }

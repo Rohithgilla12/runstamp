@@ -9,9 +9,11 @@ import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
+import { useHealth } from '../state/HealthContext';
 import { connectStrava } from '../services/strava';
+import { isHealthKitAvailable } from '../services/healthkit';
 
-type Step = 'splash' | 'signin' | 'primer' | 'sync';
+type Step = 'splash' | 'signin' | 'primer' | 'sync' | 'health';
 type SyncPhase = 'idle' | 'connecting' | 'syncing' | 'done';
 
 export function OnboardingScreen() {
@@ -20,12 +22,24 @@ export function OnboardingScreen() {
   const { setHasOnboarded } = useAppState();
   const [step, setStep] = useState<Step>('splash');
 
+  async function afterStrava() {
+    if (Platform.OS === 'ios') {
+      const available = await isHealthKitAvailable();
+      if (available) {
+        setStep('health');
+        return;
+      }
+    }
+    setHasOnboarded(true);
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 24 }}>
       {step === 'splash'  && <Splash next={() => setStep('signin')} />}
       {step === 'signin'  && <SignIn back={() => setStep('splash')} next={() => setStep('primer')} />}
       {step === 'primer'  && <Primer back={() => setStep('signin')} next={() => setStep('sync')} />}
-      {step === 'sync'    && <ConnectStrava back={() => setStep('primer')} done={() => setHasOnboarded(true)} />}
+      {step === 'sync'    && <ConnectStrava back={() => setStep('primer')} done={afterStrava} />}
+      {step === 'health'  && <ConnectHealth done={() => setHasOnboarded(true)} />}
     </View>
   );
 }
@@ -463,5 +477,115 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
         </View>
       )}
     </View>
+  );
+}
+
+function ConnectHealth({ done }: { done: () => void }) {
+  const c = useColors();
+  const { connect, syncing, status } = useHealth();
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleAuthorize() {
+    setError(null);
+    try {
+      await connect();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Health authorization failed');
+    }
+  }
+
+  if (syncing || status === 'granted') {
+    const pct = status === 'granted' ? 100 : 40;
+    const radius = 52;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = circumference * (1 - pct / 100);
+
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 32, alignItems: 'center', paddingTop: 24 }}>
+        <View style={{ marginTop: 48, width: 120, height: 120, alignItems: 'center', justifyContent: 'center' }}>
+          <Svg width={120} height={120} style={{ position: 'absolute' }}>
+            <Circle cx={60} cy={60} r={radius} fill="none" stroke={c.line} strokeWidth={2} />
+            <Circle
+              cx={60}
+              cy={60}
+              r={radius}
+              fill="none"
+              stroke="#fb466c"
+              strokeWidth={3}
+              strokeDasharray={circumference}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              transform="rotate(-90 60 60)"
+            />
+          </Svg>
+          {status === 'granted' ? <Icon.check size={40} color={c.accent} /> : <Icon.heart size={40} color="#fb466c" />}
+        </View>
+
+        <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.4, color: c.ink, marginTop: 32, textAlign: 'center' }}>
+          {syncing ? 'Reading your runs' : 'Health connected.'}
+        </TText>
+        <TText style={{ color: c.ink3, fontSize: 14, textAlign: 'center', maxWidth: 280, lineHeight: 20, marginTop: 6 }}>
+          {syncing ? 'Pulling 90 days of Apple Health workouts.' : 'Workouts imported. Apple Watch runs are ready.'}
+        </TText>
+
+        {status === 'granted' && !syncing && (
+          <View style={{ marginTop: 'auto', width: '100%', paddingBottom: 32 }}>
+            <Button kind="primary" full onPress={done} iconRight={<Icon.chevR size={18} color={c.paper} />}>Open Runstamp</Button>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      contentContainerStyle={{ paddingHorizontal: 32, paddingBottom: 32, flexGrow: 1 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <Eyebrow style={{ marginBottom: 10, marginTop: 4 }}>OPTIONAL · APPLE HEALTH</Eyebrow>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <TText variant="serif" style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.6 }}>Connect </TText>
+        <TText variant="serifItalic" style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.6, color: '#fb466c' }}>Apple Health</TText>
+        <TText variant="serif" style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.6 }}>.</TText>
+      </View>
+      <TText style={{ fontSize: 15, lineHeight: 22, color: c.ink3, marginTop: 8, marginBottom: 24 }}>
+        Your Apple Watch workouts, heart rate, and route — pulled directly from Health. We never write back.
+      </TText>
+
+      <View style={{ backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 14, padding: 16, marginBottom: 24 }}>
+        <Eyebrow style={{ marginBottom: 10 }}>WHAT WE READ</Eyebrow>
+        {[
+          ['Workouts',    'Running activities recorded by Apple Watch or any app'],
+          ['Heart Rate',  'Avg + max BPM per workout, shown on your stamp cards'],
+          ['GPS Route',   'Start coordinates + downsample for the route map layer'],
+          ['Energy',      'Active calories, displayed alongside pace on the stamp'],
+        ].map(([s, d], i) => (
+          <View key={s} style={{ flexDirection: 'row', gap: 10, paddingVertical: 6, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: c.line2 }}>
+            <Icon.check size={14} color={c.moss} />
+            <View style={{ flex: 1 }}>
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{s}</TText>
+              <TText style={{ fontSize: 12, color: c.ink3, lineHeight: 16 }}>{d}</TText>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={{ flex: 1, minHeight: 16 }} />
+      <Button
+        kind="accent"
+        full
+        onPress={handleAuthorize}
+        icon={<Icon.heart size={20} color="#fff" />}
+        style={{ backgroundColor: '#fb466c', borderColor: '#fb466c' }}
+      >
+        Authorize Apple Health
+      </Button>
+      {error && (
+        <Eyebrow style={{ color: '#c44a1e', marginTop: 12, textAlign: 'center' }}>{error}</Eyebrow>
+      )}
+      <Pressable onPress={done} style={{ marginTop: 14, alignSelf: 'center' }}>
+        <TText style={{ fontSize: 13, color: c.ink3 }}>Skip — set up later</TText>
+      </Pressable>
+    </ScrollView>
   );
 }

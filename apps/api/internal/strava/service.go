@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/activities"
 )
 
 const (
@@ -19,12 +21,13 @@ const (
 	stateTTL = 10 * time.Minute
 )
 
-// Service owns the OAuth lifecycle. Short-lived state lives in memory; the
-// long-lived connection is in the repository.
+// Service owns the OAuth lifecycle and activity ingest for Strava. Short-lived
+// state lives in memory; everything long-lived lives in the repository.
 type Service struct {
-	client    *Client
-	repo      *Repository
-	publicURL string
+	client     *Client
+	repo       *Repository
+	publicURL  string
+	activities *activities.Service
 
 	stateMu sync.Mutex
 	states  map[string]stateRecord
