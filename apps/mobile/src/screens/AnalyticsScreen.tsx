@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
@@ -19,13 +19,19 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [scope, setScope] = useState<Scope>('year');
-  const { activities, loading } = useActivities();
+  const { activities, loading, refresh } = useActivities();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
 
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
     >
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Eyebrow>STATISTICS</Eyebrow>

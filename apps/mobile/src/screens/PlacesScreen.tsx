@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
@@ -22,7 +22,12 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const c = useColors();
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
-  const { activities, loading } = useActivities();
+  const { activities, loading, refresh } = useActivities();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
 
   const places = useMemo(() => aggregatePlaces(activities), [activities]);
   const cities = places.length;
@@ -34,6 +39,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
       showsVerticalScrollIndicator={false}
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
     >
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Eyebrow>PLACES</Eyebrow>

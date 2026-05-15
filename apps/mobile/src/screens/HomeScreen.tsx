@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -21,15 +21,26 @@ import type { TabProps } from '../nav/types';
 export function HomeScreen({ navigation }: TabProps<'Home'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { activities, loading } = useActivities();
+  const { activities, loading, refresh: refreshActivities } = useActivities();
+  const { refresh: refreshStamps } = useStamps();
   const latest: Activity | undefined = activities[0];
   const greeting = greetingForHour(new Date().getHours());
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshActivities(), refreshStamps()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshActivities, refreshStamps]);
 
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
     >
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View style={{ flex: 1 }}>

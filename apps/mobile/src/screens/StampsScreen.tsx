@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Stamp, type StampTier } from '../data/sample';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
@@ -18,7 +18,12 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('all');
-  const { stamps, loading } = useStamps();
+  const { stamps, loading, refresh } = useStamps();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  }, [refresh]);
 
   const byTier = useMemo(() => {
     const out: Record<StampTier, { earned: number; total: number; stamps: CatalogStamp[] }> = {
@@ -43,6 +48,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
       showsVerticalScrollIndicator={false}
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
     >
       <View style={{ paddingHorizontal: 14 }}>
         <Pressable onPress={() => navigation.goBack()} style={{

@@ -79,6 +79,17 @@ func (r *Repo) FindByFirebaseUID(ctx context.Context, firebaseUID string) (*User
 	return &u, nil
 }
 
+// Delete hard-deletes a user row. Every fk pointing at users(id) was set up
+// with ON DELETE CASCADE — strava_connections, activities + streams + dupes,
+// strava_imports, stamps_earned. So a single delete is enough to satisfy the
+// privacy policy contract: 30-day hard delete on user request.
+func (r *Repo) Delete(ctx context.Context, userID string) error {
+	if _, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID); err != nil {
+		return fmt.Errorf("users: delete: %w", err)
+	}
+	return nil
+}
+
 // HasStravaConnection reports whether the user has a row in strava_connections.
 func (r *Repo) HasStravaConnection(ctx context.Context, userID string) (bool, error) {
 	var exists bool

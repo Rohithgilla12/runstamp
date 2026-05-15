@@ -202,9 +202,14 @@ func main() {
 			Users:      usersRepo,
 			Log:        log,
 		}
+		accountHandler := &handlers.AccountHandler{
+			Users: usersRepo,
+			Log:   log,
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
+			r.Delete("/me", accountHandler.Delete)
 			r.Get("/activities", activitiesHandler.List)
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
