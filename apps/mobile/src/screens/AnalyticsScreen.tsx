@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ACT, ALLTIME, HEATMAP, MONTHLY_KM, WEEKLY_KM, distUnit } from '../data/sample';
 import { useAppState } from '../state/AppState';
+import { useActivities } from '../state/useActivities';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card, Delta } from '../design/atoms';
@@ -156,11 +157,13 @@ function YearView() {
 function MonthView() {
   const c = useColors();
   const { units } = useAppState();
+  const { activities } = useActivities();
   const days = 31;
   const startDow = 4;
   const today = 17;
   const activeKm: Record<number, number> = {};
-  ACT.forEach((a) => {
+  const runs = activities.length > 0 ? activities : ACT;
+  runs.forEach((a) => {
     if (a.date.startsWith('2026-05')) {
       const d = parseInt(a.date.split('-')[2], 10);
       activeKm[d] = (activeKm[d] ?? 0) + a.distance;

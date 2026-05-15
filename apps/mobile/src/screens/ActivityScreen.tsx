@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ACT, distUnit, fmtDist, fmtPace, fmtTime, paceUnit } from '../data/sample';
 import { useAppState } from '../state/AppState';
+import { useActivities } from '../state/useActivities';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Button, Card, Chip } from '../design/atoms';
@@ -20,7 +21,9 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
   const id = route.params?.id ?? 'a1';
-  const run = ACT.find((a) => a.id === id) ?? ACT[0];
+  const { activities } = useActivities();
+  const pool = activities.length > 0 ? activities : ACT;
+  const run = pool.find((a) => a.id === id) ?? pool[0];
   const [tab, setTab] = useState<Tab>('splits');
 
   return (

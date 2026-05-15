@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SHOES, STAMPS, distUnit } from '../data/sample';
@@ -9,6 +9,7 @@ import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
 import { useHealth } from '../state/HealthContext';
+import { connectStrava, disconnectStrava, getStravaStatus, type StravaStatus } from '../services/strava';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -234,21 +235,87 @@ function ShoesScreen({ back }: { back: () => void }) {
 
 function ConnectionsScreen({ back }: { back: () => void }) {
   const c = useColors();
-  const { status: healthStatus, syncing, lastSyncAt, resync } = useHealth();
+  const { status: healthStatus, syncing, lastSyncAt, resync, connect: connectHealth } = useHealth();
   const { getIdToken } = useAuth();
 
+  const [stravaStatus, setStravaStatus] = useState<StravaStatus | null>(null);
+  const [stravaBusy, setStravaBusy] = useState(false);
+
+  const refreshStravaStatus = useCallback(async () => {
+    const idToken = await getIdToken();
+    if (!idToken) return;
+    try {
+      const next = await getStravaStatus(idToken);
+      setStravaStatus(next);
+    } catch {
+      setStravaStatus({ connected: false });
+    }
+  }, [getIdToken]);
+
+  useEffect(() => {
+    refreshStravaStatus();
+  }, [refreshStravaStatus]);
+
+  const stravaConnected = stravaStatus?.connected === true;
+
+  const handleStravaPress = useCallback(async () => {
+    if (stravaBusy) return;
+    setStravaBusy(true);
+    try {
+      if (stravaConnected) {
+        Alert.alert('Disconnect Strava?', 'Already-imported activities stay. Runstamp will stop receiving new runs from Strava.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              const idToken = await getIdToken();
+              await disconnectStrava(idToken);
+              await refreshStravaStatus();
+            },
+          },
+        ]);
+        return;
+      }
+      const idToken = await getIdToken();
+      const result = await connectStrava(idToken);
+      if (result.type === 'error' && result.reason !== 'cancelled') {
+        Alert.alert('Couldn’t connect Strava', result.reason);
+      }
+      await refreshStravaStatus();
+    } finally {
+      setStravaBusy(false);
+    }
+  }, [stravaBusy, stravaConnected, getIdToken, refreshStravaStatus]);
+
   const healthConnected = healthStatus === 'granted';
+
+  const stravaStatusLabel = (() => {
+    if (stravaStatus === null) return 'Checking…';
+    if (stravaConnected) return 'Connected · canonical';
+    return 'Not connected · tap to connect';
+  })();
+
+  const stravaSub = (() => {
+    if (!stravaConnected) return 'Read-only · we never write to Strava';
+    if (stravaStatus && stravaStatus.connected && stravaStatus.connectedAt) {
+      const since = new Date(stravaStatus.connectedAt);
+      const days = Math.max(1, Math.round((Date.now() - since.getTime()) / 86_400_000));
+      return `Connected ${days}d ago · webhook-driven`;
+    }
+    return 'Webhook-driven';
+  })();
 
   const healthStatusLabel = (() => {
     if (healthStatus === 'unavailable') return 'Unavailable on this device';
     if (healthStatus === 'denied') return 'Access denied · tap to fix';
-    if (healthStatus === 'unknown') return 'Not connected';
+    if (healthStatus === 'unknown') return 'Not connected · tap to connect';
     if (syncing) return 'Syncing now…';
     if (lastSyncAt) {
       const diffMin = Math.round((Date.now() - lastSyncAt.getTime()) / 60_000);
       return `Connected · last sync ${diffMin}m ago`;
     }
-    return 'Connected · fallback';
+    return 'Connected';
   })();
 
   const healthSub = (() => {
@@ -256,12 +323,20 @@ function ConnectionsScreen({ back }: { back: () => void }) {
     return 'Read-only · runs deduplicated against Strava';
   })();
 
-  async function handleResync() {
-    if (!healthConnected || syncing) return;
+  const handleHealthPress = useCallback(async () => {
+    if (syncing) return;
+    if (!healthConnected) {
+      try {
+        await connectHealth();
+      } catch (e) {
+        Alert.alert('Couldn’t connect Apple Health', e instanceof Error ? e.message : 'unknown');
+      }
+      return;
+    }
     const idToken = await getIdToken();
     if (!idToken) return;
     await resync();
-  }
+  }, [syncing, healthConnected, connectHealth, getIdToken, resync]);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -271,12 +346,29 @@ function ConnectionsScreen({ back }: { back: () => void }) {
       </View>
       <View style={{ paddingHorizontal: 14, paddingTop: 18, gap: 10 }}>
         <ConnCard
-          bg="#fc4c02"
-          iconNode={<Icon.strava size={28} color="#fff" />}
+          bg={stravaConnected ? '#fc4c02' : c.paper2}
+          iconNode={<Icon.strava size={28} color={stravaConnected ? '#fff' : c.ink2} />}
           name="Strava"
-          status="Connected · canonical"
-          sub="Webhook-driven · last sync 4m ago"
-          counts={[['612', 'runs'], ['4,287', 'km'], ['—', 'errors']]}
+          status={stravaStatusLabel}
+          statusConnected={stravaConnected}
+          sub={stravaSub}
+          onPress={handleStravaPress}
+          busy={stravaBusy}
+          action={stravaConnected ? (
+            <Pressable
+              onPress={handleStravaPress}
+              disabled={stravaBusy}
+              style={({ pressed }) => [{
+                marginTop: 10, paddingTop: 10,
+                borderTopWidth: 1, borderTopColor: c.line2,
+                opacity: pressed || stravaBusy ? 0.5 : 1,
+              }]}
+            >
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
+                {stravaBusy ? 'WORKING…' : 'DISCONNECT'}
+              </TText>
+            </Pressable>
+          ) : undefined}
         />
         <ConnCard
           bg={healthConnected ? '#fb466c' : c.paper2}
@@ -285,10 +377,11 @@ function ConnectionsScreen({ back }: { back: () => void }) {
           status={healthStatusLabel}
           statusConnected={healthConnected}
           sub={healthSub}
-          counts={healthConnected ? [['—', 'workouts'], ['—', 'dupes'], ['—', 'errors']] : undefined}
+          onPress={handleHealthPress}
+          busy={syncing}
           action={healthConnected ? (
             <Pressable
-              onPress={handleResync}
+              onPress={handleHealthPress}
               disabled={syncing}
               style={({ pressed }) => [{
                 marginTop: 10, paddingTop: 10,
@@ -325,6 +418,8 @@ function ConnCard({
   sub,
   counts,
   action,
+  onPress,
+  busy,
 }: {
   bg: string;
   iconNode: React.ReactNode;
@@ -334,13 +429,15 @@ function ConnCard({
   sub: string;
   counts?: [string, string][];
   action?: React.ReactNode;
+  onPress?: () => void;
+  busy?: boolean;
 }) {
   const c = useColors();
   const dotColor = statusConnected ? c.moss : c.ink3;
   const labelColor = statusConnected ? c.moss : c.ink3;
-  return (
-    <Card>
-      <View style={{ flexDirection: 'row', gap: 14 }}>
+  const body = (
+    <>
+      <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
         <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', borderWidth: statusConnected ? 0 : 1, borderColor: c.line }}>
           {iconNode}
         </View>
@@ -352,6 +449,7 @@ function ConnCard({
           </View>
           <TText style={{ fontSize: 11, color: c.ink3, marginTop: 6 }}>{sub}</TText>
         </View>
+        {busy ? <ActivityIndicator color={c.ink3} /> : null}
       </View>
       {counts && counts.length > 0 && (
         <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.line, flexDirection: 'row', gap: 10 }}>
@@ -364,8 +462,17 @@ function ConnCard({
         </View>
       )}
       {action}
-    </Card>
+    </>
   );
+
+  if (onPress && !statusConnected) {
+    return (
+      <Pressable onPress={onPress} disabled={busy} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+        <Card>{body}</Card>
+      </Pressable>
+    );
+  }
+  return <Card>{body}</Card>;
 }
 
 function PrivacyScreen({ back }: { back: () => void }) {

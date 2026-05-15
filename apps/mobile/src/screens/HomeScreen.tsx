@@ -9,6 +9,7 @@ import {
 } from '../data/sample';
 import { StampBadge } from '../design/StampBadge';
 import { useAppState } from '../state/AppState';
+import { useActivities } from '../state/useActivities';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card, Chip, Delta } from '../design/atoms';
@@ -22,7 +23,11 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
   const c = useColors();
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
-  const latest = ACT[0];
+  const { activities } = useActivities();
+  // Live activities first; sample fallback so the screen has content until the
+  // user connects Strava / Apple Health.
+  const runs = activities.length > 0 ? activities : ACT;
+  const latest = runs[0];
 
   return (
     <ScrollView

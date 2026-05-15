@@ -159,9 +159,15 @@ func main() {
 			})
 		})
 		// Protected non-strava routes.
+		activitiesHandler := &handlers.ActivitiesHandler{
+			Activities: activitiesService,
+			Users:      usersRepo,
+			Log:        log,
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
+			r.Get("/activities", activitiesHandler.List)
 		})
 	})
 
