@@ -39,3 +39,9 @@ android/build
 android/app/build
 android/app/release
 design.bin
+
+# EAS local-build artifacts — large signed binaries; uploaded via
+# `eas submit` directly.
+apps/mobile/*.ipa
+apps/mobile/*.aab
+apps/mobile/*.apk

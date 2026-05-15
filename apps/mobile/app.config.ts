@@ -68,7 +68,16 @@ const config: ExpoConfig = {
         'Runstamp reads from your Photos so you can pin a real run photo to your share card. We never upload them.',
       NSPhotoLibraryAddUsageDescription:
         'Runstamp saves your finished share card to your camera roll so you can post it to Instagram, WhatsApp, or X.',
-      UIBackgroundModes: ['fetch', 'processing', 'remote-notification']
+      // `fetch` is what HKObserverQuery's background delivery needs;
+      // `remote-notification` lets Strava webhook → APNs silent push wake
+      // the app for a sync. `processing` was here for BGTaskScheduler but
+      // we don't schedule BGProcessingTaskRequests in M1 — and including
+      // it without BGTaskSchedulerPermittedIdentifiers is an App Store
+      // Connect 409 (validator error 8d004b9a).
+      UIBackgroundModes: ['fetch', 'remote-notification'],
+      // Only standard crypto (HTTPS / Apple Sign-In) — skips the App Store Connect
+      // export-compliance prompt on every TestFlight upload.
+      ITSAppUsesNonExemptEncryption: false
     }
   },
   android: {
@@ -128,7 +137,12 @@ const config: ExpoConfig = {
       {
         ios: { useFrameworks: 'static' }
       }
-    ]
+    ],
+    // Patches the Podfile to set CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES
+    // on RNFB* targets. Required because @react-native-firebase modules
+    // include <React/...> headers non-modularly, which clang rejects
+    // under static framework linkage.
+    './plugins/withFirebaseStaticFrameworks'
   ],
   // ONLY public values. Firebase no longer lives here — the plist is the
   // source of truth. The web client id is public per Google's OAuth model.
