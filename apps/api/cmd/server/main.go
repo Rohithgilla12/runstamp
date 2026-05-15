@@ -27,6 +27,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/places"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
@@ -98,6 +99,9 @@ func main() {
 
 	stampsRepo := stamps.NewRepository(pool)
 	stampsEval := stamps.NewEvaluator(pool, stampsRepo, log)
+
+	geocoder := places.NewGeocoder(pool, log)
+	geoBackfiller := places.NewBackfiller(pool, geocoder, log)
 	activitiesService.SetPostIngest(func(ctx context.Context, userID string) {
 		// Stamps evaluator runs in the request goroutine — it's fast (handful
 		// of indexed queries) and we want awards visible by the time the
@@ -192,6 +196,12 @@ func main() {
 			Users: usersRepo,
 			Log:   log,
 		}
+		placesHandler := &handlers.PlacesHandler{
+			Backfiller: geoBackfiller,
+			Evaluator:  stampsEval,
+			Users:      usersRepo,
+			Log:        log,
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
@@ -199,6 +209,7 @@ func main() {
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
 			r.Get("/best-efforts", bestEffortsHandler.List)
+			r.Post("/places/backfill", placesHandler.Backfill)
 		})
 	})
 
