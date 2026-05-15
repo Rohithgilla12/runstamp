@@ -81,8 +81,10 @@ services:
     volumes:
       - ${FIREBASE_CREDENTIALS_HOST_PATH:-./secrets/firebase-service-account.json}:/run/secrets/firebase-service-account.json:ro
     # Localhost-bound — Cloudflared in front handles public reachability.
+    # Host port is 8088 (8080 is squatted by qbittorrent on the runstamp VPS);
+    # inside the container the api still listens on 8080.
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8088:8080"
     networks:
       - runstamp-internal
 
