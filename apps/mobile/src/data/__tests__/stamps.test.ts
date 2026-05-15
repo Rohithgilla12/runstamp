@@ -34,10 +34,6 @@ describe('STAMPS catalogue invariants', () => {
       typeof s.earnedAt === 'string',
     );
 
-    it('has at least one earned stamp (sanity)', () => {
-      expect(earned.length).toBeGreaterThan(0);
-    });
-
     it('every earned stamp has earnedAt in YYYY-MM-DD format', () => {
       for (const s of earned) {
         expect(s.earnedAt).toMatch(DATE_RE);

@@ -1,33 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ACT, BEST_EFFORTS_MONTH, PLACES, RECAPS, SHOES, STAMPS, THIS_WEEK,
   distUnit, fmtDist, fmtPace, fmtTime,
-  type ActivityKind, type Stamp
+  type Activity
 } from '../data/sample';
-import { StampBadge } from '../design/StampBadge';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
-import { Card, Chip, Delta } from '../design/atoms';
+import { Delta } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
-import { MiniWorldMap } from '../design/charts';
 import type { TabProps } from '../nav/types';
 
 export function HomeScreen({ navigation }: TabProps<'Home'>) {
   const c = useColors();
-  const { units } = useAppState();
   const insets = useSafeAreaInsets();
-  const { activities } = useActivities();
-  // Live activities first; sample fallback so the screen has content until the
-  // user connects Strava / Apple Health.
-  const runs = activities.length > 0 ? activities : ACT;
-  const latest = runs[0];
+  const { activities, loading } = useActivities();
+  const latest: Activity | undefined = activities[0];
+  const greeting = greetingForHour(new Date().getHours());
 
   return (
     <ScrollView
@@ -35,109 +29,205 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
     >
-      {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View style={{ flex: 1 }}>
-          <Eyebrow>SUN · MAY 17 · 2026</Eyebrow>
-          <TText variant="serif" style={{ fontSize: 28, lineHeight: 32, letterSpacing: -0.6, marginTop: 4 }}>Good morning,</TText>
-          <TText variant="serifItalic" style={{ fontSize: 28, lineHeight: 32, color: c.ink }}>Gilla.</TText>
+          <Eyebrow>{formatTodayEyebrow(new Date())}</Eyebrow>
+          <TText variant="serif" style={{ fontSize: 28, lineHeight: 32, letterSpacing: -0.6, marginTop: 4 }}>{greeting},</TText>
+          <TText variant="serifItalic" style={{ fontSize: 28, lineHeight: 32, color: c.ink }}>Runner.</TText>
         </View>
         <View style={{ marginTop: 4 }}>
           <SunMark size={32} />
         </View>
       </View>
 
-      {/* Live-sync + stamps chip row */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 12, flexDirection: 'row', gap: 8 }}>
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 8,
-          paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-          backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line
-        }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.moss }} />
-          <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>SYNCED · 4m AGO</TText>
-        </View>
-        <Pressable
-          onPress={() => navigation.navigate('Stamps')}
-          style={({ pressed }) => [{
-            flexDirection: 'row', alignItems: 'center', gap: 6,
+      {latest ? (
+        <ConnectedHome
+          activities={activities}
+          latest={latest}
+          onOpenActivity={(id) => navigation.navigate('Activity', { id })}
+          onOpenEditor={(id) => navigation.navigate('Editor', { id })}
+        />
+      ) : (
+        <EmptyHome loading={loading} onConnect={() => navigation.navigate('Profile')} />
+      )}
+    </ScrollView>
+  );
+}
+
+function ConnectedHome({
+  activities,
+  latest,
+  onOpenActivity,
+  onOpenEditor,
+}: {
+  activities: Activity[];
+  latest: Activity;
+  onOpenActivity: (id: string) => void;
+  onOpenEditor: (id: string) => void;
+}) {
+  const c = useColors();
+  const { units } = useAppState();
+  const weekStats = computeWeekStats(activities, units === 'mi');
+
+  return (
+    <>
+      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
             paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-            backgroundColor: c.ink, opacity: pressed ? 0.85 : 1
-          }]}
-        >
-          <Icon.spark size={12} color={c.accent} />
-          <TText variant="mono" style={{ fontSize: 11, color: c.paper }}>
-            {STAMPS.filter((s) => !!s.earnedAt).length} STAMPS
-          </TText>
-        </Pressable>
+            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line
+          }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.moss }} />
+            <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{activities.length} RUNS</TText>
+          </View>
+        </View>
       </View>
 
-      {/* Hero post-run card */}
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <PostRunCard
           run={latest}
-          onOpen={() => navigation.navigate('Activity', { id: latest.id })}
-          onShare={() => navigation.navigate('Editor', { id: latest.id })}
+          onOpen={() => onOpenActivity(latest.id)}
+          onShare={() => onOpenEditor(latest.id)}
         />
       </View>
 
-      <SectionHeader title="This week" right={<TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>W21 · MARATHON BUILD</TText>} />
+      <SectionHeader title="This week" />
       <View style={{ paddingHorizontal: 20 }}>
-        <WeekStrip />
+        <WeekSummary stats={weekStats} />
       </View>
 
-      <SectionHeader title="Best efforts" right={<Eyebrow style={{ color: c.ink3 }}>THIS MONTH</Eyebrow>} />
-      <View style={{ paddingHorizontal: 20 }}>
-        <BestEffortsRow />
+      <SectionHeader title="Recent runs" />
+      <View style={{ paddingHorizontal: 20, gap: 8 }}>
+        {activities.slice(0, 5).map((a) => (
+          <Pressable
+            key={a.id}
+            onPress={() => onOpenActivity(a.id)}
+            style={({ pressed }) => [{
+              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+          >
+            <View style={{ flex: 1 }}>
+              <TText style={{ fontSize: 14, fontWeight: '500', color: c.ink }} numberOfLines={1}>{a.title}</TText>
+              <TText style={{ fontSize: 11, color: c.ink3, marginTop: 2 }}>{a.day} · {a.time}</TText>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{fmtTime(a.seconds)}</TText>
+            </View>
+          </Pressable>
+        ))}
       </View>
+    </>
+  );
+}
 
-      <SectionHeader title="Recap" />
-      <View style={{ paddingHorizontal: 20 }}>
-        <RecapCarousel />
-      </View>
-
-      <SectionHeader title="Recently earned" right={
-        <Pressable onPress={() => navigation.navigate('Stamps')}>
-          <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
+function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect: () => void }) {
+  const c = useColors();
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 24 }}>
+      <View style={{
+        borderRadius: 18, padding: 24, backgroundColor: c.ink,
+        alignItems: 'flex-start', overflow: 'hidden', position: 'relative',
+      }}>
+        <View style={{ position: 'absolute', right: -40, top: -40, opacity: 0.12 }}>
+          <SunMark size={200} />
+        </View>
+        <Eyebrow style={{ color: c.accent, marginBottom: 8 }}>{loading ? 'CHECKING…' : 'NO RUNS YET'}</Eyebrow>
+        <TText variant="serif" style={{ fontSize: 26, lineHeight: 28, color: c.paper, letterSpacing: -0.4 }}>
+          Connect a source to{'\n'}stamp your first run.
+        </TText>
+        <TText style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: 10, lineHeight: 18 }}>
+          Runstamp reads from Strava or Apple Health. Read-only — we never write back.
+        </TText>
+        <Pressable
+          onPress={onConnect}
+          style={({ pressed }) => [{
+            marginTop: 18, height: 44, paddingHorizontal: 20, borderRadius: 12,
+            backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center',
+            flexDirection: 'row', gap: 8, opacity: pressed ? 0.85 : 1,
+          }]}
+        >
+          <Icon.share size={14} color="#fff" />
+          <TText style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Open connections</TText>
         </Pressable>
-      } />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-      >
-        {STAMPS.filter((s) => !!s.earnedAt)
-          .sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))
-          .slice(0, 6)
-          .map((s) => (
-            <Pressable key={s.id} onPress={() => navigation.navigate('Stamps')} style={({ pressed }) => [{
-              alignItems: 'center', width: 110,
-              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 14,
-              paddingVertical: 12, paddingHorizontal: 6,
-              opacity: pressed ? 0.85 : 1
-            }]}>
-              <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={64} />
-              <TText style={{ fontSize: 11, fontWeight: '500', color: c.ink, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
-                {s.name}
-              </TText>
-            </Pressable>
-          ))}
-      </ScrollView>
-
-      <SectionHeader title="Shoes" right={<TText style={{ fontSize: 13, color: c.ink2 }}>Manage</TText>} />
-      <View style={{ paddingHorizontal: 20 }}>
-        <ShoesWidget />
       </View>
-
-      <SectionHeader title="Places" right={
-        <Pressable onPress={() => navigation.navigate('Places')}>
-          <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
-        </Pressable>
-      } />
-      <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-        <PlacesPreview onOpen={() => navigation.navigate('Places')} />
+      <View style={{ paddingHorizontal: 4, gap: 12 }}>
+        <BulletRow icon="strava" label="Strava — fastest path. Pulls your whole history once you connect." color="#fc4c02" />
+        <BulletRow icon="health" label="Apple Health — Apple Watch users. 90-day backfill on first sync." color="#fb466c" />
       </View>
-    </ScrollView>
+    </View>
+  );
+}
+
+function BulletRow({ icon, label, color }: { icon: 'strava' | 'health'; label: string; color: string }) {
+  const c = useColors();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+      <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+        {icon === 'strava' ? <Icon.strava size={16} color="#fff" /> : <Icon.heart size={14} color="#fff" />}
+      </View>
+      <TText style={{ flex: 1, fontSize: 13, lineHeight: 18, color: c.ink2 }}>{label}</TText>
+    </View>
+  );
+}
+
+interface WeekStats {
+  totalKm: number;
+  runs: number;
+  totalSec: number;
+  vsLastKm: number;
+}
+
+function computeWeekStats(activities: Activity[], _isMi: boolean): WeekStats {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setHours(0, 0, 0, 0);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+
+  let thisKm = 0;
+  let lastKm = 0;
+  let runs = 0;
+  let totalSec = 0;
+  for (const a of activities) {
+    const d = new Date(a.date);
+    if (d >= startOfWeek) {
+      thisKm += a.distance;
+      runs += 1;
+      totalSec += a.seconds;
+    } else if (d >= startOfLastWeek) {
+      lastKm += a.distance;
+    }
+  }
+  return { totalKm: thisKm, runs, totalSec, vsLastKm: thisKm - lastKm };
+}
+
+function WeekSummary({ stats }: { stats: WeekStats }) {
+  const c = useColors();
+  const { units } = useAppState();
+  return (
+    <View style={{ backgroundColor: c.paper2, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 14 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 42, letterSpacing: -0.8, color: c.ink }}>
+              {fmtDist(stats.totalKm, units)}
+            </TText>
+            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>{distUnit(units)}</TText>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
+            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>{stats.runs} runs</TText>
+            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>{fmtTime(stats.totalSec)}</TText>
+            <Delta value={stats.vsLastKm} format={(v) => `${v.toFixed(1)} ${distUnit(units)}`} />
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -152,7 +242,7 @@ export function SectionHeader({ title, right }: { title: string; right?: React.R
 
 const POST_RUN_HEIGHT = 380;
 
-function PostRunCard({ run, onOpen, onShare }: { run: typeof ACT[number]; onOpen: () => void; onShare: () => void }) {
+function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => void; onShare: () => void }) {
   const c = useColors();
   const { units } = useAppState();
   return (
@@ -170,16 +260,14 @@ function PostRunCard({ run, onOpen, onShare }: { run: typeof ACT[number]; onOpen
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 18 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
-              <Eyebrow style={{ color: c.accent, marginBottom: 4 }}>POST-RUN · 4 MIN AGO</Eyebrow>
+              <Eyebrow style={{ color: c.accent, marginBottom: 4 }}>{run.day.toUpperCase()} · {run.time}</Eyebrow>
               <TText variant="serif" style={{ fontSize: 22, lineHeight: 24, color: c.paper, letterSpacing: -0.4 }}>{run.title}</TText>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                <Icon.pin size={12} color="rgba(243,237,226,0.6)" />
-                <TText style={{ fontSize: 12, color: 'rgba(243,237,226,0.6)' }}>{run.place}</TText>
-              </View>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Icon.sun size={20} color={c.accent} />
-              <TText variant="mono" style={{ fontSize: 10, color: 'rgba(243,237,226,0.6)', marginTop: 4 }}>{run.weather.t}°</TText>
+              {!!run.place && run.place !== '—' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <Icon.pin size={12} color="rgba(243,237,226,0.6)" />
+                  <TText style={{ fontSize: 12, color: 'rgba(243,237,226,0.6)' }}>{run.place}</TText>
+                </View>
+              )}
             </View>
           </View>
 
@@ -207,23 +295,31 @@ function PostRunCard({ run, onOpen, onShare }: { run: typeof ACT[number]; onOpen
             </View>
           </View>
 
-          <View style={{
-            flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-            marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(243,237,226,0.12)'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Icon.heart size={12} color={c.accent} />
-              <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.avgHr} avg · {run.maxHr} max</TText>
+          {(run.avgHr > 0 || run.elev > 0 || run.cal > 0) && (
+            <View style={{
+              flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+              marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(243,237,226,0.12)'
+            }}>
+              {run.avgHr > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Icon.heart size={12} color={c.accent} />
+                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.avgHr} avg · {run.maxHr} max</TText>
+                </View>
+              )}
+              {run.elev > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Icon.mountain size={12} color="rgba(243,237,226,0.7)" />
+                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.elev} m</TText>
+                </View>
+              )}
+              {run.cal > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Icon.flame size={12} color="rgba(243,237,226,0.7)" />
+                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.cal} kcal</TText>
+                </View>
+              )}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Icon.mountain size={12} color="rgba(243,237,226,0.7)" />
-              <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.elev} m</TText>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Icon.flame size={12} color="rgba(243,237,226,0.7)" />
-              <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.cal} kcal</TText>
-            </View>
-          </View>
+          )}
 
           <Pressable
             onPress={(e) => { e.stopPropagation(); onShare(); }}
@@ -242,226 +338,15 @@ function PostRunCard({ run, onOpen, onShare }: { run: typeof ACT[number]; onOpen
   );
 }
 
-function WeekStrip() {
-  const c = useColors();
-  const w = THIS_WEEK;
-  const maxKm = Math.max(...w.days.map((d) => d.km));
-  const kindColor = (k: ActivityKind | undefined): string => {
-    if (k === 'long') return c.accent;
-    if (k === 'workout') return '#8a5a30';
-    if (k === 'easy') return c.moss;
-    return c.ink3;
-  };
-  return (
-    <View style={{ backgroundColor: c.paper2, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 42, letterSpacing: -0.8, color: c.ink }}>47.89</TText>
-            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>km</TText>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
-            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>4 runs</TText>
-            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>3:37:00</TText>
-            <Delta value={w.vsLast.km} format={(v) => `${v.toFixed(1)} km`} />
-          </View>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Eyebrow>TARGET</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 18, color: c.ink }}>75 km</TText>
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-        {w.days.map((d, i) => {
-          const h = d.rest ? 8 : Math.max(14, (d.km / maxKm) * 56);
-          return (
-            <View key={i} style={{
-              flex: 1, alignItems: 'center', gap: 6,
-              paddingVertical: 8, borderRadius: 10,
-              backgroundColor: d.today ? c.paper3 : 'transparent',
-              borderWidth: 1, borderColor: d.today ? c.line : 'transparent'
-            }}>
-              <View style={{ width: '72%', height: h, borderRadius: 3, backgroundColor: d.rest ? c.line : kindColor(d.kind), opacity: d.rest ? 0.5 : 1 }} />
-              <TText style={{ fontSize: 10, color: c.ink3, fontWeight: '500' }}>{d.d}</TText>
-              <TText variant="mono" style={{ fontSize: 10, color: d.today ? c.ink : c.ink3 }}>{d.km ? d.km.toFixed(0) : '—'}</TText>
-            </View>
-          );
-        })}
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
-        <Legend color={c.accent} label="Long" />
-        <Legend color="#8a5a30" label="Workout" />
-        <Legend color={c.moss} label="Easy" />
-        <Legend color={c.line} label="Rest" dim />
-      </View>
-    </View>
-  );
+function greetingForHour(h: number): string {
+  if (h < 5) return 'Late night';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
-function Legend({ color, label, dim }: { color: string; label: string; dim?: boolean }) {
-  const c = useColors();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color, opacity: dim ? 0.6 : 1 }} />
-      <TText style={{ fontSize: 10, color: c.ink3 }}>{label}</TText>
-    </View>
-  );
-}
-
-function BestEffortsRow() {
-  const c = useColors();
-  return (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
-      {BEST_EFFORTS_MONTH.map((b, i) => (
-        <View
-          key={i}
-          style={{
-            flex: 1,
-            backgroundColor: b.isPR ? c.ink : c.paper2,
-            borderWidth: 1,
-            borderColor: b.isPR ? c.ink : c.line,
-            borderRadius: 12,
-            paddingHorizontal: 10,
-            paddingTop: 10,
-            paddingBottom: 12
-          }}
-        >
-          <Eyebrow style={{ color: b.isPR ? c.accent : c.ink3, fontSize: 9 }}>{b.isPR ? 'PR' : b.d}</Eyebrow>
-          {b.isPR && <TText style={{ fontSize: 10, color: 'rgba(243,237,226,0.7)', marginBottom: 2 }}>{b.d}</TText>}
-          <TText
-            variant="monoMedium"
-            style={{
-              fontSize: 18,
-              color: b.isPR ? c.paper : c.ink,
-              marginTop: b.isPR ? 0 : 4,
-              letterSpacing: -0.2
-            }}
-          >
-            {b.t}
-          </TText>
-          <TText
-            style={{
-              fontSize: 9.5,
-              marginTop: 4,
-              color: b.isPR ? 'rgba(243,237,226,0.5)' : c.ink3
-            }}
-          >
-            {b.date}
-          </TText>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function RecapCarousel() {
-  const c = useColors();
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setIdx((i) => (i + 1) % RECAPS.length), 4200);
-    return () => clearInterval(t);
-  }, []);
-  const r = RECAPS[idx];
-  return (
-    <View style={{ backgroundColor: c.paper2, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 18, overflow: 'hidden', minHeight: 130 }}>
-      <View style={{ position: 'absolute', right: -30, top: -30, opacity: 0.06 }}>
-        <SunMark size={140} />
-      </View>
-      <Eyebrow style={{ color: c.accent, marginBottom: 8 }}>{r.eyebrow}</Eyebrow>
-      <TText variant="serif" style={{ fontSize: 18, color: c.ink2, lineHeight: 22 }}>{r.body}</TText>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
-        <TText variant="monoMedium" style={{ fontSize: 38, lineHeight: 38, letterSpacing: -0.8, color: c.ink }}>{String(r.num)}</TText>
-        <TText style={{ fontSize: 14, color: c.ink3 }}>{r.suffix}</TText>
-      </View>
-      <TText style={{ fontSize: 12, color: c.ink3, marginTop: 8 }}>{r.detail}</TText>
-
-      <View style={{ position: 'absolute', bottom: 14, right: 14, flexDirection: 'row', gap: 4 }}>
-        {RECAPS.map((_, i) => (
-          <View
-            key={i}
-            style={{
-              width: i === idx ? 14 : 5,
-              height: 5,
-              borderRadius: 3,
-              backgroundColor: i === idx ? c.ink : c.line
-            }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function ShoesWidget() {
-  const c = useColors();
-  const active = SHOES.filter((s) => !s.retired).slice(0, 3);
-  return (
-    <View style={{ gap: 8 }}>
-      {active.map((s) => {
-        const pct = Math.min(s.km / s.cap, 1);
-        const warn = pct > 0.8;
-        return (
-          <View key={s.id} style={{
-            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
-            borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-            flexDirection: 'row', alignItems: 'center', gap: 14
-          }}>
-            <View style={{
-              width: 38, height: 38, borderRadius: 10, backgroundColor: s.color,
-              opacity: s.primary ? 1 : 0.7, alignItems: 'center', justifyContent: 'center',
-              borderWidth: 1, borderColor: c.line
-            }}>
-              <Icon.shoe size={20} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TText style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{s.model}</TText>
-                {s.primary && <Eyebrow style={{ color: c.accent, fontSize: 9 }}>PRIMARY</Eyebrow>}
-                {s.race && <Eyebrow style={{ color: c.ink3, fontSize: 9 }}>RACE</Eyebrow>}
-              </View>
-              <TText style={{ fontSize: 11, color: c.ink3, marginBottom: 6 }}>{s.brand}</TText>
-              <View style={{ height: 4, backgroundColor: c.line, borderRadius: 2, overflow: 'hidden' }}>
-                <View style={{ width: `${pct * 100}%`, height: 4, backgroundColor: warn ? c.warn : c.ink }} />
-              </View>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>{s.km}</TText>
-              <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>/ {s.cap} km</TText>
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function PlacesPreview({ onOpen }: { onOpen: () => void }) {
-  const c = useColors();
-  const cities = PLACES.length;
-  const countries = new Set(PLACES.map((p) => p.country)).size;
-  return (
-    <Pressable
-      onPress={onOpen}
-      style={({ pressed }) => [
-        { backgroundColor: c.paper2, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 16, opacity: pressed ? 0.85 : 1 }
-      ]}
-    >
-      <MiniWorldMap height={120} places={PLACES} />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 10 }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <TText variant="monoMedium" style={{ fontSize: 30, letterSpacing: -0.6, color: c.ink, lineHeight: 32 }}>{cities}</TText>
-            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 6 }}>cities</TText>
-            <TText style={{ color: c.line, marginHorizontal: 8 }}>·</TText>
-            <TText variant="monoMedium" style={{ fontSize: 30, letterSpacing: -0.6, color: c.ink, lineHeight: 32 }}>{countries}</TText>
-            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 6 }}>countries</TText>
-          </View>
-          <TText style={{ fontSize: 12, color: c.ink3, marginTop: 4 }}>Latest: Tokyo · Jan ’26</TText>
-        </View>
-        <Icon.chevR size={18} color={c.ink3} />
-      </View>
-    </Pressable>
-  );
+function formatTodayEyebrow(d: Date): string {
+  const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  return `${dow} · ${mon} ${d.getDate()} · ${d.getFullYear()}`;
 }

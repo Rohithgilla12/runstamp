@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SHOES, STAMPS, distUnit } from '../data/sample';
+import { distUnit } from '../data/sample';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../nav/types';
@@ -27,7 +27,6 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const { signOut } = useAuth();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [sub, setSub] = useState<Sub>('main');
-  const earnedStamps = STAMPS.filter((s) => !!s.earnedAt).length;
 
   if (sub === 'shoes') return <ShoesScreen back={() => setSub('main')} />;
   if (sub === 'connections') return <ConnectionsScreen back={() => setSub('main')} />;
@@ -78,8 +77,8 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
       <SectionHeader title="Runstamp" />
       <View style={{ paddingHorizontal: 14 }}>
         <Card padded={false}>
-          <Row icon={<Icon.spark size={18} color={c.accent} />} label="Stamps collection" value={`${earnedStamps} / ${STAMPS.length} earned`} onPress={() => rootNav.navigate('Stamps')} />
-          <Row icon={<Icon.shoe size={18} color={c.ink2} />} label="Shoes" value="4 active" onPress={() => setSub('shoes')} />
+          <Row icon={<Icon.spark size={18} color={c.accent} />} label="Stamps collection" value="View catalog" onPress={() => rootNav.navigate('Stamps')} />
+          <Row icon={<Icon.shoe size={18} color={c.ink2} />} label="Shoes" value="Coming soon" onPress={() => setSub('shoes')} />
           <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value="Strava · Apple Health" onPress={() => setSub('connections')} />
           <Row icon={<Icon.privacy size={18} color={c.ink2} />} label="Privacy" value="200 m blur · on" onPress={() => setSub('privacy')} />
           <Row icon={<Icon.ruler size={18} color={c.ink2} />} label="Units" value={units === 'km' ? 'Metric' : 'Imperial'} chevron />
@@ -187,47 +186,22 @@ function SubHeader({ back, title }: { back: () => void; title: string }) {
 
 function ShoesScreen({ back }: { back: () => void }) {
   const c = useColors();
-  const { units } = useAppState();
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
       <SubHeader back={back} title="SHOES" />
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
-        <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, color: c.ink }}>Four pairs in rotation.</TText>
-        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 4 }}>Total: 1,176 km across active shoes.</TText>
+        <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, color: c.ink }}>Shoes are coming.</TText>
+        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, lineHeight: 18 }}>
+          Track mileage per pair, retire shoes when they’re cooked, and tag every run with what you wore. We’re shipping this in M5.
+        </TText>
       </View>
-      <View style={{ paddingHorizontal: 14, paddingTop: 18, gap: 10 }}>
-        {SHOES.map((s) => {
-          const pct = Math.min(s.km / s.cap, 1);
-          const warn = pct > 0.85;
-          return (
-            <Card key={s.id}>
-              <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
-                <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: s.color, opacity: s.primary ? 1 : 0.85, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon.shoe size={26} color="#fff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                    <TText style={{ fontSize: 15, fontWeight: '500', color: c.ink }}>{s.model}</TText>
-                    {s.primary && <Eyebrow style={{ color: c.accent, fontSize: 9 }}>PRIMARY</Eyebrow>}
-                    {s.race && <Eyebrow style={{ fontSize: 9 }}>RACE-DAY</Eyebrow>}
-                  </View>
-                  <TText style={{ fontSize: 12, color: c.ink3 }}>{s.brand} · since {s.since.slice(0, 7)}</TText>
-                  <View style={{ marginTop: 10 }}>
-                    <View style={{ height: 6, backgroundColor: c.line, borderRadius: 3, overflow: 'hidden' }}>
-                      <View style={{ width: `${pct * 100}%`, height: 6, backgroundColor: warn ? c.warn : c.ink }} />
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                      <TText variant="mono" style={{ fontSize: 11, color: warn ? c.warn : c.ink2 }}>
-                        {s.km} {distUnit(units)}{warn ? ' · replace soon' : ''}
-                      </TText>
-                      <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>cap {s.cap}</TText>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </Card>
-          );
-        })}
+      <View style={{ paddingHorizontal: 14, paddingTop: 24 }}>
+        <Card style={{ backgroundColor: c.paper2 }}>
+          <Eyebrow style={{ color: c.ink3 }}>ROADMAP · M5</Eyebrow>
+          <TText style={{ fontSize: 13, color: c.ink2, marginTop: 8 }}>
+            Until then, your runs show without a shoe tag.
+          </TText>
+        </Card>
       </View>
     </ScrollView>
   );

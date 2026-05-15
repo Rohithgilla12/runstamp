@@ -331,19 +331,22 @@ export interface Stamp {
   earnedAt?: string;
   activityId?: string;
 }
+// Stamps catalogue. Until the awarding pipeline is wired (PRD §6), every
+// stamp is locked — earnedAt only flips to a real ISO date once the relevant
+// activity passes its rule on the backend.
 export const STAMPS: Stamp[] = [
-  { id: 'first_5k',          name: 'First 5K',          description: 'Logged a 5K run.',           tier: 'common', earnedAt: '2023-08-04', activityId: 'a9' },
-  { id: 'first_10k',         name: 'First 10K',         description: 'Logged a 10K run.',          tier: 'common', earnedAt: '2023-08-14' },
-  { id: 'first_half',        name: 'First half',        description: 'Crossed 21.1 km.',           tier: 'common', earnedAt: '2024-01-12' },
-  { id: 'first_marathon',    name: 'First marathon',    description: 'Crossed 42.2 km.',           tier: 'rare',   earnedAt: '2026-01-21' },
-  { id: 'sub_345_marathon',  name: 'Sub-3:45 marathon', description: '42.2 km under 3 h 45 min.',  tier: 'rare',   earnedAt: '2026-01-21' },
-  { id: 'sub_50_10k',        name: 'Sub-50 10K',        description: '10K under 50 minutes.',      tier: 'common', earnedAt: '2025-11-03' },
-  { id: 'sub_2h_half',       name: 'Sub-2:00 half',     description: '21.1 km under 2 h.',         tier: 'common', earnedAt: '2025-04-12' },
+  { id: 'first_5k',          name: 'First 5K',          description: 'Logged a 5K run.',           tier: 'common' },
+  { id: 'first_10k',         name: 'First 10K',         description: 'Logged a 10K run.',          tier: 'common' },
+  { id: 'first_half',        name: 'First half',        description: 'Crossed 21.1 km.',           tier: 'common' },
+  { id: 'first_marathon',    name: 'First marathon',    description: 'Crossed 42.2 km.',           tier: 'rare' },
+  { id: 'sub_345_marathon',  name: 'Sub-3:45 marathon', description: '42.2 km under 3 h 45 min.',  tier: 'rare' },
+  { id: 'sub_50_10k',        name: 'Sub-50 10K',        description: '10K under 50 minutes.',      tier: 'common' },
+  { id: 'sub_2h_half',       name: 'Sub-2:00 half',     description: '21.1 km under 2 h.',         tier: 'common' },
   { id: 'streak_30d',        name: '30-day streak',     description: 'Ran every day for 30 days.', tier: 'rare' },
   { id: 'boston_q',          name: 'Boston qualifier',  description: 'Qualifying marathon time.',  tier: 'mythic' },
   { id: 'sub_3h_marathon',   name: 'Sub-3 marathon',    description: '42.2 km under 3 h.',         tier: 'mythic' },
-  { id: 'cities_5',          name: '5 cities stamped',  description: 'Run in 5 different cities.', tier: 'common', earnedAt: '2025-03-19' },
-  { id: 'continents_3',      name: '3 continents',      description: 'Run on 3 continents.',       tier: 'rare',   earnedAt: '2026-01-22' }
+  { id: 'cities_5',          name: '5 cities stamped',  description: 'Run in 5 different cities.', tier: 'common' },
+  { id: 'continents_3',      name: '3 continents',      description: 'Run on 3 continents.',       tier: 'rare' }
 ];
 
 // formatters

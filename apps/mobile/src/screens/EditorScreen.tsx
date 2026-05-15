@@ -6,7 +6,8 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-nativ
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
-import { ACT, distUnit, fmtDist, fmtPace, fmtTime } from '../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime, type Activity } from '../data/sample';
+import { useActivities } from '../state/useActivities';
 import { useAppState } from '../state/AppState';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
@@ -64,8 +65,9 @@ const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
 export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const id = route.params?.id ?? 'a1';
-  const run = ACT.find((a) => a.id === id) ?? ACT[0];
+  const id = route.params?.id;
+  const { activities, loading } = useActivities();
+  const run = id ? activities.find((a) => a.id === id) : activities[0];
 
   const [surface, setSurface] = useState<Surface>('9:16');
   const [bg, setBg] = useState<Background>('map');
@@ -83,7 +85,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   ]);
 
   const handleExport = async (mode: ExportMode) => {
-    if (!canvasRef.current || exporting) return;
+    if (!run || !canvasRef.current || exporting) return;
     setSelected(null);
     setExporting(true);
     try {
@@ -130,6 +132,30 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const canvasW = Math.min(screenW - CANVAS_PADDING * 2, 360);
   const ratio = surface === '9:16' ? 16 / 9 : surface === '1:1' ? 1 : 5 / 4;
   const canvasH = canvasW * ratio;
+
+  if (!run) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 8 }}>
+        <View style={{ paddingHorizontal: 14, flexDirection: 'row' }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={{
+              width: 38, height: 38, borderRadius: 12, backgroundColor: c.paper2,
+              borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Icon.back size={20} color={c.ink} />
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Eyebrow style={{ color: c.ink3 }}>{loading ? 'LOADING…' : 'NO RUN'}</Eyebrow>
+          <TText variant="serif" style={{ fontSize: 22, color: c.ink, marginTop: 8, textAlign: 'center' }}>
+            {loading ? 'Fetching your run…' : 'Open a run to start editing.'}
+          </TText>
+        </View>
+      </View>
+    );
+  }
 
   const toggleSticker = (key: StickerKey) => {
     setStickers((current) => {
@@ -549,7 +575,7 @@ function DraggableSticker({
   onRemove
 }: {
   sticker: StickerInstance;
-  run: typeof ACT[number];
+  run: Activity;
   canvasW: number;
   canvasH: number;
   isSelected: boolean;

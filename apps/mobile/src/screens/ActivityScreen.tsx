@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ACT, distUnit, fmtDist, fmtPace, fmtTime, paceUnit } from '../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useColors, useTheme } from '../design/theme';
@@ -20,11 +20,39 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const { dark } = useTheme();
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
-  const id = route.params?.id ?? 'a1';
-  const { activities } = useActivities();
-  const pool = activities.length > 0 ? activities : ACT;
-  const run = pool.find((a) => a.id === id) ?? pool[0];
+  const id = route.params?.id;
+  const { activities, loading } = useActivities();
+  const run = id ? activities.find((a) => a.id === id) : activities[0];
   const [tab, setTab] = useState<Tab>('splits');
+
+  if (!run) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 8 }}>
+        <View style={{ paddingHorizontal: 14, flexDirection: 'row' }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={{
+              width: 38, height: 38, borderRadius: 12, backgroundColor: c.paper2,
+              borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            <Icon.back size={20} color={c.ink} />
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Eyebrow style={{ color: c.ink3 }}>{loading ? 'LOADING…' : 'NOT FOUND'}</Eyebrow>
+          <TText variant="serif" style={{ fontSize: 24, color: c.ink, marginTop: 8, textAlign: 'center' }}>
+            {loading ? 'Fetching your run…' : 'This run isn’t here yet.'}
+          </TText>
+          {!loading && (
+            <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, textAlign: 'center' }}>
+              It might still be syncing from Strava or Apple Health.
+            </TText>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -171,7 +199,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   );
 }
 
-function SplitsTable({ run }: { run: typeof ACT[number] }) {
+function SplitsTable({ run }: { run: Activity }) {
   const c = useColors();
   const { units } = useAppState();
   const splits = run.splits ?? [];
