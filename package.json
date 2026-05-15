@@ -16,10 +16,17 @@
     "api:vet": "cd apps/api && go vet ./...",
     "api:up": "cd apps/api && docker compose up --build",
     "api:down": "cd apps/api && docker compose down",
+    "icons": "node scripts/generate-icons.mjs",
+    "mobile:prebuild": "cd apps/mobile && pnpm dlx expo prebuild --clean",
+    "mobile:build:dev": "cd apps/mobile && pnpm dlx eas build --profile development --platform ios",
+    "mobile:build:preview": "cd apps/mobile && pnpm dlx eas build --profile preview --platform ios",
+    "mobile:build:prod": "cd apps/mobile && pnpm dlx eas build --profile production --platform ios",
+    "mobile:submit": "cd apps/mobile && pnpm dlx eas submit --platform ios --latest",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "turbo": "^2.5.7",
     "typescript": "5.9.2"
   }

@@ -24,6 +24,13 @@ const config: ExpoConfig = {
   scheme: 'runstamp',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
+  icon: './assets/icon.png',
+  splash: {
+    image: './assets/splash-icon.png',
+    backgroundColor: '#f3ede2',
+    resizeMode: 'contain'
+  },
+  assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'fun.gilla.runstamp',
@@ -57,12 +64,23 @@ const config: ExpoConfig = {
   android: {
     package: 'fun.gilla.runstamp',
     edgeToEdgeEnabled: true,
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#f3ede2'
+    },
     googleServicesFile:
       process.env.GOOGLE_SERVICES_JSON ?? './google-services.json'
   },
   web: {
-    bundler: 'metro'
+    bundler: 'metro',
+    favicon: './assets/favicon.png'
   },
+  // `eas init` writes the real project id into this file after you run it
+  // once. For now we set EXPO_PUBLIC_EAS_PROJECT_ID via env so CI builds work
+  // before the local checkout is `eas init`-ed.
+  ...(process.env.EXPO_PUBLIC_EAS_PROJECT_ID
+    ? { extra: { eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID } } }
+    : {}),
   experiments: {
     typedRoutes: false
   },
