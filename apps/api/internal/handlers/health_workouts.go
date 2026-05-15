@@ -19,26 +19,49 @@ type HealthHandler struct {
 	Log        *slog.Logger
 }
 
-type incomingWorkout struct {
-	UUID                string       `json:"uuid"`
-	StartedAt           string       `json:"startedAt"`
-	ElapsedSeconds      int          `json:"elapsedSeconds"`
-	MovingSeconds       *int         `json:"movingSeconds,omitempty"`
-	DistanceMeters      float64      `json:"distanceMeters"`
-	ActiveEnergyKcal    *float64     `json:"activeEnergyKcal,omitempty"`
-	ElevationGainMeters *float64     `json:"elevationGainMeters,omitempty"`
-	AvgHeartRate        *int         `json:"avgHeartRate,omitempty"`
-	MaxHeartRate        *int         `json:"maxHeartRate,omitempty"`
-	StartLatitude       *float64     `json:"startLatitude,omitempty"`
-	StartLongitude      *float64     `json:"startLongitude,omitempty"`
-	Route               []routePoint `json:"route,omitempty"`
+// incomingStream represents a downsampled numeric time-series from the mobile
+// client. tStart is epoch ms, dtSec is the uniform inter-sample gap in
+// seconds, and values is the array of metric readings.
+type incomingStream struct {
+	TStart float64   `json:"tStart"`
+	DtSec  float64   `json:"dtSec"`
+	Values []float64 `json:"values"`
 }
 
-type routePoint struct {
-	Lat float64  `json:"lat"`
-	Lon float64  `json:"lon"`
-	T   int64    `json:"t"`
-	Alt *float64 `json:"alt,omitempty"`
+// incomingStreams carries all optional stream kinds from a single workout.
+type incomingStreams struct {
+	Heartrate          *incomingStream      `json:"heartrate,omitempty"`
+	Speed              *incomingStream      `json:"speed,omitempty"`
+	Cadence            *incomingStream      `json:"cadence,omitempty"`
+	Power              *incomingStream      `json:"power,omitempty"`
+	VerticalOscillation *incomingStream     `json:"verticalOscillation,omitempty"`
+	GroundContactTime  *incomingStream      `json:"groundContactTime,omitempty"`
+	StrideLength       *incomingStream      `json:"strideLength,omitempty"`
+	Altitude           *incomingStream      `json:"altitude,omitempty"`
+	Latlng             [][2]float64         `json:"latlng,omitempty"`
+}
+
+type incomingWorkout struct {
+	UUID                  string           `json:"uuid"`
+	StartedAt             string           `json:"startedAt"`
+	ElapsedSeconds        int              `json:"elapsedSeconds"`
+	MovingSeconds         *int             `json:"movingSeconds,omitempty"`
+	DistanceMeters        float64          `json:"distanceMeters"`
+	ActiveEnergyKcal      *float64         `json:"activeEnergyKcal,omitempty"`
+	ElevationGainMeters   *float64         `json:"elevationGainMeters,omitempty"`
+	AvgHeartRate          *int             `json:"avgHeartRate,omitempty"`
+	MaxHeartRate          *int             `json:"maxHeartRate,omitempty"`
+	AvgRunningPower       *float64         `json:"avgRunningPower,omitempty"`
+	AvgVerticalOscillation *float64        `json:"avgVerticalOscillation,omitempty"`
+	AvgGroundContactTime  *float64         `json:"avgGroundContactTime,omitempty"`
+	AvgStrideLength       *float64         `json:"avgStrideLength,omitempty"`
+	AvgRunningSpeed       *float64         `json:"avgRunningSpeed,omitempty"`
+	AvgCadence            *float64         `json:"avgCadence,omitempty"`
+	VO2maxMlKgMin         *float64         `json:"vo2maxMlKgMin,omitempty"`
+	StartLatitude         *float64         `json:"startLatitude,omitempty"`
+	StartLongitude        *float64         `json:"startLongitude,omitempty"`
+	Streams               *incomingStreams  `json:"streams,omitempty"`
+	Splits                json.RawMessage  `json:"splits,omitempty"`
 }
 
 type healthSyncRequest struct {
@@ -117,26 +140,40 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 
 		rawMsg := json.RawMessage(rawBytes)
 
-		candidate := &activities.Activity{
-			UserID:        user.ID,
-			Source:        "apple_health",
-			ExternalID:    wk.UUID,
-			Sport:         "run",
-			StartedAt:     startedAt,
-			ElapsedSeconds: wk.ElapsedSeconds,
-			MovingSeconds: wk.MovingSeconds,
-			DistanceM:     wk.DistanceMeters,
-			ElevationGainM: wk.ElevationGainMeters,
-			AvgHR:         wk.AvgHeartRate,
-			MaxHR:         wk.MaxHeartRate,
-			AvgPaceSPerKm: avgPace,
-			Calories:      calories,
-			StartLat:      wk.StartLatitude,
-			StartLon:      wk.StartLongitude,
-			Raw:           &rawMsg,
+		var splitsRaw *json.RawMessage
+		if len(wk.Splits) > 0 && string(wk.Splits) != "null" {
+			msg := json.RawMessage(wk.Splits)
+			splitsRaw = &msg
 		}
 
-		_, isDupe, ingestErr := h.Activities.Ingest(r.Context(), candidate)
+		candidate := &activities.Activity{
+			UserID:          user.ID,
+			Source:          "apple_health",
+			ExternalID:      wk.UUID,
+			Sport:           "run",
+			StartedAt:       startedAt,
+			ElapsedSeconds:  wk.ElapsedSeconds,
+			MovingSeconds:   wk.MovingSeconds,
+			DistanceM:       wk.DistanceMeters,
+			ElevationGainM:  wk.ElevationGainMeters,
+			AvgHR:           wk.AvgHeartRate,
+			MaxHR:           wk.MaxHeartRate,
+			AvgPaceSPerKm:   avgPace,
+			Calories:        calories,
+			StartLat:        wk.StartLatitude,
+			StartLon:        wk.StartLongitude,
+			Raw:             &rawMsg,
+			CadenceSPM:      wk.AvgCadence,
+			RunningPowerW:   wk.AvgRunningPower,
+			VerticalOscCm:   wk.AvgVerticalOscillation,
+			GroundContactMs: wk.AvgGroundContactTime,
+			StrideLengthM:   wk.AvgStrideLength,
+			VO2maxMlKgMin:   wk.VO2maxMlKgMin,
+			AvgSpeedMS:      wk.AvgRunningSpeed,
+			Splits:          splitsRaw,
+		}
+
+		canonical, isDupe, ingestErr := h.Activities.Ingest(r.Context(), candidate)
 		if ingestErr != nil {
 			h.Log.Warn("health sync: ingest failed", "uuid", wk.UUID, "err", ingestErr)
 			skipped++
@@ -147,10 +184,10 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 			duplicates++
 		} else {
 			uploaded++
+			if wk.Streams != nil && canonical != nil {
+				h.insertStreams(r, canonical.ID, wk.UUID, wk.Streams)
+			}
 		}
-
-		// TODO(v0.2): when route is present, insert a downsampled latlng
-		// stream into activity_streams after the activity row is committed.
 	}
 
 	writeJSON(w, http.StatusOK, healthSyncResponse{
@@ -158,4 +195,55 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 		Duplicates: duplicates,
 		Skipped:    skipped,
 	})
+}
+
+// insertStreams persists each present stream kind into activity_streams.
+// Errors are logged and silently skipped — a missing stream is not fatal to
+// the ingest result.
+func (h *HealthHandler) insertStreams(r *http.Request, activityID, uuid string, streams *incomingStreams) {
+	type streamEntry struct {
+		kind string
+		data interface{}
+	}
+
+	entries := []streamEntry{}
+
+	if streams.Heartrate != nil {
+		entries = append(entries, streamEntry{"heartrate", streams.Heartrate})
+	}
+	if streams.Speed != nil {
+		entries = append(entries, streamEntry{"speed", streams.Speed})
+	}
+	if streams.Cadence != nil {
+		entries = append(entries, streamEntry{"cadence", streams.Cadence})
+	}
+	if streams.Power != nil {
+		entries = append(entries, streamEntry{"power", streams.Power})
+	}
+	if streams.VerticalOscillation != nil {
+		entries = append(entries, streamEntry{"vertical_oscillation", streams.VerticalOscillation})
+	}
+	if streams.GroundContactTime != nil {
+		entries = append(entries, streamEntry{"ground_contact_time", streams.GroundContactTime})
+	}
+	if streams.StrideLength != nil {
+		entries = append(entries, streamEntry{"stride_length", streams.StrideLength})
+	}
+	if streams.Altitude != nil {
+		entries = append(entries, streamEntry{"altitude", streams.Altitude})
+	}
+	if len(streams.Latlng) > 0 {
+		entries = append(entries, streamEntry{"latlng", streams.Latlng})
+	}
+
+	for _, entry := range entries {
+		data, marshalErr := json.Marshal(entry.data)
+		if marshalErr != nil {
+			h.Log.Warn("health sync: marshal stream failed", "uuid", uuid, "kind", entry.kind, "err", marshalErr)
+			continue
+		}
+		if insertErr := h.Activities.Repo().InsertStream(r.Context(), activityID, entry.kind, data); insertErr != nil {
+			h.Log.Warn("health sync: insert stream failed", "uuid", uuid, "kind", entry.kind, "err", insertErr)
+		}
+	}
 }

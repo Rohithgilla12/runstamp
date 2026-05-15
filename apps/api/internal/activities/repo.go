@@ -42,6 +42,14 @@ type Activity struct {
 	Raw             *json.RawMessage
 	DupeOf          *string
 	IngestedAt      time.Time
+	CadenceSPM      *float64
+	RunningPowerW   *float64
+	VerticalOscCm   *float64
+	GroundContactMs *float64
+	StrideLengthM   *float64
+	VO2maxMlKgMin   *float64
+	AvgSpeedMS      *float64
+	Splits          *json.RawMessage
 }
 
 // Repository wraps a pgxpool and performs CRUD on the activities table.
@@ -80,7 +88,9 @@ INSERT INTO activities (
   avg_hr, max_hr, avg_pace_s_per_km, calories,
   title, notes,
   location_city, location_country,
-  raw, dupe_of
+  raw, dupe_of,
+  cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
+  stride_length_m, vo2max_ml_kg_min, avg_speed_m_s, splits
 ) VALUES (
   $1,  $2,  $3,  $4,  $5,
   $6,  $7,  $8,  $9,
@@ -88,7 +98,9 @@ INSERT INTO activities (
   $12, $13, $14, $15,
   $16, $17,
   $18, $19,
-  $20, $21
+  $20, $21,
+  $22, $23, $24, $25,
+  $26, $27, $28, $29
 )
 ON CONFLICT (user_id, source, external_id) DO NOTHING
 RETURNING id, ingested_at`
@@ -101,6 +113,8 @@ RETURNING id, ingested_at`
 			a.Title, a.Notes,
 			a.LocationCity, a.LocationCountry,
 			a.Raw, a.DupeOf,
+			a.CadenceSPM, a.RunningPowerW, a.VerticalOscCm, a.GroundContactMs,
+			a.StrideLengthM, a.VO2maxMlKgMin, a.AvgSpeedMS, a.Splits,
 		)
 		return r.scanInsertResult(ctx, q, row, a)
 	}
@@ -113,7 +127,9 @@ INSERT INTO activities (
   avg_hr, max_hr, avg_pace_s_per_km, calories,
   title, notes,
   location_city, location_country,
-  raw, dupe_of
+  raw, dupe_of,
+  cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
+  stride_length_m, vo2max_ml_kg_min, avg_speed_m_s, splits
 ) VALUES (
   $1,  $2,  $3,  $4,  $5,
   $6,  $7,  $8,  $9,
@@ -121,7 +137,9 @@ INSERT INTO activities (
   $10, $11, $12, $13,
   $14, $15,
   $16, $17,
-  $18, $19
+  $18, $19,
+  $20, $21, $22, $23,
+  $24, $25, $26, $27
 )
 ON CONFLICT (user_id, source, external_id) DO NOTHING
 RETURNING id, ingested_at`
@@ -133,6 +151,8 @@ RETURNING id, ingested_at`
 		a.Title, a.Notes,
 		a.LocationCity, a.LocationCountry,
 		a.Raw, a.DupeOf,
+		a.CadenceSPM, a.RunningPowerW, a.VerticalOscCm, a.GroundContactMs,
+		a.StrideLengthM, a.VO2maxMlKgMin, a.AvgSpeedMS, a.Splits,
 	)
 	return r.scanInsertResult(ctx, q, row, a)
 }
