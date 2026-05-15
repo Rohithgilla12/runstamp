@@ -24,7 +24,12 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
-  const { route: realRoute } = useActivityStreams(run?.id ?? null);
+  const { route: realRoute, streams } = useActivityStreams(run?.id ?? null);
+  const liveHr = parseNumberStream(streams.heartrate?.data);
+  const liveVelocity = parseNumberStream(streams.velocity?.data);
+  // Strava velocity is m/s. Convert to seconds-per-km for the pace chart so
+  // the y-axis means "slower = worse" like a runner expects.
+  const livePace = liveVelocity ? liveVelocity.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
   const [tab, setTab] = useState<Tab>('splits');
 
   if (!run) {
@@ -164,8 +169,8 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
 
         <View style={{ paddingTop: 16 }}>
           {tab === 'splits' && <SplitsTable run={run} />}
-          {tab === 'hr' && (run.streamHr ? <StreamChart data={run.streamHr} color={c.accent} /> : <Empty text="No HR data." />)}
-          {tab === 'pace' && (run.streamPace ?? run.streamHr ? <StreamChart data={run.streamPace ?? run.streamHr!} color={c.ink} /> : <Empty text="No pace data." />)}
+          {tab === 'hr' && ((liveHr ?? run.streamHr) ? <StreamChart data={(liveHr ?? run.streamHr)!} color={c.accent} /> : <Empty text="No HR data." />)}
+          {tab === 'pace' && ((livePace ?? run.streamPace ?? run.streamHr) ? <StreamChart data={(livePace ?? run.streamPace ?? run.streamHr)!} color={c.ink} /> : <Empty text="No pace data." />)}
         </View>
 
         <View style={{ paddingTop: 20 }}>
@@ -246,4 +251,15 @@ function SplitsTable({ run }: { run: Activity }) {
 function Empty({ text }: { text: string }) {
   const c = useColors();
   return <TText style={{ fontSize: 13, color: c.ink3, textAlign: 'center', padding: 20 }}>{text}</TText>;
+}
+
+// Strava streams arrive as `number[]`. Sanity-check the shape and drop
+// non-finite values so the chart doesn't choke on a stray null.
+function parseNumberStream(data: unknown): number[] | null {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const out: number[] = [];
+  for (const v of data) {
+    if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
+  }
+  return out.length > 0 ? out : null;
 }
