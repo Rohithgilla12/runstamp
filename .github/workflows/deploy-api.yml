@@ -1,0 +1,81 @@
+name: Deploy API
+
+# Auto-deploy backend to the Oracle Cloud VPS on every push to main that
+# touches apps/api/** or the deploy workflow itself. SSH-based: workflow
+# SSHes in, fetches latest main, and runs `docker compose up -d --build api`.
+# No container registry — matches what we do manually.
+#
+# Required repo secrets:
+#   VPS_SSH_PRIVATE_KEY   ed25519 or RSA private key with access to
+#                         ubuntu@<host>. Generate via:
+#                           ssh-keygen -t ed25519 -f runstamp-deploy -C "gha-deploy"
+#                         Append runstamp-deploy.pub to ~/.ssh/authorized_keys
+#                         on the VPS, then paste runstamp-deploy into the
+#                         secret value.
+#   VPS_HOST              IP or hostname (e.g. 150.230.131.66)
+#   VPS_USER              SSH user (ubuntu)
+#   VPS_KNOWN_HOSTS       Output of `ssh-keyscan <VPS_HOST>` — pins the host
+#                         key so the connection isn't TOFU on every run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  # One deploy at a time; cancel any in-flight run when a newer commit lands.
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Oracle VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          echo "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$VPS_USER@$VPS_HOST" bash <<'REMOTE'
+          set -euo pipefail
+          cd ~/runstamp
+          git fetch --tags origin main
+          git reset --hard origin/main
+          cd apps/api
+          docker compose build api
+          docker compose up -d api
+          # Wait for healthz before declaring success — fail the deploy
+          # if the new container doesn't come up cleanly.
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8090/healthz >/dev/null; then
+              echo "Healthcheck ok after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Healthcheck timed out — rolling logs:"
+          docker compose logs --tail=80 api
+          exit 1
+          REMOTE
+
+      - name: Smoke test public URL
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' https://runstamp-api.gilla.fun/healthz)
+          if [ "$status" != "200" ]; then
+            echo "Public healthcheck returned $status"
+            exit 1
+          fi
