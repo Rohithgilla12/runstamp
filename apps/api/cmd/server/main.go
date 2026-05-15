@@ -31,6 +31,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/waitlist"
 )
 
 // version is overridden at build time via `-ldflags "-X main.version=..."`.
@@ -228,6 +229,11 @@ func main() {
 			Users:      usersRepo,
 			Log:        log,
 		}
+		// Public — no auth required. CORS is scoped inside the handler.
+		waitlistRepo := waitlist.NewRepository(pool)
+		waitlistHandler := waitlist.NewHandler(waitlistRepo, cfg.WaitlistIPSalt, log)
+		r.Route("/waitlist", waitlistHandler.Routes)
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))

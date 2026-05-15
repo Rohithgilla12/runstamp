@@ -9,6 +9,8 @@ import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
 import { useHealth } from '../state/HealthContext';
+import { useActivities } from '../state/useActivities';
+import { fmtDist } from '../data/sample';
 import { connectStrava, disconnectStrava, getStravaStatus, type StravaStatus } from '../services/strava';
 import { reevaluateStamps } from '../services/stamps';
 import { backfillPlaces } from '../services/places';
@@ -27,9 +29,16 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { units, dark, setDark, setHasOnboarded } = useAppState();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const { activities } = useActivities();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [sub, setSub] = useState<Sub>('main');
+  const totalKm = activities.reduce((a, x) => a + x.distance, 0);
+  const totalRuns = activities.length;
+  const streak = computeStreak(activities.map((a) => a.date));
+  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Runner';
+  const initial = (displayName[0] ?? 'R').toUpperCase();
+  const joinedLabel = formatJoined(user?.metadata?.creationTime);
 
   if (sub === 'shoes') return <ShoesScreen back={() => setSub('main')} />;
   if (sub === 'connections') return <ConnectionsScreen back={() => setSub('main')} />;
@@ -50,20 +59,19 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
               <LinearGradient colors={[c.accent, '#c44a1e']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', inset: 0 }} />
-              <TText variant="serif" style={{ fontSize: 24, color: '#fff' }}>G</TText>
+              <TText variant="serif" style={{ fontSize: 24, color: '#fff' }}>{initial}</TText>
             </View>
             <View style={{ flex: 1 }}>
-              <TText variant="serif" style={{ fontSize: 22, color: c.ink, lineHeight: 24, letterSpacing: -0.3 }}>Gilla</TText>
-              <TText style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>Bangalore · joined Aug ’23</TText>
+              <TText variant="serif" style={{ fontSize: 22, color: c.ink, lineHeight: 24, letterSpacing: -0.3 }}>{displayName}</TText>
+              {joinedLabel && <TText style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>{joinedLabel}</TText>}
             </View>
-            <Icon.more size={18} color={c.ink3} />
           </View>
 
           <View style={{ flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.line, gap: 12 }}>
             {[
-              ['LIFETIME', '4,287', 'km'],
-              ['RUNS',     '612',   undefined],
-              ['STREAK',   '6',     'd']
+              ['LIFETIME', totalKm > 0 ? fmtDist(totalKm, units) : '—', units] as const,
+              ['RUNS',     totalRuns > 0 ? String(totalRuns) : '—', undefined] as const,
+              ['STREAK',   streak > 0 ? String(streak) : '—', streak > 0 ? 'd' : undefined] as const,
             ].map(([l, v, u], i) => (
               <View key={i} style={{ flex: 1 }}>
                 <Eyebrow style={{ fontSize: 9 }}>{l}</Eyebrow>
@@ -101,8 +109,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
           <Row icon={<Icon.download size={18} color={c.ink2} />} label="Export data" value="GPX zip · JSON" chevron />
           <Row icon={<Icon.github size={18} color={c.ink2} />} label="View source" value="github.com/gilla/runstamp" chevron />
           <Row icon={<Icon.bolt size={18} color={c.ink2} />} label="Replay onboarding" onPress={() => setHasOnboarded(false)} chevron />
-          <Row icon={<Icon.user size={18} color={c.ink2} />} label="Sign out" onPress={signOut} chevron />
-          <Row icon={<Icon.trash size={18} color="#c44a1e" />} label="Delete account" danger chevron isLast />
+          <Row icon={<Icon.user size={18} color={c.ink2} />} label="Sign out" onPress={signOut} chevron isLast />
         </Card>
       </View>
 
@@ -237,29 +244,49 @@ function ConnectionsScreen({ back }: { back: () => void }) {
 
   const handleStravaPress = useCallback(async () => {
     if (stravaBusy) return;
-    setStravaBusy(true);
-    try {
-      if (stravaConnected) {
-        Alert.alert('Disconnect Strava?', 'Already-imported activities stay. Runstamp will stop receiving new runs from Strava.', [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disconnect',
-            style: 'destructive',
-            onPress: async () => {
+    if (stravaConnected) {
+      Alert.alert('Disconnect Strava?', 'Already-imported activities stay. Runstamp will stop receiving new runs from Strava.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            setStravaBusy(true);
+            try {
               const idToken = await getIdToken();
               await disconnectStrava(idToken);
               await refreshStravaStatus();
-            },
+            } catch (e) {
+              Alert.alert('Disconnect failed', e instanceof Error ? e.message : String(e));
+            } finally {
+              setStravaBusy(false);
+            }
           },
-        ]);
+        },
+      ]);
+      return;
+    }
+    setStravaBusy(true);
+    try {
+      const idToken = await getIdToken();
+      if (!idToken) {
+        Alert.alert('Not signed in', 'Sign out and back in to refresh your session.');
         return;
       }
-      const idToken = await getIdToken();
       const result = await connectStrava(idToken);
-      if (result.type === 'error' && result.reason !== 'cancelled') {
-        Alert.alert('Couldn’t connect Strava', result.reason);
+      if (result.type === 'error') {
+        Alert.alert('Couldn’t open Strava', `${result.reason}\n\nIf the in-app browser didn’t open, check that the Strava client_id is set on the backend.`);
+      } else if (result.type === 'cancelled') {
+        // No-op — user closed the sheet.
+      } else {
+        // Connected — refresh status.
       }
       await refreshStravaStatus();
+    } catch (e) {
+      // Most likely the POST /v1/strava/connect itself failed (server
+      // down, no Strava credentials, network). Surface the underlying
+      // message so we don't silently die.
+      Alert.alert('Couldn’t reach Runstamp', e instanceof Error ? e.message : String(e));
     } finally {
       setStravaBusy(false);
     }
@@ -304,16 +331,28 @@ function ConnectionsScreen({ back }: { back: () => void }) {
     if (syncing) return;
     if (!healthConnected) {
       try {
-        await connectHealth();
+        const res = await connectHealth();
+        if (res) {
+          Alert.alert(
+            'Apple Health connected',
+            `Uploaded ${res.uploaded} workouts${res.skipped > 0 ? ` (${res.skipped} skipped)` : ''}.`,
+          );
+        }
       } catch (e) {
-        Alert.alert('Couldn’t connect Apple Health', e instanceof Error ? e.message : 'unknown');
+        Alert.alert(
+          'Couldn’t sync Apple Health',
+          (e instanceof Error ? e.message : String(e)) +
+            '\n\nPermissions are granted but the upload failed. Pull to retry from Home.',
+        );
       }
       return;
     }
-    const idToken = await getIdToken();
-    if (!idToken) return;
-    await resync();
-  }, [syncing, healthConnected, connectHealth, getIdToken, resync]);
+    try {
+      await resync();
+    } catch (e) {
+      Alert.alert('Re-sync failed', e instanceof Error ? e.message : String(e));
+    }
+  }, [syncing, healthConnected, connectHealth, resync]);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -701,3 +740,33 @@ function Toggle({
     </Pressable>
   );
 }
+
+// Streak: number of consecutive *days* up to and including today that contain
+// at least one run. A 'rest day' breaks the streak.
+function computeStreak(isoDates: string[]): number {
+  if (isoDates.length === 0) return 0;
+  const set = new Set(isoDates);
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 730; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (set.has(key)) {
+      streak += 1;
+    } else if (i === 0) {
+      continue;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function formatJoined(creationTime?: string): string | null {
+  if (!creationTime) return null;
+  const d = new Date(creationTime);
+  if (Number.isNaN(d.getTime())) return null;
+  return `Joined ${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
+}
+

@@ -97,8 +97,15 @@ export async function syncRecentWorkouts(
 
   const validWorkouts = workouts.filter((w) => w.distanceMeters > 0);
 
-  const payloads: WorkoutPayload[] = await Promise.all(
-    validWorkouts.map(async (w): Promise<WorkoutPayload> => {
+  // Detail fetch hits HKHealthStore + reads route + HR samples per workout.
+  // Doing all 500+ in parallel via Promise.all can OOM the device or hang
+  // HealthKit. Process in small concurrent batches so we still get pipelining
+  // without melting the radio.
+  const DETAIL_BATCH = 8;
+  const allPayloads: WorkoutPayload[] = [];
+  for (let i = 0; i < validWorkouts.length; i += DETAIL_BATCH) {
+    const slice = validWorkouts.slice(i, i + DETAIL_BATCH);
+    const batch = await Promise.all(slice.map(async (w): Promise<WorkoutPayload> => {
       const detail = await getRunningWorkoutDetail(w.uuid).catch(() => null);
 
       const payload: WorkoutPayload = {
@@ -174,25 +181,30 @@ export async function syncRecentWorkouts(
       }
 
       return payload;
-    }),
-  );
+    }));
+    allPayloads.push(...batch);
+  }
 
-  if (payloads.length === 0) {
+  if (allPayloads.length === 0) {
     return { uploaded: 0, skipped: 0 };
   }
 
-  try {
-    const body: SyncRequest = { workouts: payloads };
-    const result = await apiPost<SyncResponse>('/v1/health/workouts', body, {
-      idToken,
-    });
-    return {
-      uploaded: result.uploaded,
-      skipped: result.skipped,
-    };
-  } catch {
-    return { uploaded: 0, skipped: payloads.length };
+  // Upload in chunks too — a 500-workout payload at ~5KB each is 2.5MB JSON,
+  // which is fine but the upload itself can take a while on a slow network.
+  // Smaller chunks keep retries cheap.
+  const UPLOAD_BATCH = 50;
+  let uploaded = 0;
+  let skipped = 0;
+  for (let i = 0; i < allPayloads.length; i += UPLOAD_BATCH) {
+    const chunk = allPayloads.slice(i, i + UPLOAD_BATCH);
+    const body: SyncRequest = { workouts: chunk };
+    // Throw on failure so the caller can surface it. Earlier we
+    // silently swallowed every error, which hid bad tokens and 500s.
+    const result = await apiPost<SyncResponse>('/v1/health/workouts', body, { idToken });
+    uploaded += result.uploaded;
+    skipped += result.skipped;
   }
+  return { uploaded, skipped };
 }
 
 function buildStreamsPayload(

@@ -34,7 +34,11 @@ interface HealthContextValue {
   status: HealthPermissionStatus;
   syncing: boolean;
   lastSyncAt: Date | null;
-  connect: () => Promise<void>;
+  /**
+   * Run the permission prompt + 90-day backfill. Returns a small summary
+   * the caller can show. Throws on any error — callers should surface it.
+   */
+  connect: () => Promise<{ uploaded: number; skipped: number } | null>;
   resync: (since?: Date) => Promise<void>;
 }
 
@@ -55,9 +59,12 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
       const sinceISO = since.toISOString();
       setSyncing(true);
       try {
-        await syncRecentWorkouts(idToken, sinceISO);
+        const res = await syncRecentWorkouts(idToken, sinceISO);
         setLastSyncAt(new Date());
+        return res;
       } finally {
+        // Always clear the spinner — even if the upload failed mid-stream,
+        // the caller will surface the error via its own catch.
         setSyncing(false);
       }
     },
@@ -72,20 +79,21 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     const available = await isHealthKitAvailable();
     if (!available) {
       setStatus('unavailable');
-      return;
+      return null;
     }
 
     const granted = await requestRunstampHealthPermissions();
     if (!granted) {
       setStatus('denied');
-      return;
+      return null;
     }
 
     setStatus('granted');
 
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    await runSync(ninetyDaysAgo);
+    const res = await runSync(ninetyDaysAgo);
+    return res ?? null;
   }, [runSync]);
 
   const resync = useCallback(

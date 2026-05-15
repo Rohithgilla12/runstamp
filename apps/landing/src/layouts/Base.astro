@@ -2,15 +2,22 @@
 interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  canonicalPath?: string;
 }
 
 const {
   title = "Runstamp — Collect a stamp for every run",
   description =
-    "Turn your Strava and Apple Health runs into beautiful share cards, a passport of cities, and a catalogue of stamps earned. Free and open source.",
+    "Turn your Strava and Apple Health runs into beautiful share cards, a passport of cities, and a catalogue of earned stamps. Free and open source.",
+  ogImage = "/og.svg",
+  canonicalPath,
 } = Astro.props;
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const canonicalURL = new URL(
+  canonicalPath ?? Astro.url.pathname,
+  Astro.site
+);
 ---
 
 <!doctype html>
@@ -23,30 +30,32 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={new URL("/og.svg", Astro.site)} />
+    <meta property="og:image" content={new URL(ogImage, Astro.site)} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Runstamp" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={new URL("/og.svg", Astro.site)} />
+    <meta name="twitter:image" content={new URL(ogImage, Astro.site)} />
 
-    <!-- JSON-LD -->
+    <!-- JSON-LD SoftwareApplication -->
     <script type="application/ld+json" is:inline>
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Runstamp",
-        "description": "Post-run share card editor, analytics, and stamp catalogue for runners. Free, open-source, iOS and Android.",
+        "description": "Post-run share card editor, analytics dashboard, passport of cities, and earned stamp catalogue for runners. Free, open-source, iOS and Android.",
         "url": "https://runstamp.gilla.fun",
         "applicationCategory": "HealthApplication",
         "operatingSystem": "iOS, Android",
@@ -59,41 +68,86 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
           "@type": "Person",
           "name": "Rohith Gilla",
           "url": "https://github.com/Rohithgilla12"
-        }
+        },
+        "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "releaseNotes": "Open beta 2026"
       }
     </script>
 
-    <!-- Fonts: preconnect first, then load with font-display:swap -->
+    <!--
+      Font loading strategy:
+      - Preload the two weights we paint above-the-fold: Anybody italic (display)
+        and Geist regular (body). JetBrains Mono loads after.
+      - font-display: swap prevents invisible text on slow connections.
+      - Preconnect reduces DNS + TLS handshake latency for Google Fonts.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Anybody: condensed variable display font — editorial, runner-coded,
+      nothing like the reflex serif choices. Pairs well with JetBrains Mono.
+      Geist: clean geometric sans from Vercel, excellent at small sizes.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@1,75,700;1,100,900&family=Geist:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
 
     <style is:global>
+      /* Design tokens — OKLCH palette tinted toward the solar/amber hue */
       :root {
-        --paper: #f3ede2;
-        --paper-2: #ebe3d3;
-        --paper-3: #e2d8c4;
-        --ink: #14110d;
-        --ink-2: #3a342b;
-        --ink-3: #75695a;
-        --solar: #e85d2f;
-        --solar-deep: #c44a1e;
-        --moss: #4a6b3a;
-        --line: rgba(20, 17, 13, 0.1);
-        --line-2: rgba(20, 17, 13, 0.06);
+        /* Paper surfaces — cream tinted toward amber (hue 65) */
+        --paper:    oklch(93% 0.025 68);
+        --paper-2:  oklch(90% 0.030 68);
+        --paper-3:  oklch(86% 0.035 68);
 
-        --font-serif: "Instrument Serif", Georgia, serif;
-        --font-sans: "Geist", -apple-system, system-ui, sans-serif;
-        --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
-          monospace;
+        /* Ink — near-black tinted toward amber */
+        --ink:      oklch(16% 0.018 50);
+        --ink-2:    oklch(30% 0.022 52);
+        --ink-3:    oklch(48% 0.025 54);
+
+        /* Accent — solar orange */
+        --solar:      oklch(57% 0.175 38);
+        --solar-deep: oklch(47% 0.165 38);
+
+        /* Moss green */
+        --moss:       oklch(44% 0.095 148);
+        --moss-light: oklch(54% 0.085 148);
+
+        /* Functional */
+        --line:       oklch(16% 0.018 50 / 10%);
+        --line-2:     oklch(16% 0.018 50 / 6%);
+        --error:      oklch(52% 0.18 25);
+
+        /* Typography */
+        --font-display: "Anybody", "Georgia", serif;
+        --font-sans:    "Geist", -apple-system, system-ui, sans-serif;
+        --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+        /* Modular scale 1.25 base 1rem */
+        --text-xs:   0.64rem;
+        --text-sm:   0.8rem;
+        --text-base: 1rem;
+        --text-lg:   1.25rem;
+        --text-xl:   1.5625rem;
+        --text-2xl:  1.953rem;
+        --text-3xl:  2.441rem;
+        --text-4xl:  3.052rem;
+
+        /* Spacing 4pt scale */
+        --space-1:  0.25rem;
+        --space-2:  0.5rem;
+        --space-3:  0.75rem;
+        --space-4:  1rem;
+        --space-6:  1.5rem;
+        --space-8:  2rem;
+        --space-12: 3rem;
+        --space-16: 4rem;
+        --space-24: 6rem;
+        --space-32: 8rem;
       }
 
-      *,
-      *::before,
-      *::after {
+      *, *::before, *::after {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
@@ -106,15 +160,12 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       }
 
       @media (prefers-reduced-motion: reduce) {
-        html {
-          scroll-behavior: auto;
-        }
-        *,
-        *::before,
-        *::after {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after {
           animation-duration: 0.01ms !important;
           animation-iteration-count: 1 !important;
           transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
         }
       }
 
@@ -122,49 +173,64 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         background: var(--paper);
         color: var(--ink);
         font-family: var(--font-sans);
+        font-size: var(--text-base);
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
-        text-rendering: geometricPrecision;
+        text-rendering: optimizeLegibility;
         overflow-x: hidden;
       }
 
-      h1,
-      h2,
-      h3 {
-        line-height: 1.1;
-        letter-spacing: -0.02em;
+      /* Paper noise texture — SVG feTurbulence filter applied to body pseudo */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.032;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+        background-size: 300px 300px;
       }
 
-      a {
-        color: inherit;
+      /* Ensure content sits above the noise */
+      body > * { position: relative; z-index: 1; }
+
+      h1, h2, h3, h4 {
+        letter-spacing: -0.025em;
+        line-height: 1.05;
       }
 
-      img,
-      svg {
-        display: block;
-        max-width: 100%;
-      }
+      a { color: inherit; }
+
+      img, svg { display: block; max-width: 100%; }
 
       /* Utility classes */
       .eyebrow {
         font-family: var(--font-mono);
-        font-size: 0.6875rem;
-        letter-spacing: 0.14em;
+        font-size: var(--text-xs);
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         font-weight: 500;
         color: var(--ink-3);
+        font-feature-settings: "tnum" 1;
       }
 
-      .mono {
-        font-family: var(--font-mono);
-        font-feature-settings:
-          "tnum" 1,
-          "zero" 1;
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
       }
 
-      .serif-italic {
-        font-family: var(--font-serif);
-        font-style: italic;
+      :focus-visible {
+        outline: 2px solid var(--solar);
+        outline-offset: 3px;
+        border-radius: 2px;
       }
     </style>
   </head>

@@ -3,6 +3,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"os"
@@ -44,6 +46,10 @@ type Config struct {
 	FirebaseProjectID       string
 	FirebaseCredentialsPath string
 	FirebaseAuthOptional    bool
+
+	// WaitlistIPSalt is mixed into the SHA-256 hash of caller IPs before
+	// storage. 16+ random bytes (hex-encoded). Required in production.
+	WaitlistIPSalt string
 }
 
 // Load reads required values from env and fails fast on missing secrets when
@@ -56,6 +62,11 @@ func Load() (*Config, error) {
 	}
 
 	firebaseOptional := os.Getenv("FIREBASE_AUTH_OPTIONAL") == "1"
+
+	waitlistSalt, err := loadWaitlistSalt()
+	if err != nil {
+		return nil, err
+	}
 
 	c := &Config{
 		Port:               envInt("RUNSTAMP_PORT", 8080),
@@ -72,6 +83,8 @@ func Load() (*Config, error) {
 		FirebaseProjectID:       os.Getenv("FIREBASE_PROJECT_ID"),
 		FirebaseCredentialsPath: os.Getenv("FIREBASE_CREDENTIALS_PATH"),
 		FirebaseAuthOptional:    firebaseOptional,
+
+		WaitlistIPSalt: waitlistSalt,
 	}
 
 	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
@@ -104,6 +117,26 @@ func Load() (*Config, error) {
 	}
 
 	return c, nil
+}
+
+// loadWaitlistSalt reads RUNSTAMP_WAITLIST_IP_SALT. In production the absence
+// is fatal; in dev a random per-boot value is generated with a warning.
+func loadWaitlistSalt() (string, error) {
+	salt := os.Getenv("RUNSTAMP_WAITLIST_IP_SALT")
+	if salt != "" {
+		return salt, nil
+	}
+	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
+	if isProd {
+		return "", fmt.Errorf("RUNSTAMP_WAITLIST_IP_SALT must be set in production (generate with: openssl rand -hex 16)")
+	}
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", fmt.Errorf("generate dev waitlist salt: %w", err)
+	}
+	devSalt := hex.EncodeToString(buf)
+	slog.Warn("RUNSTAMP_WAITLIST_IP_SALT not set — using random per-boot salt; set this in .env for consistent hashing")
+	return devSalt, nil
 }
 
 func envInt(key string, def int) int {
