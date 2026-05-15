@@ -64,7 +64,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	usersRepo := users.NewRepo(pool, sealer)
+	usersRepo := users.NewRepo(pool)
 
 	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
 
@@ -92,11 +92,15 @@ func main() {
 	}
 
 	stravaClient := strava.New(cfg.StravaClientID, cfg.StravaClientSecret)
+	stravaRepo := strava.NewRepository(pool, sealer)
+	stravaService := strava.NewService(stravaClient, stravaRepo, cfg.PublicBaseURL)
 	stravaHandler := &handlers.StravaHandler{
-		Client:      stravaClient,
-		VerifyToken: cfg.StravaWebhookToken,
-		Log:         log,
-		Users:       usersRepo,
+		Service:         stravaService,
+		Users:           usersRepo,
+		VerifyToken:     cfg.StravaWebhookToken,
+		SuccessDeepLink: cfg.StravaSuccessDeepLink,
+		FailureDeepLink: cfg.StravaFailureDeepLink,
+		Log:             log,
 	}
 
 	r := chi.NewRouter()
@@ -105,7 +109,7 @@ func main() {
 	r.Use(middleware.Logger(log))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.AllowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: false,
 		MaxAge:           300,
@@ -113,18 +117,27 @@ func main() {
 
 	r.Get("/healthz", handlers.Health(version))
 	r.Route("/v1", func(r chi.Router) {
-		// Public routes — Strava webhook endpoints are called by Strava's
-		// servers, not by authenticated users.
+		// All /strava routes — public legs (called by Strava itself or by
+		// the user's browser returning from the consent page) sit at the
+		// top level; protected legs nest under a Group with the firebase
+		// auth middleware.
 		r.Route("/strava", func(r chi.Router) {
+			// Public — no Firebase token possible from these callers.
+			r.Get("/callback", stravaHandler.Callback)
 			r.Get("/webhook", stravaHandler.WebhookSubscription)
 			r.Post("/webhook", stravaHandler.WebhookEvent)
+			// Protected — require a valid Firebase ID token.
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireFirebaseAuth(verifier, log))
+				r.Post("/connect", stravaHandler.Connect)
+				r.Get("/status", stravaHandler.Status)
+				r.Delete("/connection", stravaHandler.Disconnect)
+			})
 		})
-
-		// Protected routes — require a valid Firebase ID token.
+		// Protected non-strava routes.
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
-			r.Post("/auth/strava/exchange", stravaHandler.Exchange)
 		})
 	})
 

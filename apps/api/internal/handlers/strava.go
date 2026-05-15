@@ -5,127 +5,168 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 )
 
-// StravaHandler holds the dependencies the Strava routes need.
+// StravaHandler wires the Strava HTTP routes. The actual OAuth + ingest
+// logic lives in internal/strava.Service; handlers translate HTTP into
+// service calls and back.
 type StravaHandler struct {
-	Client      *strava.Client
-	VerifyToken string // for the webhook subscription GET handshake
-	Log         *slog.Logger
-	Users       *users.Repo
+	Service         *strava.Service
+	Users           *users.Repo
+	VerifyToken     string
+	SuccessDeepLink string // e.g. runstamp://strava/connected
+	FailureDeepLink string // e.g. runstamp://strava/error
+	Log             *slog.Logger
 }
 
-type stravaExchangeReq struct {
-	Code         string `json:"code"`
-	CodeVerifier string `json:"codeVerifier"`
-	RedirectURI  string `json:"redirectUri"`
-}
-
-type stravaExchangeRes struct {
-	AccessToken  string         `json:"accessToken"`
-	RefreshToken string         `json:"refreshToken"`
-	ExpiresAt    int64          `json:"expiresAt"`
-	Athlete      strava.Athlete `json:"athlete"`
-	UserID       string         `json:"userId"`
-}
-
-// Exchange is POST /v1/auth/strava/exchange. The route is protected by
-// RequireFirebaseAuth middleware — the caller must supply a valid Firebase ID
-// token in the Authorization header so we can anchor the Strava account to a
-// known Firebase user.
-//
-// Flow:
-//  1. Extract verified Firebase identity from context.
-//  2. Materialise (or refresh) the runstamp users row via UpsertByFirebaseUID.
-//  3. Complete the Strava PKCE code exchange server-side.
-//  4. Attach the encrypted Strava tokens to that user via UpsertStravaAccountForUser.
-//
-// In M1 this will also: kick off a backfill job (last 90 days) and return a
-// session JWT instead of the raw Strava tokens.
-func (h *StravaHandler) Exchange(w http.ResponseWriter, r *http.Request) {
+// Connect — POST /v1/strava/connect (auth-gated).
+// Returns the URL the mobile app should open in an in-app browser. The
+// service holds short-lived state binding this OAuth flow to the
+// authenticated user; the public /callback endpoint validates it.
+func (h *StravaHandler) Connect(w http.ResponseWriter, r *http.Request) {
 	vt, ok := auth.FromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "missing authentication")
 		return
 	}
-
-	var req stravaExchangeReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid json body")
-		return
-	}
-	if req.Code == "" {
-		writeError(w, http.StatusBadRequest, "missing code")
-		return
-	}
-
 	user, err := h.Users.UpsertByFirebaseUID(r.Context(), vt.UID, vt.Email)
 	if err != nil {
-		h.Log.Error("upsert user by firebase uid failed", "err", err)
+		h.Log.Error("upsert user failed", "err", err)
 		writeError(w, http.StatusInternalServerError, "failed to provision user")
 		return
 	}
-
-	tokens, err := h.Client.ExchangeCode(r.Context(), req.Code, req.CodeVerifier)
+	authURL, err := h.Service.BeginAuthorize(user.ID)
 	if err != nil {
-		h.Log.Error("strava exchange failed", "err", err)
-		writeError(w, http.StatusBadGateway, "strava token exchange failed")
+		h.Log.Error("strava begin authorize failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to build authorize url")
 		return
 	}
-
-	if err := h.Users.UpsertStravaAccountForUser(r.Context(), user.ID, &tokens.Athlete, tokens); err != nil {
-		h.Log.Error("upsert strava account failed", "err", err)
-		writeError(w, http.StatusBadGateway, "failed to persist strava account")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, stravaExchangeRes{
-		AccessToken:  tokens.AccessToken,
-		RefreshToken: tokens.RefreshToken,
-		ExpiresAt:    tokens.ExpiresAt,
-		Athlete:      tokens.Athlete,
-		UserID:       user.ID,
-	})
+	writeJSON(w, http.StatusOK, map[string]string{"authorizeUrl": authURL})
 }
 
-// WebhookSubscription handles GET /v1/strava/webhook — the subscription
-// verification handshake Strava performs when you register the endpoint.
-//
-// Strava docs: respond with `{"hub.challenge": <challenge>}` when the
-// verify_token matches what we configured at subscription time.
+// Callback — GET /v1/strava/callback (PUBLIC).
+// This is the URL Strava redirects the user's browser to after consent.
+// On success we redirect to the runstamp:// deep link so the in-app
+// browser dismisses itself and the app refreshes its connection status.
+func (h *StravaHandler) Callback(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if errParam := q.Get("error"); errParam != "" {
+		http.Redirect(w, r, h.FailureDeepLink+"?reason="+errParam, http.StatusSeeOther)
+		return
+	}
+	code := q.Get("code")
+	state := q.Get("state")
+	if code == "" || state == "" {
+		http.Redirect(w, r, h.FailureDeepLink+"?reason=missing_params", http.StatusSeeOther)
+		return
+	}
+	if _, err := h.Service.FinishAuthorize(r.Context(), code, state); err != nil {
+		h.Log.Warn("strava finish authorize failed", "err", err)
+		http.Redirect(w, r, h.FailureDeepLink+"?reason=exchange_failed", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, h.SuccessDeepLink, http.StatusSeeOther)
+}
+
+// Status — GET /v1/strava/status (auth-gated). Mobile uses this to render
+// "Connected as ..." vs a "Connect Strava" CTA.
+func (h *StravaHandler) Status(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil {
+		h.Log.Error("find user failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if user == nil {
+		writeJSON(w, http.StatusOK, map[string]bool{"connected": false})
+		return
+	}
+	conn, err := h.Service.Repo().GetByUser(r.Context(), user.ID)
+	if err != nil {
+		if errors.Is(err, strava.ErrConnectionNotFound) {
+			writeJSON(w, http.StatusOK, map[string]bool{"connected": false})
+			return
+		}
+		h.Log.Error("strava status lookup failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	resp := map[string]interface{}{
+		"connected":   true,
+		"athleteId":   conn.AthleteID,
+		"connectedAt": conn.CreatedAt,
+		"scope":       conn.Scope,
+	}
+	if conn.AthleteFirstname != nil || conn.AthleteLastname != nil {
+		var fn, ln string
+		if conn.AthleteFirstname != nil {
+			fn = *conn.AthleteFirstname
+		}
+		if conn.AthleteLastname != nil {
+			ln = *conn.AthleteLastname
+		}
+		resp["athleteName"] = strings.TrimSpace(fn + " " + ln)
+	}
+	if conn.AthleteProfileURL != nil {
+		resp["athleteAvatarUrl"] = *conn.AthleteProfileURL
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// Disconnect — DELETE /v1/strava/connection (auth-gated). Idempotent.
+func (h *StravaHandler) Disconnect(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil || user == nil {
+		w.WriteHeader(http.StatusNoContent) // nothing to disconnect
+		return
+	}
+	if err := h.Service.Disconnect(r.Context(), user.ID); err != nil {
+		h.Log.Error("strava disconnect failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "disconnect failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// WebhookSubscription — GET /v1/strava/webhook (PUBLIC).
+// Strava subscription verification handshake. Echoes hub.challenge when the
+// shared verify_token matches.
 func (h *StravaHandler) WebhookSubscription(w http.ResponseWriter, r *http.Request) {
-	mode := r.URL.Query().Get("hub.mode")
-	token := r.URL.Query().Get("hub.verify_token")
-	challenge := r.URL.Query().Get("hub.challenge")
-	if mode != "subscribe" {
+	q := r.URL.Query()
+	if q.Get("hub.mode") != "subscribe" {
 		writeError(w, http.StatusBadRequest, "unexpected hub.mode")
 		return
 	}
-	if h.VerifyToken == "" || token != h.VerifyToken {
+	if h.VerifyToken == "" || q.Get("hub.verify_token") != h.VerifyToken {
 		writeError(w, http.StatusForbidden, "invalid verify_token")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"hub.challenge": challenge})
+	writeJSON(w, http.StatusOK, map[string]string{"hub.challenge": q.Get("hub.challenge")})
 }
 
-// WebhookEvent handles POST /v1/strava/webhook — Strava POSTs an event payload
-// when an athlete creates / updates / deletes an activity. We acknowledge fast
-// (must be <2s) and enqueue work asynchronously.
-//
-// M1 will: validate the payload, enqueue a fetch-activity job in Redis (asynq),
-// then return 200 immediately.
+// WebhookEvent — POST /v1/strava/webhook (PUBLIC). Acknowledge fast; ingest
+// happens asynchronously in M1.
 func (h *StravaHandler) WebhookEvent(w http.ResponseWriter, r *http.Request) {
 	var raw json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil && !errors.Is(err, http.ErrBodyReadAfterClose) {
 		h.Log.Warn("strava webhook: bad body", "err", err)
 	}
 	h.Log.Info("strava webhook event received", "bytes", len(raw))
-	// TODO(M1): unmarshal `{ object_type, object_id, aspect_type, owner_id, ... }`,
-	// enqueue async fetch + ingest, then ack.
 	w.WriteHeader(http.StatusOK)
 }
 

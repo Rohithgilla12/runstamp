@@ -22,6 +22,17 @@ type Config struct {
 	DatabaseURL        string
 	TokenEncKeyHex     string
 
+	// PublicBaseURL is the externally reachable origin where the Strava
+	// callback URL is hosted, e.g. "https://api.runstamp.gilla.fun". Falls
+	// back to http://localhost:8080 in dev. Strava redirects browsers here
+	// after consent — the value MUST match what's registered as the
+	// authorization callback domain in the Strava API settings.
+	PublicBaseURL string
+	// Deep-link URLs to send the mobile app to after the Strava OAuth
+	// roundtrip completes. The custom scheme matches app.config.ts.
+	StravaSuccessDeepLink string
+	StravaFailureDeepLink string
+
 	// Firebase Admin SDK — used for ID-token verification on protected routes.
 	// FirebaseProjectID is required whenever Firebase auth is active.
 	// FirebaseCredentialsPath is the local path to the service-account JSON.
@@ -54,6 +65,9 @@ func Load() (*Config, error) {
 		AllowedOrigins:     splitCSV(envDefault("RUNSTAMP_ALLOWED_ORIGINS", "http://localhost:8081,exp://*")),
 		DatabaseURL:        envDefault("DATABASE_URL", "postgres://runstamp:runstamp@localhost:5432/runstamp?sslmode=disable"),
 		TokenEncKeyHex:     tokenKey,
+		PublicBaseURL:      envDefault("RUNSTAMP_PUBLIC_BASE_URL", "http://localhost:8080"),
+		StravaSuccessDeepLink: envDefault("STRAVA_SUCCESS_DEEPLINK", "runstamp://strava/connected"),
+		StravaFailureDeepLink: envDefault("STRAVA_FAILURE_DEEPLINK", "runstamp://strava/error"),
 
 		FirebaseProjectID:       os.Getenv("FIREBASE_PROJECT_ID"),
 		FirebaseCredentialsPath: os.Getenv("FIREBASE_CREDENTIALS_PATH"),

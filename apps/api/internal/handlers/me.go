@@ -38,7 +38,7 @@ func Me(repo *users.Repo) http.HandlerFunc {
 			return
 		}
 
-		hasStrava, err := repo.HasStravaAccount(r.Context(), user.ID)
+		hasStrava, err := repo.HasStravaConnection(r.Context(), user.ID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to check strava account")
 			return

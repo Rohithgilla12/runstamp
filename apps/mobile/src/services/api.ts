@@ -89,3 +89,10 @@ export async function apiPost<T>(
   });
   return response.json() as Promise<T>;
 }
+
+export async function apiDelete(
+  path: string,
+  options: Omit<ApiFetchOptions, 'method' | 'body'> = {}
+): Promise<void> {
+  await apiFetch(path, { ...options, method: 'DELETE' });
+}

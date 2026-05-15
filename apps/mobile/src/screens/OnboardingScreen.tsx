@@ -9,7 +9,7 @@ import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
-import { STRAVA_CLIENT_ID, exchangeStravaCode, useStravaAuth } from '../services/strava';
+import { connectStrava } from '../services/strava';
 
 type Step = 'splash' | 'signin' | 'primer' | 'sync';
 type SyncPhase = 'idle' | 'connecting' | 'syncing' | 'done';
@@ -328,72 +328,52 @@ function ConnectRow({ color, iconNode, title, desc, required, subtle }: { color:
 
 function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
   const c = useColors();
-  const { request, response, promptAsync, redirectUri } = useStravaAuth();
   const { getIdToken } = useAuth();
   const [phase, setPhase] = useState<SyncPhase>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Real flow runs only when the user has provisioned a Strava client id
-  // via EXPO_PUBLIC_STRAVA_CLIENT_ID. Without it we keep the demo simulation
-  // so the onboarding screen still walks end-to-end on a fresh checkout.
-  const stravaReady = STRAVA_CLIENT_ID.length > 0;
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      setPhase('syncing');
-      if (!stravaReady) return; // simulator path
-      const code = response.params.code;
-      const verifier = request?.codeVerifier;
-      if (!code || !verifier) {
-        setError('Missing auth code or PKCE verifier');
+  const startConnect = async () => {
+    setError(null);
+    setPhase('connecting');
+    try {
+      const idToken = await getIdToken();
+      const result = await connectStrava(idToken);
+      if (result.type === 'connected') {
+        setPhase('syncing');
+        // Backfill simulation while the backend ingests activities. Once
+        // M1 wires the real /v1/strava/status polling + backfill webhook,
+        // replace this with a long-poll of /v1/strava/status.
+      } else if (result.type === 'cancelled') {
         setPhase('idle');
-        return;
+      } else {
+        setError(result.reason === 'not_signed_in' ? 'Please sign in first' : `Strava: ${result.reason}`);
+        setPhase('idle');
       }
-      (async () => {
-        try {
-          const idToken = await getIdToken();
-          await exchangeStravaCode({ code, codeVerifier: verifier, redirectUri }, idToken);
-          setProgress(100);
-          setPhase('done');
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Strava exchange failed');
-          setPhase('idle');
-        }
-      })();
-    } else if (
-      response.type === 'error' ||
-      response.type === 'dismiss' ||
-      response.type === 'cancel'
-    ) {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Strava connect failed');
       setPhase('idle');
     }
-  }, [response, stravaReady, request, redirectUri, getIdToken]);
+  };
 
   useEffect(() => {
-    if (phase === 'connecting') {
-      const t = setTimeout(() => setPhase('syncing'), 900);
-      return () => clearTimeout(t);
-    }
-    // Only run the demo progress loop in simulator mode. The real path
-    // updates progress to 100 directly when the backend responds.
-    if (phase === 'syncing' && !stravaReady) {
-      const id = setInterval(() => {
-        setProgress((p) => {
-          const np = p + Math.random() * 8 + 4;
-          if (np >= 100) {
-            clearInterval(id);
-            setPhase('done');
-            return 100;
-          }
-          return np;
-        });
-      }, 140);
-      return () => clearInterval(id);
-    }
-    return undefined;
-  }, [phase, stravaReady]);
+    if (phase !== 'syncing') return;
+    // Animated progress while the backend would be backfilling. In M1 this
+    // becomes a real status poll; for now it's a visual cue that resolves
+    // after a couple of seconds.
+    const id = setInterval(() => {
+      setProgress((p) => {
+        const np = p + 12;
+        if (np >= 100) {
+          clearInterval(id);
+          setPhase('done');
+          return 100;
+        }
+        return np;
+      });
+    }, 140);
+    return () => clearInterval(id);
+  }, [phase]);
 
   if (phase === 'idle') {
     return (
@@ -427,16 +407,11 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
         </View>
 
         <View style={{ flex: 1, minHeight: 16 }} />
-        <Button kind="accent" full onPress={() => { setPhase('connecting'); promptAsync(); }} icon={<Icon.strava size={20} color="#fff" />} style={{ backgroundColor: '#fc4c02', borderColor: '#fc4c02' }}>
+        <Button kind="accent" full onPress={startConnect} icon={<Icon.strava size={20} color="#fff" />} style={{ backgroundColor: '#fc4c02', borderColor: '#fc4c02' }}>
           Authorize Strava
         </Button>
         {error && (
           <Eyebrow style={{ color: '#c44a1e', marginTop: 12, textAlign: 'center' }}>{error}</Eyebrow>
-        )}
-        {!stravaReady && (
-          <Eyebrow style={{ color: c.ink3, marginTop: 12, textAlign: 'center' }}>
-            DEMO MODE — SET EXPO_PUBLIC_STRAVA_CLIENT_ID FOR A REAL EXCHANGE
-          </Eyebrow>
         )}
         <Pressable onPress={done} style={{ marginTop: 14, alignSelf: 'center' }}>
           <TText style={{ fontSize: 13, color: c.ink3 }}>Skip — set up later</TText>

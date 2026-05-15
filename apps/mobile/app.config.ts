@@ -8,8 +8,6 @@ import type { ExpoConfig } from '@expo/config-types';
 const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-const stravaClientId = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID ?? '';
-
 // Google OAuth Web client id (NOT the iOS one). Native Google Sign-In on
 // Firebase needs the web client id to mint the idToken that
 // `auth.GoogleAuthProvider.credential` accepts. Find it at:
@@ -90,7 +88,6 @@ const config: ExpoConfig = {
   // source of truth. The web client id is public per Google's OAuth model.
   extra: {
     apiBaseUrl,
-    stravaClientId,
     googleWebClientId
   }
 };
