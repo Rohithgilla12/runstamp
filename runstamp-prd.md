@@ -55,7 +55,7 @@ i.e. me, and the people who'd star data-peek.
 | --- | --- | --- |
 | Mobile | **React Native + Expo (SDK 53+), TypeScript** | You're a frontend lead in TS/React. Expo's prebuild + EAS gives same-day iOS + Android. Strong image-editing ecosystem (Skia, view-shot, gesture-handler). |
 | Auth | **Firebase Auth** | Per your call. Apple + Google + email. Cheapest path to "both stores, signed in." |
-| Backend | **Go 1.23, Fiber or Chi**, on your VPS via Cloudflared tunnel to `api.runstamp.gilla.fun` | Fits your Kronos arc. Stateless service behind Cloudflare. Easy to containerize. |
+| Backend | **Go 1.23, Fiber or Chi**, on your VPS via Cloudflared tunnel to `runstamp-api.gilla.fun` | Fits your Kronos arc. Stateless service behind Cloudflare. Easy to containerize. |
 | DB | **PostgreSQL 16** on VPS, with PostGIS extension | PostGIS is the unlock for "cities I've ran in" — `ST_Within`, reverse geocoding caches. |
 | Cache / queues | **Redis** | Strava webhook fan-out, rate-limit token bucket per user, ephemeral OAuth state. |
 | Object storage | **Cloudflare R2** | User-uploaded photos + rendered share images. S3 API, zero egress fees, fronted by Cloudflare CDN. Self-hosting image storage on your VPS is a footgun (disk, bandwidth, backup). |
@@ -78,7 +78,7 @@ i.e. me, and the people who'd star data-peek.
 │ (iOS/Andr)  │              └──────────────────┘
 │             │
 │             │   HTTPS       ┌──────────────────────────────────┐
-│             │◄─────────────►│  api.runstamp.gilla.fun          │
+│             │◄─────────────►│  runstamp-api.gilla.fun          │
 │             │   JWT          │  (Cloudflared tunnel → VPS)      │
 └──────┬──────┘                │                                  │
        │                       │  ┌────────────┐  ┌────────────┐  │

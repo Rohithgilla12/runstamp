@@ -27,14 +27,14 @@ Companion checklist (Notion): https://www.notion.so/Runstamp-TestFlight-v0-Servi
 ## 2. Strava API app
 
 1. Go to https://www.strava.com/settings/api → create app.
-2. **Authorization Callback Domain**: `api.runstamp.gilla.fun` (or whatever public HTTPS host the API will live at).
+2. **Authorization Callback Domain**: `runstamp-api.gilla.fun` (or whatever public HTTPS host the API will live at).
 3. Copy `Client ID` + `Client Secret` — these go in `apps/api/.env`, **not** in the mobile bundle.
 4. Pick a random opaque `STRAVA_WEBHOOK_VERIFY_TOKEN` (`openssl rand -hex 16`). After the API is reachable on HTTPS, register the webhook subscription:
    ```
    curl -X POST https://www.strava.com/api/v3/push_subscriptions \
      -F client_id=$STRAVA_CLIENT_ID \
      -F client_secret=$STRAVA_CLIENT_SECRET \
-     -F callback_url=https://api.runstamp.gilla.fun/v1/strava/webhook \
+     -F callback_url=https://runstamp-api.gilla.fun/v1/strava/webhook \
      -F verify_token=$STRAVA_WEBHOOK_VERIFY_TOKEN
    ```
 
@@ -46,7 +46,7 @@ RUNSTAMP_ENV=production
 DATABASE_URL=postgres://runstamp:<pw>@postgres:5432/runstamp?sslmode=disable
 REDIS_URL=redis://redis:6379/0
 RUNSTAMP_TOKEN_ENC_KEY=$(openssl rand -hex 32)
-RUNSTAMP_PUBLIC_BASE_URL=https://api.runstamp.gilla.fun
+RUNSTAMP_PUBLIC_BASE_URL=https://runstamp-api.gilla.fun
 RUNSTAMP_ALLOWED_ORIGINS=runstamp://*,https://runstamp.gilla.fun
 STRAVA_CLIENT_ID=...
 STRAVA_CLIENT_SECRET=...
@@ -61,7 +61,7 @@ Then:
 ```bash
 # On the VPS:
 docker compose up -d
-curl https://api.runstamp.gilla.fun/healthz   # should return { "status": "ok" }
+curl https://runstamp-api.gilla.fun/healthz   # should return { "status": "ok" }
 ```
 
 ## 4. EAS Secrets (one-time, run locally)
@@ -74,7 +74,7 @@ pnpm dlx eas init                      # creates the EAS project; writes project
 pnpm dlx eas secret:create --scope project --name GOOGLE_SERVICES_INFOPLIST --type file --value ./GoogleService-Info.plist --visibility secret
 pnpm dlx eas secret:create --scope project --name GOOGLE_SERVICES_JSON     --type file --value ./google-services.json     --visibility secret
 pnpm dlx eas secret:create --scope project --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value "<your-web-client-id>.apps.googleusercontent.com" --visibility plaintext
-pnpm dlx eas secret:create --scope project --name EXPO_PUBLIC_API_BASE_URL --value "https://api.runstamp.gilla.fun" --visibility plaintext
+pnpm dlx eas secret:create --scope project --name EXPO_PUBLIC_API_BASE_URL --value "https://runstamp-api.gilla.fun" --visibility plaintext
 ```
 
 `eas init` updates `app.config.ts` indirectly via env — the file is already wired to read `EXPO_PUBLIC_EAS_PROJECT_ID` if you want to control it explicitly. Either approach works.

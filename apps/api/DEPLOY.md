@@ -3,7 +3,7 @@
 The Runstamp backend lives on the same Oracle Cloud VPS as cadence + the rest
 of the self-hosted stack. Containers are namespaced `runstamp-*` so they
 coexist cleanly. Cloudflared in front of `runstamp-api:8080` handles the
-public `api.runstamp.gilla.fun` endpoint.
+public `runstamp-api.gilla.fun` endpoint.
 
 ## Box
 
@@ -52,7 +52,7 @@ TOK=$(openssl rand -hex 32)
 cat > .env <<EOF
 RUNSTAMP_ENV=staging      # flip to production once Strava + Firebase are set
 RUNSTAMP_PORT=8080
-RUNSTAMP_PUBLIC_BASE_URL=https://api.runstamp.gilla.fun
+RUNSTAMP_PUBLIC_BASE_URL=https://runstamp-api.gilla.fun
 RUNSTAMP_ALLOWED_ORIGINS=runstamp://*
 RUNSTAMP_TOKEN_ENC_KEY=$TOK
 STRAVA_CLIENT_ID=
@@ -105,14 +105,14 @@ The user already runs two Cloudflared tunnels (`cloudflared` and
 `cadence-cloudflared`). To add a route for runstamp, either:
 
 - **Add an ingress rule to the existing `cloudflared` container**: edit its
-  config, add a route from `api.runstamp.gilla.fun` to
+  config, add a route from `runstamp-api.gilla.fun` to
   `http://runstamp-api:8080`, ensure the container is connected to the
   `runstamp-internal` network (`docker network connect runstamp-internal cloudflared`).
 - **OR spin up a new `runstamp-cloudflared` container** with its own
   dedicated tunnel — mirrors how cadence got its own sidecar. Cleaner
   isolation; easier to teardown later if needed.
 
-Either path: register `api.runstamp.gilla.fun` as a DNS record in Cloudflare
+Either path: register `runstamp-api.gilla.fun` as a DNS record in Cloudflare
 pointing at the tunnel, then run the Strava webhook subscription registration
 (see `TESTFLIGHT.md`).
 

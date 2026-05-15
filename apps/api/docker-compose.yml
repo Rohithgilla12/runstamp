@@ -90,6 +90,24 @@ services:
     networks:
       - runstamp-internal
 
+  # Outbound-only Cloudflare Tunnel — no inbound ports opened on the VPS.
+  # Token mode: ingress routing (runstamp-api.gilla.fun → http://runstamp-api:8080)
+  # is configured in the Cloudflare Zero Trust dashboard, not in a config file.
+  # One tunnel per project, mirroring cadence's pattern. Failure isolation:
+  # a misconfigured runstamp rule never affects cadence's tunnel or the
+  # generic VPS tunnel.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: runstamp-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - api
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:?CLOUDFLARED_TUNNEL_TOKEN is required}
+    networks:
+      - runstamp-internal
+
 networks:
   runstamp-internal:
     name: runstamp-internal

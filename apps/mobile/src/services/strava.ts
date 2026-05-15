@@ -9,7 +9,7 @@
  *   │             │                                     │ user consents
  *   │             │                                     ▼
  *   │             │              ┌──────────────────────────────────┐
- *   │             │              │  api.runstamp.gilla.fun/.../callback │
+ *   │             │              │  runstamp-api.gilla.fun/.../callback │
  *   │             │              │   exchanges w/ secret + state →    │
  *   │             │              │   redirects to runstamp://...     │
  *   │             │              └──────────────────────────────────┘

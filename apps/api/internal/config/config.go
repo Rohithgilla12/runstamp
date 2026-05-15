@@ -23,7 +23,7 @@ type Config struct {
 	TokenEncKeyHex     string
 
 	// PublicBaseURL is the externally reachable origin where the Strava
-	// callback URL is hosted, e.g. "https://api.runstamp.gilla.fun". Falls
+	// callback URL is hosted, e.g. "https://runstamp-api.gilla.fun". Falls
 	// back to http://localhost:8080 in dev. Strava redirects browsers here
 	// after consent — the value MUST match what's registered as the
 	// authorization callback domain in the Strava API settings.

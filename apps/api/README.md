@@ -1,6 +1,6 @@
 # @runstamp/api
 
-Backend for Runstamp. Go 1.24 + Chi, JSON over HTTP, deployed behind a Cloudflared tunnel to `api.runstamp.gilla.fun` per PRD §4.
+Backend for Runstamp. Go 1.24 + Chi, JSON over HTTP, deployed behind a Cloudflared tunnel to `runstamp-api.gilla.fun` per PRD §4.
 
 ## Routes (v0)
 
