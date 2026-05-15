@@ -11,7 +11,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -26,6 +28,64 @@ const (
 // Strava responds with 401 Unauthorized. Callers should refresh the token
 // and retry exactly once.
 var ErrTokenExpired = fmt.Errorf("strava: access token expired")
+
+// ErrRateLimited is returned when Strava responds with 429 Too Many Requests.
+var ErrRateLimited = fmt.Errorf("strava: rate limited")
+
+// RateLimit holds the most-recently observed rate-limit counters from Strava
+// response headers.
+type RateLimit struct {
+	ShortUsage int
+	ShortLimit int
+	DailyUsage int
+	DailyLimit int
+	RetryAfter time.Duration
+	ObservedAt time.Time
+}
+
+// NextSleepUntil returns the wall-clock time the caller should sleep until
+// based on current usage levels. Returns zero time when no sleep is needed.
+//
+//   - If ShortUsage >= ShortLimit-10: next 15-min UTC boundary + 1s slop.
+//   - If DailyUsage >= DailyLimit-50: next UTC midnight + 1 minute slop.
+//   - Otherwise: zero time.
+func (rl RateLimit) NextSleepUntil() time.Time {
+	if rl.ShortLimit > 0 && rl.ShortUsage >= rl.ShortLimit-10 {
+		return next15MinBoundary(rl.ObservedAt).Add(time.Second)
+	}
+	if rl.DailyLimit > 0 && rl.DailyUsage >= rl.DailyLimit-50 {
+		return nextUTCMidnight(rl.ObservedAt).Add(time.Minute)
+	}
+	return time.Time{}
+}
+
+func next15MinBoundary(from time.Time) time.Time {
+	t := from.UTC()
+	// Round up to the next 00, 15, 30, or 45 minute mark.
+	m := t.Minute()
+	nextMark := ((m / 15) + 1) * 15
+	if nextMark >= 60 {
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour()+1, 0, 0, 0, time.UTC)
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), nextMark, 0, 0, time.UTC)
+}
+
+func nextUTCMidnight(from time.Time) time.Time {
+	t := from.UTC()
+	return time.Date(t.Year(), t.Month(), t.Day()+1, 0, 0, 0, 0, time.UTC)
+}
+
+// Response is the low-level result from a Strava HTTP call, including
+// rate-limit metadata parsed from response headers.
+type Response struct {
+	Body       []byte
+	StatusCode int
+	ShortUsage int
+	ShortLimit int
+	DailyUsage int
+	DailyLimit int
+	RetryAfter time.Duration
+}
 
 // SummaryActivity is the subset of a Strava summary-activity object we
 // map into the activities table. Returned by ListAthleteActivities.
@@ -87,6 +147,8 @@ type Client struct {
 	clientID     string
 	clientSecret string
 	http         *http.Client
+	// lastRL stores *RateLimit atomically; nil until first API call.
+	lastRL atomic.Pointer[RateLimit]
 }
 
 func New(clientID, clientSecret string) *Client {
@@ -96,6 +158,97 @@ func New(clientID, clientSecret string) *Client {
 		http:         &http.Client{Timeout: 10 * time.Second},
 	}
 }
+
+// LastRateLimit returns the most recent rate-limit observation from any API
+// response. Returns zero-value RateLimit (all zeros) if no call has been
+// made yet. Thread-safe.
+func (c *Client) LastRateLimit() RateLimit {
+	if p := c.lastRL.Load(); p != nil {
+		return *p
+	}
+	return RateLimit{}
+}
+
+// do executes req, reads the body, parses rate-limit headers, stores the
+// observation, and returns a Response. The caller is responsible for
+// interpreting status codes and decoding the body.
+func (c *Client) do(ctx context.Context, req *http.Request) (*Response, error) {
+	resp, err := c.http.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("strava: read body: %w", err)
+	}
+
+	r := &Response{
+		Body:       body,
+		StatusCode: resp.StatusCode,
+	}
+
+	// Parse X-RateLimit-Limit and X-RateLimit-Usage (primary).
+	parseRatePair(resp.Header.Get("X-RateLimit-Limit"), &r.ShortLimit, &r.DailyLimit)
+	parseRatePair(resp.Header.Get("X-RateLimit-Usage"), &r.ShortUsage, &r.DailyUsage)
+
+	// Optionally take the worse of the read-only subset headers.
+	var rsShortLimit, rsDailyLimit, rsShortUsage, rsDailyUsage int
+	parseRatePair(resp.Header.Get("X-Readratelimit-Limit"), &rsShortLimit, &rsDailyLimit)
+	parseRatePair(resp.Header.Get("X-Readratelimit-Usage"), &rsShortUsage, &rsDailyUsage)
+	if rsShortUsage > r.ShortUsage {
+		r.ShortUsage = rsShortUsage
+	}
+	if rsShortLimit > 0 && (r.ShortLimit == 0 || rsShortLimit < r.ShortLimit) {
+		r.ShortLimit = rsShortLimit
+	}
+	if rsDailyUsage > r.DailyUsage {
+		r.DailyUsage = rsDailyUsage
+	}
+	if rsDailyLimit > 0 && (r.DailyLimit == 0 || rsDailyLimit < r.DailyLimit) {
+		r.DailyLimit = rsDailyLimit
+	}
+
+	// Parse Retry-After on 429 responses.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if secs, err := strconv.Atoi(ra); err == nil {
+				r.RetryAfter = time.Duration(secs) * time.Second
+			}
+		}
+	}
+
+	// Store the observation atomically.
+	rl := &RateLimit{
+		ShortUsage: r.ShortUsage,
+		ShortLimit: r.ShortLimit,
+		DailyUsage: r.DailyUsage,
+		DailyLimit: r.DailyLimit,
+		RetryAfter: r.RetryAfter,
+		ObservedAt: time.Now().UTC(),
+	}
+	c.lastRL.Store(rl)
+
+	return r, nil
+}
+
+// parseRatePair splits a "short,daily" header value into its two int parts.
+// Writes zeros if the header is absent or malformed.
+func parseRatePair(header string, short, daily *int) {
+	if header == "" {
+		return
+	}
+	parts := strings.SplitN(header, ",", 2)
+	if len(parts) == 2 {
+		if v, err := strconv.Atoi(strings.TrimSpace(parts[0])); err == nil {
+			*short = v
+		}
+		if v, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+			*daily = v
+		}
+	}
+}
+
 
 // Athlete is the subset of Strava's athlete payload we surface.
 type Athlete struct {
@@ -166,14 +319,12 @@ func (c *Client) DeauthorizeAthlete(ctx context.Context, accessToken string) err
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := c.http.Do(req)
+	r, err := c.do(ctx, req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("strava: deauthorize %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if r.StatusCode/100 != 2 {
+		return fmt.Errorf("strava: deauthorize %d: %s", r.StatusCode, strings.TrimSpace(string(r.Body)))
 	}
 	return nil
 }
@@ -199,20 +350,21 @@ func (c *Client) ListAthleteActivities(ctx context.Context, accessToken string, 
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
-	resp, err := c.http.Do(req)
+	r, err := c.do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("strava: list activities: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
+	if r.StatusCode == http.StatusUnauthorized {
 		return nil, ErrTokenExpired
 	}
-	if resp.StatusCode/100 != 2 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("strava: list activities %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if r.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if r.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("strava: list activities %d: %s", r.StatusCode, strings.TrimSpace(string(r.Body)))
 	}
 	var out []SummaryActivity
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.Unmarshal(r.Body, &out); err != nil {
 		return nil, fmt.Errorf("strava: decode list activities: %w", err)
 	}
 	return out, nil
@@ -228,20 +380,21 @@ func (c *Client) FetchActivity(ctx context.Context, accessToken string, id int64
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
-	resp, err := c.http.Do(req)
+	r, err := c.do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("strava: fetch activity: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
+	if r.StatusCode == http.StatusUnauthorized {
 		return nil, ErrTokenExpired
 	}
-	if resp.StatusCode/100 != 2 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("strava: fetch activity %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if r.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if r.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("strava: fetch activity %d: %s", r.StatusCode, strings.TrimSpace(string(r.Body)))
 	}
 	var out DetailedActivity
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.Unmarshal(r.Body, &out); err != nil {
 		return nil, fmt.Errorf("strava: decode activity: %w", err)
 	}
 	return &out, nil
@@ -259,8 +412,8 @@ func (c *Client) FetchActivityStreams(ctx context.Context, accessToken string, i
 		types = defaultStreamTypes
 	}
 	q := url.Values{
-		"keys":         {strings.Join(types, ",")},
-		"key_by_type":  {"true"},
+		"keys":        {strings.Join(types, ",")},
+		"key_by_type": {"true"},
 	}
 	u := fmt.Sprintf("%s/activities/%d/streams?%s", apiBase, id, q.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -269,23 +422,24 @@ func (c *Client) FetchActivityStreams(ctx context.Context, accessToken string, i
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
-	resp, err := c.http.Do(req)
+	r, err := c.do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("strava: fetch streams: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
+	if r.StatusCode == http.StatusUnauthorized {
 		return nil, ErrTokenExpired
 	}
-	if resp.StatusCode == http.StatusNotFound {
+	if r.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if r.StatusCode == http.StatusNotFound {
 		return map[string]Stream{}, nil
 	}
-	if resp.StatusCode/100 != 2 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("strava: fetch streams %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if r.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("strava: fetch streams %d: %s", r.StatusCode, strings.TrimSpace(string(r.Body)))
 	}
 	var out map[string]Stream
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.Unmarshal(r.Body, &out); err != nil {
 		return nil, fmt.Errorf("strava: decode streams: %w", err)
 	}
 	return out, nil
@@ -298,17 +452,15 @@ func (c *Client) postToken(ctx context.Context, form url.Values) (*TokenResponse
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	resp, err := c.http.Do(req)
+	r, err := c.do(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("strava: do request: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("strava: token endpoint %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if r.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("strava: token endpoint %d: %s", r.StatusCode, strings.TrimSpace(string(r.Body)))
 	}
 	var out TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.Unmarshal(r.Body, &out); err != nil {
 		return nil, fmt.Errorf("strava: decode response: %w", err)
 	}
 	return &out, nil

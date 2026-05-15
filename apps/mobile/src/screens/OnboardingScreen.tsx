@@ -10,7 +10,7 @@ import { SunMark } from '../design/SunMark';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
 import { useHealth } from '../state/HealthContext';
-import { connectStrava } from '../services/strava';
+import { connectStrava, getStravaImportStatus, type ImportStatus } from '../services/strava';
 import { isHealthKitAvailable } from '../services/healthkit';
 
 type Step = 'splash' | 'signin' | 'primer' | 'sync' | 'health';
@@ -344,7 +344,7 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
   const c = useColors();
   const { getIdToken } = useAuth();
   const [phase, setPhase] = useState<SyncPhase>('idle');
-  const [progress, setProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const startConnect = async () => {
@@ -354,10 +354,9 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
       const idToken = await getIdToken();
       const result = await connectStrava(idToken);
       if (result.type === 'connected') {
+        // Server auto-fires /v1/strava/import/start in the callback; we
+        // begin polling /v1/strava/import/status immediately.
         setPhase('syncing');
-        // Backfill simulation while the backend ingests activities. Once
-        // M1 wires the real /v1/strava/status polling + backfill webhook,
-        // replace this with a long-poll of /v1/strava/status.
       } else if (result.type === 'cancelled') {
         setPhase('idle');
       } else {
@@ -370,24 +369,46 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
     }
   };
 
+  // Poll the import status while the server enriches. Stop when complete /
+  // error, or when the user advances past this step.
   useEffect(() => {
     if (phase !== 'syncing') return;
-    // Animated progress while the backend would be backfilling. In M1 this
-    // becomes a real status poll; for now it's a visual cue that resolves
-    // after a couple of seconds.
-    const id = setInterval(() => {
-      setProgress((p) => {
-        const np = p + 12;
-        if (np >= 100) {
-          clearInterval(id);
-          setPhase('done');
-          return 100;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const idToken = await getIdToken();
+        const status = await getStravaImportStatus(idToken);
+        if (!alive) return;
+        setImportStatus(status);
+        if (status.status === 'complete') setPhase('done');
+        else if (status.status === 'error') {
+          setError(status.lastError ?? 'Import failed');
+          setPhase('idle');
         }
-        return np;
-      });
-    }, 140);
-    return () => clearInterval(id);
-  }, [phase]);
+      } catch {
+        // Transient network errors during onboarding are silent; the next
+        // tick recovers.
+      }
+    };
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [phase, getIdToken]);
+
+  // Visual progress — when listing, we don't know total yet, animate a soft
+  // pulse. When enriching, real progress from detailFetched/detailTotal.
+  const progress = (() => {
+    if (!importStatus) return 8; // initial activity while we wait for the first poll
+    if (importStatus.status === 'listing') return 12;
+    if (importStatus.status === 'complete') return 100;
+    if (importStatus.detailTotal > 0) {
+      return Math.min(98, Math.round((importStatus.detailFetched / importStatus.detailTotal) * 100));
+    }
+    return 12;
+  })();
 
   if (phase === 'idle') {
     return (
@@ -462,14 +483,38 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
 
       <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.4, color: c.ink, marginTop: 32, textAlign: 'center' }}>
         {phase === 'connecting' && 'Authorizing…'}
-        {phase === 'syncing'    && 'Backfilling your runs'}
+        {phase === 'syncing'    && (
+          importStatus?.status === 'listing'
+            ? 'Pulling your activities'
+            : importStatus && importStatus.detailTotal > 0
+              ? `Enriching ${importStatus.detailFetched} of ${importStatus.detailTotal}`
+              : 'Reading your library'
+        )}
         {phase === 'done'       && 'You’re in.'}
       </TText>
       <TText style={{ color: c.ink3, fontSize: 14, textAlign: 'center', maxWidth: 280, lineHeight: 20, marginTop: 6 }}>
         {phase === 'connecting' && 'Returning from Strava.'}
-        {phase === 'syncing'    && `Last 90 days first, then 5 years in the background. ${Math.round(progress)}%`}
-        {phase === 'done'       && 'Pulled 612 runs across 4,287 km. Welcome, Gilla.'}
+        {phase === 'syncing'    && (
+          importStatus?.status === 'listing'
+            ? 'A few seconds while we list every page of your Strava history…'
+            : importStatus && importStatus.etaMinutes > 0
+              ? `~${importStatus.etaMinutes} min remaining. You can keep going — enrichment continues in the background.`
+              : 'You can keep going — enrichment continues in the background.'
+        )}
+        {phase === 'done'       && importStatus
+          ? `Pulled ${importStatus.detailTotal.toLocaleString()} runs from Strava. Welcome.`
+          : 'Welcome.'}
       </TText>
+
+      {/* Once we have a row count, even mid-enrichment is a fine moment to */}
+      {/* let the user proceed. They don't need to wait for all 500 details. */}
+      {phase === 'syncing' && importStatus && importStatus.detailTotal > 0 && (
+        <View style={{ marginTop: 'auto', width: '100%', paddingBottom: 32 }}>
+          <Button kind="ghost" full onPress={done}>
+            Continue — enrichment runs in background
+          </Button>
+        </View>
+      )}
 
       {phase === 'done' && (
         <View style={{ marginTop: 'auto', width: '100%', paddingBottom: 32 }}>

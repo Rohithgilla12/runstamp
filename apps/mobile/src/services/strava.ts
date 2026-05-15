@@ -99,3 +99,35 @@ export function getStravaStatus(idToken: string | null): Promise<StravaStatus> {
 export function disconnectStrava(idToken: string | null): Promise<void> {
   return apiDelete('/v1/strava/connection', { idToken });
 }
+
+// ─── Deep import (backfill of historical activities) ─────────────────────
+
+export type ImportStatusValue =
+  | 'pending'      // row created, waiting for the worker to pick it up
+  | 'listing'      // pulling summary pages
+  | 'enriching'    // pulling detail + streams per activity
+  | 'paused'       // operator paused, or rate-limit sleep
+  | 'complete'     // all activities have has_detail=true
+  | 'error';
+
+export interface ImportStatus {
+  status: ImportStatusValue;
+  summaryCount: number;     // pages-of-200 listing count
+  detailFetched: number;
+  detailTotal: number;
+  etaMinutes: number;
+  lastError?: string;
+  startedAt?: string;
+  updatedAt?: string;
+  completedAt?: string;
+  rateWindowUntil?: string; // ISO of next sleep-end, if importer is rate-limit-throttled
+}
+
+/** Idempotent — if an import is already running or complete, returns the current status. */
+export function startStravaImport(idToken: string | null): Promise<ImportStatus> {
+  return apiPost<ImportStatus>('/v1/strava/import/start', {}, { idToken });
+}
+
+export function getStravaImportStatus(idToken: string | null): Promise<ImportStatus> {
+  return apiGet<ImportStatus>('/v1/strava/import/status', { idToken });
+}

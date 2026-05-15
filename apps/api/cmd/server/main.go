@@ -100,8 +100,11 @@ func main() {
 	stravaService := strava.NewService(stravaClient, stravaRepo, cfg.PublicBaseURL)
 	stravaService.SetActivities(activitiesService)
 
+	stravaImporter := strava.NewImporter(pool, stravaClient, stravaRepo, activitiesRepo, log)
+
 	stravaHandler := &handlers.StravaHandler{
 		Service:         stravaService,
+		Importer:        stravaImporter,
 		Users:           usersRepo,
 		VerifyToken:     cfg.StravaWebhookToken,
 		SuccessDeepLink: cfg.StravaSuccessDeepLink,
@@ -139,6 +142,8 @@ func main() {
 				r.Get("/status", stravaHandler.Status)
 				r.Delete("/connection", stravaHandler.Disconnect)
 				r.Post("/backfill", stravaHandler.Backfill)
+				r.Post("/import/start", stravaHandler.ImportStart)
+				r.Get("/import/status", stravaHandler.ImportStatus)
 			})
 		})
 		// Apple Health ingestion — all routes are auth-gated.
@@ -166,6 +171,12 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// importerCtx has a longer deadline than the HTTP shutdown context so the
+	// worker can finish its current batch before the process exits.
+	importerCtx, importerCancel := context.WithCancel(context.Background())
+
+	go stravaImporter.Run(importerCtx)
+
 	// Graceful shutdown on SIGINT / SIGTERM via the NotifyContext above.
 	go func() {
 		log.Info("starting", "addr", srv.Addr, "version", version)
@@ -178,11 +189,26 @@ func main() {
 	<-ctx.Done()
 	stop()
 	log.Info("shutting down")
-	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+
+	// Give the HTTP server 10 seconds to drain in-flight requests.
+	shutCtx, shutCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutCancel()
 	if err := srv.Shutdown(shutCtx); err != nil {
 		log.Error("shutdown error", "err", err)
-		os.Exit(1)
 	}
+
+	// Give the importer 30 seconds to finish its current unit of work.
+	log.Info("waiting for importer to drain")
+	importerDone := make(chan struct{})
+	go func() {
+		importerCancel()
+		close(importerDone)
+	}()
+	select {
+	case <-importerDone:
+	case <-time.After(30 * time.Second):
+		log.Warn("importer drain timeout")
+	}
+
 	log.Info("bye")
 }

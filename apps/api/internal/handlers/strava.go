@@ -19,6 +19,7 @@ import (
 // service calls and back.
 type StravaHandler struct {
 	Service         *strava.Service
+	Importer        *strava.Importer
 	Users           *users.Repo
 	VerifyToken     string
 	SuccessDeepLink string // e.g. runstamp://strava/connected
@@ -67,10 +68,20 @@ func (h *StravaHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, h.FailureDeepLink+"?reason=missing_params", http.StatusSeeOther)
 		return
 	}
-	if _, err := h.Service.FinishAuthorize(r.Context(), code, state); err != nil {
+	userID, err := h.Service.FinishAuthorize(r.Context(), code, state)
+	if err != nil {
 		h.Log.Warn("strava finish authorize failed", "err", err)
 		http.Redirect(w, r, h.FailureDeepLink+"?reason=exchange_failed", http.StatusSeeOther)
 		return
+	}
+	// Kick off the deep import immediately. Errors here must not block the
+	// redirect — the mobile app polls /import/status after the deep-link returns.
+	if h.Importer != nil {
+		importCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if startErr := h.Importer.Start(importCtx, userID); startErr != nil {
+			h.Log.Warn("strava callback: start importer", "user_id", userID, "err", startErr)
+		}
 	}
 	http.Redirect(w, r, h.SuccessDeepLink, http.StatusSeeOther)
 }
@@ -228,6 +239,78 @@ func (h *StravaHandler) Backfill(w http.ResponseWriter, r *http.Request) {
 		}
 		h.Log.Info("strava backfill: complete", "user_id", user.ID, "inserted", count)
 	}()
+}
+
+// ImportStart — POST /v1/strava/import/start (auth-gated).
+// Idempotent: calling it on an already-running or complete import is safe.
+// Returns 202 + current ImportStatus.
+func (h *StravaHandler) ImportStart(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil {
+		h.Log.Error("strava import start: find user", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if user == nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if h.Importer == nil {
+		writeError(w, http.StatusServiceUnavailable, "importer not available")
+		return
+	}
+	if err := h.Importer.Start(r.Context(), user.ID); err != nil {
+		h.Log.Error("strava import start: start", "user_id", user.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to start import")
+		return
+	}
+	status, err := h.Importer.Status(r.Context(), user.ID)
+	if err != nil {
+		h.Log.Error("strava import start: status", "user_id", user.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to fetch status")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, status)
+}
+
+// ImportStatus — GET /v1/strava/import/status (auth-gated).
+// Returns the current ImportStatus JSON.
+func (h *StravaHandler) ImportStatus(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil {
+		h.Log.Error("strava import status: find user", "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if user == nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if h.Importer == nil {
+		writeError(w, http.StatusServiceUnavailable, "importer not available")
+		return
+	}
+	status, err := h.Importer.Status(r.Context(), user.ID)
+	if err != nil {
+		h.Log.Error("strava import status: query", "user_id", user.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if status == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "not_started"})
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

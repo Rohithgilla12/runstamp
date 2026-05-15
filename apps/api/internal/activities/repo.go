@@ -50,6 +50,25 @@ type Activity struct {
 	VO2maxMlKgMin   *float64
 	AvgSpeedMS      *float64
 	Splits          *json.RawMessage
+	HasDetail       bool
+	HasStreams       bool
+}
+
+// DetailFields holds the rich columns written during the enrichment phase.
+// Only non-nil fields are updated; summary fields (distance, started_at, etc.)
+// are left untouched.
+type DetailFields struct {
+	ElevationGainM  *float64
+	MaxHR           *int
+	AvgHR           *int
+	Calories        *int
+	LocationCity    *string
+	LocationCountry *string
+	Title           *string
+	AvgPaceSPerKm   *float64
+	StartLat        *float64
+	StartLon        *float64
+	Raw             *json.RawMessage
 }
 
 // Repository wraps a pgxpool and performs CRUD on the activities table.
@@ -346,4 +365,110 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 		a.Raw = &msg
 	}
 	return &a, nil
+}
+
+// MarkDetailFetched sets has_detail=true for the given activity ID.
+func (r *Repository) MarkDetailFetched(ctx context.Context, activityID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE activities SET has_detail = true WHERE id = $1`,
+		activityID)
+	if err != nil {
+		return fmt.Errorf("activities: mark detail fetched: %w", err)
+	}
+	return nil
+}
+
+// MarkStreamsFetched sets has_streams=true for the given activity ID.
+func (r *Repository) MarkStreamsFetched(ctx context.Context, activityID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE activities SET has_streams = true WHERE id = $1`,
+		activityID)
+	if err != nil {
+		return fmt.Errorf("activities: mark streams fetched: %w", err)
+	}
+	return nil
+}
+
+// UpdateDetail overwrites rich detail columns for an already-inserted row.
+// Only non-nil fields in df are written; nil fields are left unchanged.
+func (r *Repository) UpdateDetail(ctx context.Context, activityID string, df *DetailFields) error {
+	if df == nil {
+		return nil
+	}
+	if df.StartLat != nil && df.StartLon != nil {
+		_, err := r.pool.Exec(ctx, `
+UPDATE activities SET
+  elevation_gain_m  = COALESCE($2, elevation_gain_m),
+  max_hr            = COALESCE($3, max_hr),
+  avg_hr            = COALESCE($4, avg_hr),
+  calories          = COALESCE($5, calories),
+  location_city     = COALESCE($6, location_city),
+  location_country  = COALESCE($7, location_country),
+  title             = COALESCE($8, title),
+  avg_pace_s_per_km = COALESCE($9, avg_pace_s_per_km),
+  location_start    = COALESCE(ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography, location_start),
+  raw               = COALESCE($12, raw)
+WHERE id = $1`,
+			activityID,
+			df.ElevationGainM, df.MaxHR, df.AvgHR, df.Calories,
+			df.LocationCity, df.LocationCountry, df.Title, df.AvgPaceSPerKm,
+			df.StartLat, df.StartLon,
+			df.Raw,
+		)
+		if err != nil {
+			return fmt.Errorf("activities: update detail: %w", err)
+		}
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `
+UPDATE activities SET
+  elevation_gain_m  = COALESCE($2, elevation_gain_m),
+  max_hr            = COALESCE($3, max_hr),
+  avg_hr            = COALESCE($4, avg_hr),
+  calories          = COALESCE($5, calories),
+  location_city     = COALESCE($6, location_city),
+  location_country  = COALESCE($7, location_country),
+  title             = COALESCE($8, title),
+  avg_pace_s_per_km = COALESCE($9, avg_pace_s_per_km),
+  raw               = COALESCE($10, raw)
+WHERE id = $1`,
+		activityID,
+		df.ElevationGainM, df.MaxHR, df.AvgHR, df.Calories,
+		df.LocationCity, df.LocationCountry, df.Title, df.AvgPaceSPerKm,
+		df.Raw,
+	)
+	if err != nil {
+		return fmt.Errorf("activities: update detail: %w", err)
+	}
+	return nil
+}
+
+// NextPendingDetail returns the most-recently-started Strava activity for
+// this user that still has has_detail=false. Returns (nil, nil) when all
+// activities are enriched.
+func (r *Repository) NextPendingDetail(ctx context.Context, userID string) (*Activity, error) {
+	const sql = `
+SELECT
+  id, user_id, source, external_id, sport, started_at,
+  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
+  avg_hr, max_hr, avg_pace_s_per_km, calories,
+  title, notes,
+  location_city, location_country,
+  raw, dupe_of, ingested_at
+FROM activities
+WHERE user_id = $1
+  AND source = 'strava'
+  AND has_detail = false
+ORDER BY started_at DESC
+LIMIT 1`
+
+	row := r.pool.QueryRow(ctx, sql, userID)
+	a, err := scanActivity(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("activities: next pending detail: %w", err)
+	}
+	return a, nil
 }
