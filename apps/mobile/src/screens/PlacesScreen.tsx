@@ -1,12 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useAuth } from '../state/AuthContext';
+import { backfillPlaces } from '../services/places';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
+import { Icon } from '../design/Icon';
 import { SectionHeader } from './HomeScreen';
 import type { TabProps } from '../nav/types';
 
@@ -51,7 +54,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
       </View>
 
       {places.length === 0 ? (
-        <EmptyPlaces loading={loading} hasActivities={activities.length > 0} />
+        <EmptyPlaces loading={loading} hasActivities={activities.length > 0} onAfterBackfill={refresh} />
       ) : (
         <>
           <View style={{ paddingHorizontal: 20, paddingTop: 16, flexDirection: 'row', gap: 14 }}>
@@ -102,18 +105,75 @@ function aggregatePlaces(activities: Activity[]): ComputedPlace[] {
   return [...map.values()];
 }
 
-function EmptyPlaces({ loading, hasActivities }: { loading: boolean; hasActivities: boolean }) {
+function EmptyPlaces({
+  loading,
+  hasActivities,
+  onAfterBackfill,
+}: {
+  loading: boolean;
+  hasActivities: boolean;
+  onAfterBackfill: () => Promise<void>;
+}) {
   const c = useColors();
-  const message = loading
-    ? 'Fetching your runs…'
-    : hasActivities
-      ? 'Your runs don’t have location info yet.\nStrava activities with GPS will populate this map.'
-      : 'No runs yet — connect Strava or Apple Health to start filling your passport.';
+  const { getIdToken } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  const runBackfill = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const idToken = await getIdToken();
+      const res = await backfillPlaces(idToken);
+      const awarded = (res.awardedStamps ?? []).length;
+      const parts = [`Geocoded ${res.updated} runs`];
+      if (awarded > 0) parts.push(`+${awarded} stamps`);
+      setStatus(parts.join(' · '));
+      await onAfterBackfill();
+    } catch (e) {
+      setStatus(`Failed: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, getIdToken, onAfterBackfill]);
+
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 32 }}>
       <Card style={{ backgroundColor: c.paper2, padding: 24 }}>
-        <Eyebrow style={{ color: c.ink3 }}>{loading ? 'LOADING…' : 'EMPTY PASSPORT'}</Eyebrow>
-        <TText style={{ fontSize: 14, color: c.ink2, marginTop: 12, lineHeight: 20 }}>{message}</TText>
+        <Eyebrow style={{ color: c.ink3 }}>
+          {loading ? 'LOADING…' : hasActivities ? 'NEEDS GEOCODING' : 'EMPTY PASSPORT'}
+        </Eyebrow>
+        {!hasActivities ? (
+          <TText style={{ fontSize: 14, color: c.ink2, marginTop: 12, lineHeight: 20 }}>
+            No runs yet — connect Strava or Apple Health to start filling your passport.
+          </TText>
+        ) : (
+          <>
+            <TText style={{ fontSize: 14, color: c.ink2, marginTop: 12, lineHeight: 20 }}>
+              Your runs are in, but they don’t have city names yet. Tap to look up
+              each start point — Nominatim is rate-limited so we do up to 50 at a time.
+            </TText>
+            <Pressable
+              onPress={runBackfill}
+              disabled={busy}
+              style={({ pressed }) => [{
+                marginTop: 14, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12,
+                backgroundColor: c.ink, alignSelf: 'flex-start',
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+                opacity: pressed || busy ? 0.7 : 1,
+              }]}
+            >
+              <Icon.pin size={14} color={c.paper} />
+              <TText style={{ color: c.paper, fontSize: 13, fontWeight: '500' }}>
+                {busy ? 'Looking up…' : 'Geocode my runs'}
+              </TText>
+            </Pressable>
+            {status && (
+              <TText style={{ fontSize: 11, color: c.ink3, marginTop: 8 }}>{status}</TText>
+            )}
+          </>
+        )}
       </Card>
     </View>
   );

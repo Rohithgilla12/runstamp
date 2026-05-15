@@ -102,13 +102,30 @@ func main() {
 
 	geocoder := places.NewGeocoder(pool, log)
 	geoBackfiller := places.NewBackfiller(pool, geocoder, log)
-	activitiesService.SetPostIngest(func(ctx context.Context, userID string) {
-		// Stamps evaluator runs in the request goroutine — it's fast (handful
-		// of indexed queries) and we want awards visible by the time the
-		// HTTP response goes out. If we ever measure latency pain, move this
-		// onto an Asynq queue.
+	activitiesService.SetPostIngest(func(ctx context.Context, userID string, canonical *activities.Activity) {
+		// Stamps eval runs synchronously — handful of indexed queries, awards
+		// visible by the time the HTTP response goes out.
 		if _, err := stampsEval.EvaluateForUser(ctx, userID); err != nil {
 			log.Error("stamps: post-ingest eval failed", "user_id", userID, "err", err)
+		}
+		// Geocoding is async — Nominatim is 1 req/sec serialized via mutex
+		// inside the Geocoder, so a Strava import burst of N activities will
+		// take ~N seconds. We don't want to block the ingest response on
+		// that. The activity is already persisted; the worker just fills in
+		// city/country when it gets to it. After geocoding lands, re-eval
+		// stamps so place-based ones fire.
+		if canonical != nil && canonical.StartLat != nil && canonical.StartLon != nil {
+			go func(actID, uid string) {
+				bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				if err := geoBackfiller.GeocodeActivity(bg, actID); err != nil {
+					log.Warn("places: post-ingest geocode failed", "activity_id", actID, "err", err)
+					return
+				}
+				if _, err := stampsEval.EvaluateForUser(bg, uid); err != nil {
+					log.Warn("stamps: post-geocode eval failed", "user_id", uid, "err", err)
+				}
+			}(canonical.ID, userID)
 		}
 	})
 	if err := stamps.Sync(ctx, pool); err != nil {

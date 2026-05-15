@@ -6,12 +6,12 @@ import (
 )
 
 // PostIngestHook fires after a successful ingest (commit returned without
-// error). The hook receives the user id whose data has changed so it can
-// trigger derived work — stamp evaluation, place geocoding, push
-// notifications. Hook errors must never propagate; the ingest already
-// committed and we don't want to leak transient side-effect failures into
-// the request response.
-type PostIngestHook func(ctx context.Context, userID string)
+// error). The hook receives the user id whose data has changed plus the
+// canonical activity so it can trigger derived work — stamp evaluation,
+// place geocoding, push notifications. Hook errors must never propagate;
+// the ingest already committed and we don't want to leak transient
+// side-effect failures into the request response.
+type PostIngestHook func(ctx context.Context, userID string, canonical *Activity)
 
 // Service is a thin layer above Repository that provides the Ingest method.
 // It is the only entry point callers outside this package should use for
@@ -75,7 +75,7 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return nil, false, fmt.Errorf("activities: commit strava-wins flip: %w", commitErr)
 			}
-			s.firePostIngest(ctx, candidate.UserID)
+			s.firePostIngest(ctx, candidate.UserID, inserted)
 			return inserted, true, nil
 		}
 
@@ -88,7 +88,7 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 		if commitErr := tx.Commit(ctx); commitErr != nil {
 			return nil, false, fmt.Errorf("activities: commit dupe insert: %w", commitErr)
 		}
-		s.firePostIngest(ctx, candidate.UserID)
+		s.firePostIngest(ctx, candidate.UserID, match)
 		return match, true, nil
 	}
 
@@ -100,15 +100,15 @@ func (s *Service) Ingest(ctx context.Context, candidate *Activity) (canonical *A
 	if commitErr := tx.Commit(ctx); commitErr != nil {
 		return nil, false, fmt.Errorf("activities: commit insert: %w", commitErr)
 	}
-	s.firePostIngest(ctx, candidate.UserID)
+	s.firePostIngest(ctx, candidate.UserID, inserted)
 	return inserted, false, nil
 }
 
-func (s *Service) firePostIngest(ctx context.Context, userID string) {
+func (s *Service) firePostIngest(ctx context.Context, userID string, canonical *Activity) {
 	if s.postIngest == nil {
 		return
 	}
-	s.postIngest(ctx, userID)
+	s.postIngest(ctx, userID, canonical)
 }
 
 // Repo exposes the underlying repository for callers that need direct
