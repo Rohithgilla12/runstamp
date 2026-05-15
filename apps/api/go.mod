@@ -4,11 +4,11 @@ go 1.25.0
 
 require (
 	firebase.google.com/go/v4 v4.20.0
-	github.com/go-chi/chi/v5 v5.1.0
-	github.com/go-chi/cors v1.2.1
+	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/cors v1.2.2
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
-	github.com/jackc/pgx/v5 v5.7.5
+	github.com/jackc/pgx/v5 v5.9.2
 	google.golang.org/api v0.279.0
 )
 
