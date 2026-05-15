@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 )
@@ -32,14 +33,26 @@ type stravaExchangeRes struct {
 	UserID       string         `json:"userId"`
 }
 
-// Exchange is POST /v1/auth/strava/exchange. The mobile app POSTs an
-// authorization_code obtained via PKCE; we complete the exchange server-side
-// where the client_secret lives, then return a normalised result.
+// Exchange is POST /v1/auth/strava/exchange. The route is protected by
+// RequireFirebaseAuth middleware — the caller must supply a valid Firebase ID
+// token in the Authorization header so we can anchor the Strava account to a
+// known Firebase user.
 //
-// In M1 this will also: persist the encrypted refresh token, kick off a
-// backfill job (last 90 days), and return a session JWT instead of the raw
-// Strava tokens.
+// Flow:
+//  1. Extract verified Firebase identity from context.
+//  2. Materialise (or refresh) the runstamp users row via UpsertByFirebaseUID.
+//  3. Complete the Strava PKCE code exchange server-side.
+//  4. Attach the encrypted Strava tokens to that user via UpsertStravaAccountForUser.
+//
+// In M1 this will also: kick off a backfill job (last 90 days) and return a
+// session JWT instead of the raw Strava tokens.
 func (h *StravaHandler) Exchange(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+
 	var req stravaExchangeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json body")
@@ -50,6 +63,13 @@ func (h *StravaHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := h.Users.UpsertByFirebaseUID(r.Context(), vt.UID, vt.Email)
+	if err != nil {
+		h.Log.Error("upsert user by firebase uid failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to provision user")
+		return
+	}
+
 	tokens, err := h.Client.ExchangeCode(r.Context(), req.Code, req.CodeVerifier)
 	if err != nil {
 		h.Log.Error("strava exchange failed", "err", err)
@@ -57,8 +77,7 @@ func (h *StravaHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Users.UpsertStravaAccount(r.Context(), &tokens.Athlete, tokens)
-	if err != nil {
+	if err := h.Users.UpsertStravaAccountForUser(r.Context(), user.ID, &tokens.Athlete, tokens); err != nil {
 		h.Log.Error("upsert strava account failed", "err", err)
 		writeError(w, http.StatusBadGateway, "failed to persist strava account")
 		return

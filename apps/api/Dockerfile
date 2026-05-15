@@ -15,5 +15,11 @@ FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
 COPY --from=build /out/runstamp-api /usr/local/bin/runstamp-api
 COPY --from=build /src/migrations migrations
+# Firebase service-account credentials must NOT be baked into the image.
+# In production, supply the JSON file via one of:
+#   - A Docker secret:      --secret id=firebase,src=/host/path/key.json
+#   - A bind-mounted volume: -v /host/path/key.json:/run/secrets/firebase.json:ro
+# Then set FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase.json in the
+# container environment.  Never COPY real credential files into this image.
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/runstamp-api"]

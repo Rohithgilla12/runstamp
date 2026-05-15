@@ -12,6 +12,19 @@ const stravaClientId =
   process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID ??
   '';
 
+const googleIosClientId =
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ??
+  '';
+
+const firebaseConfig = {
+  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY            ?? '',
+  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN        ?? '',
+  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID         ?? '',
+  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID             ?? '',
+  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET     ?? '',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? ''
+};
+
 const config: ExpoConfig = {
   name: 'Runstamp',
   slug: 'runstamp',
@@ -23,6 +36,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'fun.gilla.runstamp',
+    usesAppleSignIn: true,
     infoPlist: {
       NSPhotoLibraryUsageDescription:
         'Runstamp reads from your Photos so you can pin a real run photo to your share card. We never upload them.',
@@ -59,13 +73,16 @@ const config: ExpoConfig = {
           'Runstamp reads from your Photos so you can pin a real run photo to your share card.'
       }
     ],
-    'expo-web-browser'
+    'expo-web-browser',
+    ['expo-apple-authentication', {}]
   ],
   // Only **public** values belong here. Anything sensitive (Strava client
   // secret, signing keys, etc.) lives in EAS Secrets or on the backend.
   extra: {
     apiBaseUrl,
-    stravaClientId
+    stravaClientId,
+    googleIosClientId,
+    firebase: firebaseConfig
   }
 };
 

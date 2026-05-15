@@ -21,6 +21,18 @@ type Config struct {
 	AllowedOrigins     []string
 	DatabaseURL        string
 	TokenEncKeyHex     string
+
+	// Firebase Admin SDK — used for ID-token verification on protected routes.
+	// FirebaseProjectID is required whenever Firebase auth is active.
+	// FirebaseCredentialsPath is the local path to the service-account JSON.
+	// When blank the SDK runs without credentials (token verification will fail
+	// at runtime — intentional; see auth.NewVerifier).
+	// FirebaseAuthOptional, when true, allows the server to start even when
+	// FirebaseProjectID is absent.  Intended for staging environments that do
+	// not have Firebase configured.  Set FIREBASE_AUTH_OPTIONAL=1 to enable.
+	FirebaseProjectID       string
+	FirebaseCredentialsPath string
+	FirebaseAuthOptional    bool
 }
 
 // Load reads required values from env and fails fast on missing secrets when
@@ -32,6 +44,8 @@ func Load() (*Config, error) {
 		slog.Warn("RUNSTAMP_TOKEN_ENC_KEY not set — using insecure dev-only key; do NOT use in production")
 	}
 
+	firebaseOptional := os.Getenv("FIREBASE_AUTH_OPTIONAL") == "1"
+
 	c := &Config{
 		Port:               envInt("RUNSTAMP_PORT", 8080),
 		StravaClientID:     os.Getenv("STRAVA_CLIENT_ID"),
@@ -40,9 +54,15 @@ func Load() (*Config, error) {
 		AllowedOrigins:     splitCSV(envDefault("RUNSTAMP_ALLOWED_ORIGINS", "http://localhost:8081,exp://*")),
 		DatabaseURL:        envDefault("DATABASE_URL", "postgres://runstamp:runstamp@localhost:5432/runstamp?sslmode=disable"),
 		TokenEncKeyHex:     tokenKey,
+
+		FirebaseProjectID:       os.Getenv("FIREBASE_PROJECT_ID"),
+		FirebaseCredentialsPath: os.Getenv("FIREBASE_CREDENTIALS_PATH"),
+		FirebaseAuthOptional:    firebaseOptional,
 	}
 
-	if os.Getenv("RUNSTAMP_ENV") == "production" {
+	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
+
+	if isProd {
 		if c.StravaClientID == "" || c.StravaClientSecret == "" {
 			return nil, fmt.Errorf("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set in production")
 		}
@@ -52,7 +72,23 @@ func Load() (*Config, error) {
 		if c.TokenEncKeyHex == devTokenEncKey {
 			return nil, fmt.Errorf("RUNSTAMP_TOKEN_ENC_KEY must be set to a real 32-byte hex key in production")
 		}
+		if !firebaseOptional {
+			if c.FirebaseProjectID == "" {
+				return nil, fmt.Errorf("FIREBASE_PROJECT_ID must be set in production (or set FIREBASE_AUTH_OPTIONAL=1 to skip)")
+			}
+			if c.FirebaseCredentialsPath == "" {
+				return nil, fmt.Errorf("FIREBASE_CREDENTIALS_PATH must be set in production (or set FIREBASE_AUTH_OPTIONAL=1 to skip)")
+			}
+		}
+	} else {
+		if c.FirebaseProjectID == "" {
+			slog.Warn("FIREBASE_PROJECT_ID not set — Firebase auth will be non-functional")
+		}
+		if c.FirebaseCredentialsPath == "" {
+			slog.Warn("FIREBASE_CREDENTIALS_PATH not set — Firebase auth will run without credentials")
+		}
 	}
+
 	return c, nil
 }
 

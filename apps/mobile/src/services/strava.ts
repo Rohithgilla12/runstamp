@@ -35,6 +35,7 @@ import {
   type DiscoveryDocument
 } from 'expo-auth-session';
 import Constants from 'expo-constants';
+import { apiPost } from './api';
 
 export const STRAVA_SCOPES = [
   'activity:read',
@@ -107,23 +108,19 @@ export interface StravaExchangeResult {
  * Hand the authorization code to OUR backend; the backend completes the
  * client-secret-bearing token exchange with Strava and returns a normalised
  * result. We never ship the Strava client secret in the binary.
+ *
+ * The backend now expects a Firebase ID token on protected routes; the
+ * `apiPost` helper attaches `Authorization: Bearer <token>` when an
+ * `idToken` is provided in the options. Pass the token from `useAuth()`'s
+ * `getIdToken()` when calling this from a signed-in context.
  */
-export async function exchangeStravaCode(params: {
-  code: string;
-  codeVerifier: string;
-  redirectUri: string;
-}): Promise<StravaExchangeResult> {
-  const res = await fetch(`${API_BASE_URL}/v1/auth/strava/exchange`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    },
-    body: JSON.stringify(params)
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Strava exchange failed (${res.status}): ${text}`);
-  }
-  return (await res.json()) as StravaExchangeResult;
+export async function exchangeStravaCode(
+  params: {
+    code: string;
+    codeVerifier: string;
+    redirectUri: string;
+  },
+  idToken?: string | null
+): Promise<StravaExchangeResult> {
+  return apiPost<StravaExchangeResult>('/v1/auth/strava/exchange', params, { idToken });
 }

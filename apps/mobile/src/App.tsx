@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type Theme as NavTheme, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AppStateProvider, useAppState } from './state/AppState';
+import { AuthProvider, useAuth } from './state/AuthContext';
 import { ThemeCtx, paletteFor } from './design/theme';
 import { useAppFonts } from './design/fonts';
 import { RootNavigator } from './nav/RootNavigator';
@@ -23,7 +24,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppStateProvider>
-          <Shell />
+          <AuthProvider>
+            <Shell />
+          </AuthProvider>
         </AppStateProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -32,6 +35,7 @@ export default function App() {
 
 function Shell() {
   const { dark, accent, units, hasOnboarded } = useAppState();
+  const { status } = useAuth();
   const palette = paletteFor({ dark, accent, units });
   const navTheme: NavTheme = {
     ...(dark ? DarkTheme : DefaultTheme),
@@ -45,15 +49,24 @@ function Shell() {
       notification: palette.accent
     }
   };
+
+  const showSplash = status === 'loading';
+  const showOnboarding = status === 'signed-out' || (status === 'signed-in' && !hasOnboarded);
+  const showApp = status === 'signed-in' && hasOnboarded;
+
   return (
     <ThemeCtx.Provider value={{ dark, accent, units }}>
       <StatusBar style={dark ? 'light' : 'dark'} />
-      {hasOnboarded ? (
+      {showSplash && (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.paper }}>
+          <ActivityIndicator color={palette.accent} />
+        </View>
+      )}
+      {showOnboarding && <OnboardingScreen />}
+      {showApp && (
         <NavigationContainer theme={navTheme}>
           <RootNavigator />
         </NavigationContainer>
-      ) : (
-        <OnboardingScreen />
       )}
     </ThemeCtx.Provider>
   );

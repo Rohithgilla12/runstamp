@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useColors } from '../design/theme';
@@ -8,7 +8,8 @@ import { Button } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { useAppState } from '../state/AppState';
-import { useStravaAuth } from '../services/strava';
+import { useAuth } from '../state/AuthContext';
+import { STRAVA_CLIENT_ID, exchangeStravaCode, useStravaAuth } from '../services/strava';
 
 type Step = 'splash' | 'signin' | 'primer' | 'sync';
 type SyncPhase = 'idle' | 'connecting' | 'syncing' | 'done';
@@ -74,6 +75,72 @@ function Splash({ next }: { next: () => void }) {
 
 function SignIn({ back, next }: { back: () => void; next: () => void }) {
   const c = useColors();
+  const { signInWithApple, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  function clearError() {
+    setError(null);
+  }
+
+  async function handleApple() {
+    clearError();
+    setBusy(true);
+    try {
+      await signInWithApple();
+      next();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('ERR_REQUEST_CANCELED')) {
+        setError(msg);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGoogle() {
+    clearError();
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+      next();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('cancelled')) {
+        setError(msg);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEmail() {
+    if (!email.trim() || !password) {
+      setError('Email and password are required');
+      return;
+    }
+    clearError();
+    setBusy(true);
+    try {
+      if (isSignUp) {
+        await signUpWithEmail(email.trim(), password);
+      } else {
+        await signInWithEmail(email.trim(), password);
+      }
+      next();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 32, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
       <Pressable onPress={back} style={{ marginBottom: 24 }}><Icon.back size={22} color={c.ink2} /></Pressable>
@@ -87,13 +154,106 @@ function SignIn({ back, next }: { back: () => void; next: () => void }) {
         We use Firebase Auth. We never see your password. You can self-host the whole thing.
       </TText>
 
-      <View style={{ gap: 10 }}>
-        <Button kind="primary" full onPress={next} icon={<Icon.apple size={18} color={c.paper} />}>Continue with Apple</Button>
-        <Button kind="ghost" full onPress={next} icon={
-          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#4285f4', borderWidth: 1, borderColor: c.line }} />
-        }>Continue with Google</Button>
-        <Button kind="ghost" full onPress={next}>Continue with email</Button>
+      <View style={{ gap: 10, opacity: busy ? 0.6 : 1 }}>
+        {/* Apple Sign-In is iOS-only. Android support via the web flow is
+            deferred to v1 — it requires a web redirect that complicates the
+            setup considerably without adding much for the typical user. */}
+        {Platform.OS === 'ios' && (
+          <Button
+            kind="primary"
+            full
+            onPress={handleApple}
+            disabled={busy}
+            icon={<Icon.apple size={18} color={c.paper} />}
+          >
+            Continue with Apple
+          </Button>
+        )}
+        <Button
+          kind="ghost"
+          full
+          onPress={handleGoogle}
+          disabled={busy}
+          icon={
+            <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#4285f4', borderWidth: 1, borderColor: c.line }} />
+          }
+        >
+          Continue with Google
+        </Button>
+        <Button
+          kind="ghost"
+          full
+          onPress={() => { clearError(); setEmailOpen((o) => !o); }}
+          disabled={busy}
+        >
+          Continue with email
+        </Button>
       </View>
+
+      {emailOpen && (
+        <View style={{ marginTop: 20, gap: 10 }}>
+          <TextInput
+            value={email}
+            onChangeText={(t) => { setEmail(t); clearError(); }}
+            placeholder="you@example.com"
+            placeholderTextColor={c.ink3}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            editable={!busy}
+            style={{
+              height: 48, paddingHorizontal: 16, borderRadius: 10,
+              borderWidth: 1, borderColor: c.line,
+              backgroundColor: c.paper2, color: c.ink, fontSize: 15
+            }}
+          />
+          <TextInput
+            value={password}
+            onChangeText={(t) => { setPassword(t); clearError(); }}
+            placeholder="Password"
+            placeholderTextColor={c.ink3}
+            secureTextEntry
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            editable={!busy}
+            style={{
+              height: 48, paddingHorizontal: 16, borderRadius: 10,
+              borderWidth: 1, borderColor: c.line,
+              backgroundColor: c.paper2, color: c.ink, fontSize: 15
+            }}
+          />
+          <Button
+            kind="primary"
+            full
+            onPress={handleEmail}
+            disabled={busy}
+          >
+            {isSignUp ? 'Create account' : 'Sign in'}
+          </Button>
+          <Pressable onPress={() => { setIsSignUp((v) => !v); clearError(); }} style={{ alignSelf: 'center', marginTop: 4 }}>
+            <TText style={{ fontSize: 13, color: c.ink3 }}>
+              {isSignUp ? 'Already have an account? ' : 'Need an account? '}
+              <TText style={{ color: c.ink, textDecorationLine: 'underline' }}>
+                {isSignUp ? 'Sign in' : 'Sign up'}
+              </TText>
+            </TText>
+          </Pressable>
+        </View>
+      )}
+
+      {busy && (
+        <TText
+          variant="mono"
+          style={{ marginTop: 14, textAlign: 'center', fontSize: 11, color: c.ink3 }}
+        >
+          AUTHENTICATING…
+        </TText>
+      )}
+
+      {error && (
+        <Eyebrow style={{ marginTop: 14, color: '#c44a1e', fontSize: 11, lineHeight: 16 }}>
+          {error}
+        </Eyebrow>
+      )}
 
       <TText style={{ marginTop: 48, fontSize: 11, color: c.ink3, lineHeight: 18 }}>
         By continuing you agree to the <TText style={{ color: c.ink2, textDecorationLine: 'underline' }}>terms</TText> and{' '}
@@ -168,14 +328,40 @@ function ConnectRow({ color, iconNode, title, desc, required, subtle }: { color:
 
 function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
   const c = useColors();
-  const { response, promptAsync } = useStravaAuth();
+  const { request, response, promptAsync, redirectUri } = useStravaAuth();
+  const { getIdToken } = useAuth();
   const [phase, setPhase] = useState<SyncPhase>('idle');
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Real flow runs only when the user has provisioned a Strava client id
+  // via EXPO_PUBLIC_STRAVA_CLIENT_ID. Without it we keep the demo simulation
+  // so the onboarding screen still walks end-to-end on a fresh checkout.
+  const stravaReady = STRAVA_CLIENT_ID.length > 0;
 
   useEffect(() => {
     if (!response) return;
     if (response.type === 'success') {
       setPhase('syncing');
+      if (!stravaReady) return; // simulator path
+      const code = response.params.code;
+      const verifier = request?.codeVerifier;
+      if (!code || !verifier) {
+        setError('Missing auth code or PKCE verifier');
+        setPhase('idle');
+        return;
+      }
+      (async () => {
+        try {
+          const idToken = await getIdToken();
+          await exchangeStravaCode({ code, codeVerifier: verifier, redirectUri }, idToken);
+          setProgress(100);
+          setPhase('done');
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Strava exchange failed');
+          setPhase('idle');
+        }
+      })();
     } else if (
       response.type === 'error' ||
       response.type === 'dismiss' ||
@@ -183,14 +369,16 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
     ) {
       setPhase('idle');
     }
-  }, [response]);
+  }, [response, stravaReady, request, redirectUri, getIdToken]);
 
   useEffect(() => {
     if (phase === 'connecting') {
       const t = setTimeout(() => setPhase('syncing'), 900);
       return () => clearTimeout(t);
     }
-    if (phase === 'syncing') {
+    // Only run the demo progress loop in simulator mode. The real path
+    // updates progress to 100 directly when the backend responds.
+    if (phase === 'syncing' && !stravaReady) {
       const id = setInterval(() => {
         setProgress((p) => {
           const np = p + Math.random() * 8 + 4;
@@ -205,7 +393,7 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
       return () => clearInterval(id);
     }
     return undefined;
-  }, [phase]);
+  }, [phase, stravaReady]);
 
   if (phase === 'idle') {
     return (
@@ -242,6 +430,14 @@ function ConnectStrava({ back, done }: { back: () => void; done: () => void }) {
         <Button kind="accent" full onPress={() => { setPhase('connecting'); promptAsync(); }} icon={<Icon.strava size={20} color="#fff" />} style={{ backgroundColor: '#fc4c02', borderColor: '#fc4c02' }}>
           Authorize Strava
         </Button>
+        {error && (
+          <Eyebrow style={{ color: '#c44a1e', marginTop: 12, textAlign: 'center' }}>{error}</Eyebrow>
+        )}
+        {!stravaReady && (
+          <Eyebrow style={{ color: c.ink3, marginTop: 12, textAlign: 'center' }}>
+            DEMO MODE — SET EXPO_PUBLIC_STRAVA_CLIENT_ID FOR A REAL EXCHANGE
+          </Eyebrow>
+        )}
         <Pressable onPress={done} style={{ marginTop: 14, alignSelf: 'center' }}>
           <TText style={{ fontSize: 13, color: c.ink3 }}>Skip — set up later</TText>
         </Pressable>

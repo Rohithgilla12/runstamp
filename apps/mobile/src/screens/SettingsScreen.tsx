@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
+import { useAuth } from '../state/AuthContext';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -21,6 +22,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { units, dark, setDark, setHasOnboarded } = useAppState();
+  const { signOut } = useAuth();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [sub, setSub] = useState<Sub>('main');
   const earnedStamps = STAMPS.filter((s) => !!s.earnedAt).length;
@@ -95,6 +97,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
           <Row icon={<Icon.download size={18} color={c.ink2} />} label="Export data" value="GPX zip · JSON" chevron />
           <Row icon={<Icon.github size={18} color={c.ink2} />} label="View source" value="github.com/gilla/runstamp" chevron />
           <Row icon={<Icon.bolt size={18} color={c.ink2} />} label="Replay onboarding" onPress={() => setHasOnboarded(false)} chevron />
+          <Row icon={<Icon.user size={18} color={c.ink2} />} label="Sign out" onPress={signOut} chevron />
           <Row icon={<Icon.trash size={18} color="#c44a1e" />} label="Delete account" danger chevron isLast />
         </Card>
       </View>

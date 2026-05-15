@@ -20,6 +20,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/config"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/crypto"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
@@ -65,6 +66,31 @@ func main() {
 
 	usersRepo := users.NewRepo(pool, sealer)
 
+	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
+
+	var verifier *auth.Verifier
+	if cfg.FirebaseProjectID != "" {
+		verifier, err = auth.NewVerifier(ctx, cfg.FirebaseProjectID, cfg.FirebaseCredentialsPath, log)
+		if err != nil {
+			if isProd {
+				log.Error("firebase verifier init failed", "err", err)
+				os.Exit(1)
+			}
+			log.Warn("firebase verifier init failed — protected routes will reject all requests", "err", err)
+			verifier = nil
+		}
+	} else {
+		if isProd {
+			log.Error("FIREBASE_PROJECT_ID is required in production")
+			os.Exit(1)
+		}
+		log.Warn("FIREBASE_PROJECT_ID not set — Firebase auth disabled; all protected routes will reject requests")
+	}
+
+	if verifier == nil {
+		verifier = auth.NewNullVerifier(log)
+	}
+
 	stravaClient := strava.New(cfg.StravaClientID, cfg.StravaClientSecret)
 	stravaHandler := &handlers.StravaHandler{
 		Client:      stravaClient,
@@ -87,12 +113,18 @@ func main() {
 
 	r.Get("/healthz", handlers.Health(version))
 	r.Route("/v1", func(r chi.Router) {
-		r.Route("/auth/strava", func(r chi.Router) {
-			r.Post("/exchange", stravaHandler.Exchange)
-		})
+		// Public routes — Strava webhook endpoints are called by Strava's
+		// servers, not by authenticated users.
 		r.Route("/strava", func(r chi.Router) {
 			r.Get("/webhook", stravaHandler.WebhookSubscription)
 			r.Post("/webhook", stravaHandler.WebhookEvent)
+		})
+
+		// Protected routes — require a valid Firebase ID token.
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireFirebaseAuth(verifier, log))
+			r.Get("/me", handlers.Me(usersRepo))
+			r.Post("/auth/strava/exchange", stravaHandler.Exchange)
 		})
 	})
 
