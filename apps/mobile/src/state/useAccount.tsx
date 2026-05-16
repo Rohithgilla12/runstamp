@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { getMe, patchMe, type MeResponse, type ProfilePatch } from '../services/account';
 import { useAuth } from './AuthContext';
 
-interface UseAccountState {
+interface AccountContextValue {
   me: MeResponse | null;
   loading: boolean;
   error: Error | null;
@@ -10,7 +10,12 @@ interface UseAccountState {
   save: (patch: ProfilePatch) => Promise<void>;
 }
 
-export function useAccount(): UseAccountState {
+const AccountContext = createContext<AccountContextValue | null>(null);
+
+// Shared profile state. One fetcher per session, one source of truth — so a
+// save on Settings instantly re-renders the MAF card on Stats (rather than
+// each useAccount() call holding its own stale copy).
+export function AccountProvider({ children }: { children: React.ReactNode }) {
   const { user, getIdToken } = useAuth();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,5 +42,15 @@ export function useAccount(): UseAccountState {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { me, loading, error, refresh, save };
+  return (
+    <AccountContext.Provider value={{ me, loading, error, refresh, save }}>
+      {children}
+    </AccountContext.Provider>
+  );
+}
+
+export function useAccount(): AccountContextValue {
+  const ctx = useContext(AccountContext);
+  if (!ctx) throw new Error('useAccount must be used within <AccountProvider>');
+  return ctx;
 }
