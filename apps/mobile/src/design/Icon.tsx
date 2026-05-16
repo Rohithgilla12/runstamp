@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 export type IconProps = {
   size?: number;
@@ -10,48 +10,32 @@ export type IconProps = {
 
 type IconSet = Record<string, React.FC<IconProps>>;
 
+// `stroke()` was previously cloning children via React.Children.map +
+// cloneElement to set stroke + strokeWidth + linecaps on each Path. That
+// worked for single-Path icons but silently broke every multi-path icon
+// wrapped in a Fragment (<>...</>) — React.Children.map sees the Fragment
+// as one element, clones it with stroke props that don't exist on it, and
+// the inner Paths render with no stroke at all (invisible).
+//
+// SVG's <G> element propagates stroke attributes to descendants natively,
+// so wrapping the path in a group is both simpler and correct regardless
+// of whether the path arg is a Fragment, a single element, or an array.
 const stroke = (path: React.ReactNode, defaultStrokeWidth = 1.7) =>
   function StrokeIcon({ size = 20, color = 'currentColor', strokeWidth }: IconProps) {
     return (
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <SvgStrokeContext color={color} strokeWidth={strokeWidth ?? defaultStrokeWidth}>
+        <G
+          stroke={color}
+          strokeWidth={strokeWidth ?? defaultStrokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        >
           {path}
-        </SvgStrokeContext>
+        </G>
       </Svg>
     );
   };
-
-interface StrokeableProps {
-  stroke?: string;
-  strokeWidth?: number;
-  strokeLinecap?: 'round' | 'square' | 'butt';
-  strokeLinejoin?: 'round' | 'bevel' | 'miter';
-}
-
-function SvgStrokeContext({
-  color,
-  strokeWidth,
-  children
-}: {
-  color: string;
-  strokeWidth: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      {React.Children.map(children, (child) => {
-        if (!React.isValidElement<StrokeableProps>(child)) return child;
-        const existing = child.props;
-        return React.cloneElement<StrokeableProps>(child, {
-          stroke: existing.stroke ?? color,
-          strokeWidth: existing.strokeWidth ?? strokeWidth,
-          strokeLinecap: 'round',
-          strokeLinejoin: 'round'
-        });
-      })}
-    </>
-  );
-}
 
 export const Icon: IconSet = {
   home: stroke(
