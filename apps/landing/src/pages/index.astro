@@ -57,6 +57,10 @@ const faqs = [
     a: "No. The API is open-source and auditable on GitHub. Your run data lives on your phone. Share-card uploads are opt-in, stored on Cloudflare R2, and can be deleted any time."
   },
   {
+    q: "Does Apple Health work today?",
+    a: "Yes — on iOS, tap Apple Health in Connections, grant read access, and Runstamp pulls your whole running history (years of it) plus per-workout HR, GPS route, splits, running power, vertical oscillation, ground contact time, stride length, and VO₂ max. New runs from your watch auto-sync the next time you open the app. Read-only — we never write back to Health."
+  },
+  {
     q: "What about Android?",
     a: "First-class support from day one — the app is React Native, not iOS-only. Android syncs from Health Connect (coming at launch) or Strava."
   },
@@ -88,22 +92,29 @@ const features = [
     key: "editor",
     label: "Editor",
     tagline: "Every run, a keepsake.",
-    body: "Pick a template — Postage, Postmark, Passport, Customs. Layer your route map or a photo. Export PNG to camera roll or share directly to Stories.",
+    body: "Twelve templates — Postage, Postmark, Boarding Pass, Passport, Customs, Engraved, Wax Seal, Minimal, Date Stamp, Halftone, Cyanotype, Riso. Drop your own photo as the background of any of them. Drag stat stickers — distance, pace, HR chart, route map, splits. Export PNG to camera roll or share straight to Stories.",
     bg: "var(--ink)",
   },
   {
     key: "analytics",
     label: "Analytics",
     tagline: "Numbers runners actually want.",
-    body: "Pace, splits, HR zones, weekly volume, best efforts at every distance. No calories dashboard. No \"activity score.\" Just the data.",
+    body: "Year / month / all-time views. Activity heatmap, monthly bars, distance histogram, training-load chart, streaks. Personal bests computed against every standard distance — 1K, mile, 5K, 10K, half, marathon. VO₂ max if your watch records it. No calories dashboard. No vanity scores.",
     bg: "var(--moss)",
   },
   {
     key: "passport",
     label: "Passport",
     tagline: "A stamp for every city.",
-    body: "Every city you've run in, pinned on a world map. Your running passport. \"47 stamps · 6 countries · 3 continents.\" That's the headline.",
+    body: "Every city your GPS landed in, reverse-geocoded once and pinned to a world map. The headline metric of the whole app — \"47 stamps · 6 countries · 3 continents.\" Shareable as its own card every December.",
     bg: "var(--ink-2)",
+  },
+  {
+    key: "stamps",
+    label: "Stamps",
+    tagline: "Earned by running.",
+    body: "Sixteen stamps across three tiers — Common, Rare, Mythic. The backend evaluates every synced run against the catalogue and awards the moment a rule passes. Boston qualifier at 3am while you're asleep just lands in your collection — no badges for opening the app.",
+    bg: "var(--solar-deep, #c44a1e)",
   },
 ];
 ---
@@ -305,7 +316,7 @@ const features = [
         <header class="section-header">
           <p class="eyebrow">What it does</p>
           <h2 id="features-headline" class="section-headline">
-            Three things.<br />Done well.
+            Four things.<br />Done well.
           </h2>
         </header>
 
@@ -350,6 +361,18 @@ const features = [
                       <circle cx="47" cy="36" r="2.5" fill="#e85d2f"></circle>
                     </>
                   )}
+                  {f.key === "stamps" && (
+                    <>
+                      {/* Cancellation ring */}
+                      <circle cx="45" cy="56" r="22" fill="none" stroke="rgba(243,237,226,0.55)" stroke-width="1.2" stroke-dasharray="2 2"></circle>
+                      <circle cx="45" cy="56" r="15" fill="none" stroke="rgba(243,237,226,0.32)" stroke-width="0.9"></circle>
+                      {/* Cancel bars across the rim */}
+                      <line x1="24" y1="52" x2="66" y2="52" stroke="rgba(243,237,226,0.4)" stroke-width="0.9"></line>
+                      <line x1="24" y1="60" x2="66" y2="60" stroke="rgba(243,237,226,0.4)" stroke-width="0.9"></line>
+                      {/* Star at the centre */}
+                      <path d="M45 42 L47.5 50 L56 50 L49 55 L51.5 63 L45 58 L38.5 63 L41 55 L34 50 L42.5 50 Z" fill="rgba(243,237,226,0.92)"></path>
+                    </>
+                  )}
                 </svg>
               </div>
 
@@ -376,9 +399,11 @@ const features = [
             </h2>
           </div>
           <p class="section-desc">
-            Six templates at launch — each rooted in the same postage
-            metaphor, each making a different compositional argument.
-            The share card is a stamp you pressed yourself.
+            Twelve templates ship — Postage, Postmark, Passport, Boarding
+            Pass, Customs, Engraved, Wax Seal, Minimal, Date Stamp, Halftone,
+            Cyanotype, Riso. Each rooted in the same postage metaphor; each
+            making a different compositional argument. Drop your own photo
+            behind any of them. The share card is a stamp you pressed yourself.
             <a href="/gallery" class="text-link">See full gallery &rarr;</a>
           </p>
         </header>
@@ -757,6 +782,8 @@ const features = [
                   <div class="mock-tmpl-chip mock-tmpl-chip--active">Postage</div>
                   <div class="mock-tmpl-chip">Postmark</div>
                   <div class="mock-tmpl-chip">Customs</div>
+                  <div class="mock-tmpl-chip">Halftone</div>
+                  <div class="mock-tmpl-chip">Riso</div>
                 </div>
               </div>
             </div>
