@@ -4,9 +4,6 @@ import (
 	"testing"
 )
 
-// TestPatchMeValidation covers the four validation rules for PATCH /v1/me's
-// HR fields. The full handler is exercised through main_test; here we pin the
-// validation helper in isolation so changes to constraints can't slip in.
 func TestPatchMeValidation(t *testing.T) {
 	cases := []struct {
 		name      string

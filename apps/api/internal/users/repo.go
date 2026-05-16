@@ -105,9 +105,7 @@ func (r *Repo) HasStravaConnection(ctx context.Context, userID string) (bool, er
 	return exists, nil
 }
 
-// ProfilePatch is a partial update for a user's profile fields. Each non-nil
-// pointer is applied; nil means "leave unchanged". COALESCE would block
-// clearing to NULL, so we build the SET list dynamically below.
+// ProfilePatch holds optional updates; nil pointers leave the column unchanged.
 type ProfilePatch struct {
 	DisplayName *string
 	HomeCity    *string
