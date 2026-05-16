@@ -22,11 +22,29 @@ import { PassportTemplate } from '../design/templates/PassportTemplate';
 import { CustomsTemplate } from '../design/templates/CustomsTemplate';
 import { EngravedTemplate } from '../design/templates/EngravedTemplate';
 import { WaxSealTemplate } from '../design/templates/WaxSealTemplate';
+import { MinimalTemplate } from '../design/templates/MinimalTemplate';
+import { DateStampTemplate } from '../design/templates/DateStampTemplate';
+import { HalftoneTemplate } from '../design/templates/HalftoneTemplate';
+import { CyanotypeTemplate } from '../design/templates/CyanotypeTemplate';
+import { RisoTemplate } from '../design/templates/RisoTemplate';
 import type { RootStackProps } from '../nav/types';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
-type Template = 'stickers' | 'postage' | 'postmark' | 'boarding' | 'passport' | 'customs' | 'engraved' | 'wax' | 'magazine' | 'minimal' | 'brutalist' | 'track' | 'newsprint' | 'topo';
+type Template =
+  | 'stickers'
+  | 'postage'
+  | 'postmark'
+  | 'boarding'
+  | 'passport'
+  | 'customs'
+  | 'engraved'
+  | 'wax'
+  | 'minimal'
+  | 'datestamp'
+  | 'halftone'
+  | 'cyanotype'
+  | 'riso';
 type TabKey = 'templates' | 'photo' | 'stats' | 'export';
 
 const CANVAS_PADDING = 24;
@@ -267,6 +285,26 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ width: canvasW, height: canvasH }}>
               <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
+          ) : template === 'minimal' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <MinimalTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+            </View>
+          ) : template === 'datestamp' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <DateStampTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+            </View>
+          ) : template === 'halftone' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <HalftoneTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+            </View>
+          ) : template === 'cyanotype' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <CyanotypeTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+            </View>
+          ) : template === 'riso' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <RisoTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+            </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
             width: canvasW, height: canvasH, borderRadius: 18, overflow: 'hidden',
@@ -347,16 +385,16 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['customs',   'Customs'],
                 ['engraved',  'Engraved'],
                 ['wax',       'Wax seal'],
-                ['magazine',  'Magazine'],
                 ['minimal',   'Minimal'],
-                ['brutalist', 'Brutalist'],
-                ['track',     'Track meet'],
-                ['newsprint', 'Newsprint'],
-                ['topo',      'Topo']
+                ['datestamp', 'Date stamp'],
+                ['halftone',  'Halftone'],
+                ['cyanotype', 'Cyanotype'],
+                ['riso',      'Riso'],
               ] as const).map(([t, label]) => {
                 const active = template === t;
-                const ready = t === 'stickers' || t === 'postage' || t === 'postmark' || t === 'boarding'
-                  || t === 'passport' || t === 'customs' || t === 'engraved' || t === 'wax';
+                // Everything in the list ships — keep the "SOON" affordance
+                // around for future families but currently it's all live.
+                const ready = true;
                 return (
                   <Pressable key={t} onPress={() => setTemplate(t)} style={{
                     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
