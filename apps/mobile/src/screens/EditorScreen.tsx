@@ -42,7 +42,11 @@ interface StickerInstance {
 type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'
   | 'cadence' | 'splits' | 'hrChart' | 'paceChart'
-  | 'map' | 'date' | 'shoe' | 'title' | 'place';
+  | 'map' | 'date' | 'title' | 'place';
+// `shoe` sticker removed from the library until shoe tracking ships (PRD §M5
+// / settings/Shoes is a roadmap placeholder right now). It previously
+// hardcoded "Saucony Endorphin" which looked like every other user's share
+// card. Add it back when CRUD + per-activity shoe lookup is wired.
 
 const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
   { key: 'distance',  label: 'Distance'  },
@@ -57,7 +61,6 @@ const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
   { key: 'paceChart', label: 'Pace chart' },
   { key: 'map',       label: 'Route map' },
   { key: 'date',      label: 'Date'      },
-  { key: 'shoe',      label: 'Shoe'      },
   { key: 'title',     label: 'Title'     },
   { key: 'place',     label: 'Place'     }
 ];
@@ -706,20 +709,27 @@ function DraggableSticker({
       body = (
         <>
           <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>CADENCE</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 22, color: '#f3ede2' }}>{run.cadence ?? 174}</TText>
+          <TText variant="monoMedium" style={{ fontSize: 22, color: '#f3ede2' }}>{run.cadence ?? '—'}</TText>
         </>
       );
       width = 100;
       break;
-    case 'date':
+    case 'date': {
+      // Avoid hardcoded "MAY 17" — derive from run.date (yyyy-mm-dd) so the
+      // sticker reflects the actual run.
+      const d = new Date(run.date);
+      const monLabel = Number.isNaN(d.getTime())
+        ? run.date
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
       body = (
         <>
           <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>DATE</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 16, color: '#f3ede2' }}>{run.day.toUpperCase()} · MAY 17</TText>
+          <TText variant="monoMedium" style={{ fontSize: 16, color: '#f3ede2' }}>{run.day.toUpperCase()} · {monLabel}</TText>
         </>
       );
       width = 150;
       break;
+    }
     case 'title':
       body = (
         <TText variant="serif" style={{ fontSize: 18, color: '#f3ede2', letterSpacing: -0.2 }}>{run.title}</TText>
@@ -734,15 +744,6 @@ function DraggableSticker({
         </View>
       );
       width = 130;
-      break;
-    case 'shoe':
-      body = (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Icon.shoe size={14} color="rgba(243,237,226,0.8)" />
-          <TText style={{ fontSize: 12, color: '#f3ede2' }}>Saucony Endorphin</TText>
-        </View>
-      );
-      width = 160;
       break;
     default:
       body = <TText style={{ color: '#f3ede2', fontSize: 12 }}>{sticker.key}</TText>;
