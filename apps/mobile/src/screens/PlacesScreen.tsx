@@ -33,12 +33,21 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const { activities, loading, refresh } = useActivities();
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState(false);
+  // 'all' = lifetime, year number = constrained to that year.
+  const [scope, setScope] = useState<'all' | number>('all');
+  const currentYear = new Date().getFullYear();
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try { await refresh(); } finally { setRefreshing(false); }
   }, [refresh]);
 
-  const places = useMemo(() => aggregatePlaces(activities), [activities]);
+  const scopedActivities = useMemo(() => {
+    if (scope === 'all') return activities;
+    const prefix = `${scope}-`;
+    return activities.filter((a) => a.date.startsWith(prefix));
+  }, [activities, scope]);
+
+  const places = useMemo(() => aggregatePlaces(scopedActivities), [scopedActivities]);
   const cities = places.length;
   const countries = new Set(places.map((p) => p.country).filter(Boolean)).size;
   const continents = useMemo(
@@ -50,6 +59,15 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
     () => activities.filter((a) => (a.route?.length ?? 0) > 0 && !a.city?.trim()).length,
     [activities],
   );
+  // Years a user has activities in — at most 6 most recent for the picker.
+  const availableYears = useMemo(() => {
+    const ys = new Set<number>();
+    for (const a of activities) {
+      const y = Number(a.date.slice(0, 4));
+      if (y >= 1900 && y <= 9999) ys.add(y);
+    }
+    return [...ys].sort((a, b) => b - a).slice(0, 6);
+  }, [activities]);
   const screenW = Dimensions.get('window').width;
   const mapW = screenW - 28;
   const mapCities: MapCity[] = useMemo(
@@ -72,6 +90,26 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
           <TText variant="serif" style={{ fontSize: 26, lineHeight: 28, letterSpacing: -0.6 }}>.</TText>
         </View>
       </View>
+
+      {availableYears.length > 1 && (
+        <View style={{ paddingTop: 14 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 14, gap: 6 }}
+          >
+            <ScopePill label="Lifetime" active={scope === 'all'} onPress={() => setScope('all')} />
+            {availableYears.map((y) => (
+              <ScopePill
+                key={y}
+                label={String(y)}
+                active={scope === y}
+                onPress={() => setScope(y)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {places.length === 0 ? (
         <EmptyPlaces loading={loading} hasActivities={activities.length > 0} onAfterBackfill={refresh} />
@@ -135,6 +173,24 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
         onClose={() => setSharing(false)}
       />
     </ScrollView>
+  );
+}
+
+function ScopePill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14,
+        backgroundColor: active ? c.ink : c.paper2,
+        borderWidth: 1, borderColor: active ? c.ink : c.line,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <TText style={{ fontSize: 13, fontWeight: '500', color: active ? c.paper : c.ink }}>{label}</TText>
+    </Pressable>
   );
 }
 
