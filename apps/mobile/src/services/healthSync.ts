@@ -79,6 +79,21 @@ export interface SyncResult {
 }
 
 /**
+ * Progress phases reported by syncRecentWorkouts via onProgress:
+ *   'listing'   — querying HK for the workout list (single fast call).
+ *   'fetching'  — reading per-workout detail + streams (the slow part).
+ *   'uploading' — POSTing chunked batches to the backend.
+ *   'done'      — terminal; emitted once with total = uploaded + skipped.
+ *
+ * `current` and `total` are units of workouts in the current phase.
+ */
+export interface SyncProgress {
+  phase: 'listing' | 'fetching' | 'uploading' | 'done';
+  current: number;
+  total: number;
+}
+
+/**
  * Pulls running workouts from HealthKit since `sinceISO`, fetches full detail
  * for each (streams, splits, running power, etc.), and uploads them to the
  * backend.
@@ -91,11 +106,18 @@ export interface SyncResult {
 export async function syncRecentWorkouts(
   idToken: string | null,
   sinceISO: string,
+  onProgress?: (p: SyncProgress) => void,
 ): Promise<SyncResult> {
+  const emit = (p: SyncProgress) => {
+    if (onProgress) onProgress(p);
+  };
+
+  emit({ phase: 'listing', current: 0, total: 0 });
   const since = new Date(sinceISO);
   const workouts = await getRunningWorkoutsSince(since);
 
   const validWorkouts = workouts.filter((w) => w.distanceMeters > 0);
+  emit({ phase: 'fetching', current: 0, total: validWorkouts.length });
 
   // Detail fetch hits HKHealthStore + reads route + HR samples per workout.
   // Doing all 500+ in parallel via Promise.all can OOM the device or hang
@@ -183,9 +205,11 @@ export async function syncRecentWorkouts(
       return payload;
     }));
     allPayloads.push(...batch);
+    emit({ phase: 'fetching', current: allPayloads.length, total: validWorkouts.length });
   }
 
   if (allPayloads.length === 0) {
+    emit({ phase: 'done', current: 0, total: 0 });
     return { uploaded: 0, skipped: 0 };
   }
 
@@ -195,6 +219,7 @@ export async function syncRecentWorkouts(
   const UPLOAD_BATCH = 50;
   let uploaded = 0;
   let skipped = 0;
+  emit({ phase: 'uploading', current: 0, total: allPayloads.length });
   for (let i = 0; i < allPayloads.length; i += UPLOAD_BATCH) {
     const chunk = allPayloads.slice(i, i + UPLOAD_BATCH);
     const body: SyncRequest = { workouts: chunk };
@@ -203,7 +228,9 @@ export async function syncRecentWorkouts(
     const result = await apiPost<SyncResponse>('/v1/health/workouts', body, { idToken });
     uploaded += result.uploaded;
     skipped += result.skipped;
+    emit({ phase: 'uploading', current: Math.min(i + UPLOAD_BATCH, allPayloads.length), total: allPayloads.length });
   }
+  emit({ phase: 'done', current: uploaded + skipped, total: uploaded + skipped });
   return { uploaded, skipped };
 }
 

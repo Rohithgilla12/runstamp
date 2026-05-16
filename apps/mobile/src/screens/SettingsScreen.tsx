@@ -219,7 +219,7 @@ function ShoesScreen({ back }: { back: () => void }) {
 
 function ConnectionsScreen({ back }: { back: () => void }) {
   const c = useColors();
-  const { status: healthStatus, syncing, lastSyncAt, resync, connect: connectHealth } = useHealth();
+  const { status: healthStatus, syncing, lastSyncAt, progress, resync, connect: connectHealth } = useHealth();
   const { getIdToken } = useAuth();
 
   const [stravaStatus, setStravaStatus] = useState<StravaStatus | null>(null);
@@ -314,12 +314,29 @@ function ConnectionsScreen({ back }: { back: () => void }) {
     if (healthStatus === 'unavailable') return 'Unavailable on this device';
     if (healthStatus === 'denied') return 'Access denied · tap to fix';
     if (healthStatus === 'unknown') return 'Not connected · tap to connect';
-    if (syncing) return 'Syncing now…';
+    if (syncing) {
+      if (progress) {
+        if (progress.phase === 'listing') return 'Reading Apple Health…';
+        if (progress.phase === 'fetching') {
+          return `Fetching details · ${progress.current} / ${progress.total}`;
+        }
+        if (progress.phase === 'uploading') {
+          return `Uploading · ${progress.current} / ${progress.total}`;
+        }
+      }
+      return 'Syncing now…';
+    }
     if (lastSyncAt) {
       const diffMin = Math.round((Date.now() - lastSyncAt.getTime()) / 60_000);
       return `Connected · last sync ${diffMin}m ago`;
     }
     return 'Connected';
+  })();
+
+  const progressFraction = (() => {
+    if (!progress || progress.total <= 0) return null;
+    if (progress.phase === 'listing') return 0.03;
+    return Math.max(0.03, Math.min(progress.current / progress.total, 1));
   })();
 
   const healthSub = (() => {
@@ -395,21 +412,36 @@ function ConnectionsScreen({ back }: { back: () => void }) {
           sub={healthSub}
           onPress={handleHealthPress}
           busy={syncing}
-          action={healthConnected ? (
-            <Pressable
-              onPress={handleHealthPress}
-              disabled={syncing}
-              style={({ pressed }) => [{
-                marginTop: 10, paddingTop: 10,
-                borderTopWidth: 1, borderTopColor: c.line2,
-                opacity: pressed || syncing ? 0.5 : 1,
-              }]}
-            >
-              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
-                {syncing ? 'SYNCING…' : 'RE-SYNC NOW'}
-              </TText>
-            </Pressable>
-          ) : undefined}
+          action={
+            <>
+              {progressFraction !== null && (
+                <View style={{ marginTop: 12 }}>
+                  <View style={{ height: 4, borderRadius: 2, backgroundColor: c.line, overflow: 'hidden' }}>
+                    <View style={{
+                      height: 4, borderRadius: 2,
+                      width: `${Math.round(progressFraction * 100)}%`,
+                      backgroundColor: c.accent,
+                    }} />
+                  </View>
+                </View>
+              )}
+              {healthConnected && (
+                <Pressable
+                  onPress={handleHealthPress}
+                  disabled={syncing}
+                  style={({ pressed }) => [{
+                    marginTop: 10, paddingTop: 10,
+                    borderTopWidth: 1, borderTopColor: c.line2,
+                    opacity: pressed || syncing ? 0.5 : 1,
+                  }]}
+                >
+                  <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
+                    {syncing ? 'SYNCING…' : 'RE-SYNC NOW'}
+                  </TText>
+                </Pressable>
+              )}
+            </>
+          }
         />
         <View style={{ padding: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: c.line, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: c.paper2, alignItems: 'center', justifyContent: 'center' }}>

@@ -26,7 +26,7 @@ import {
   isHealthKitAvailable,
   requestRunstampHealthPermissions,
 } from '../services/healthkit';
-import { syncRecentWorkouts } from '../services/healthSync';
+import { syncRecentWorkouts, type SyncProgress } from '../services/healthSync';
 
 export type HealthPermissionStatus = 'unknown' | 'granted' | 'denied' | 'unavailable';
 
@@ -34,8 +34,10 @@ interface HealthContextValue {
   status: HealthPermissionStatus;
   syncing: boolean;
   lastSyncAt: Date | null;
+  /** Live progress while a sync is running, or null when idle. */
+  progress: SyncProgress | null;
   /**
-   * Run the permission prompt + 90-day backfill. Returns a small summary
+   * Run the permission prompt + full backfill. Returns a small summary
    * the caller can show. Throws on any error — callers should surface it.
    */
   connect: () => Promise<{ uploaded: number; skipped: number } | null>;
@@ -52,20 +54,23 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   );
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
 
   const runSync = useCallback(
     async (since: Date) => {
       const idToken = await getIdToken();
       const sinceISO = since.toISOString();
       setSyncing(true);
+      setProgress({ phase: 'listing', current: 0, total: 0 });
       try {
-        const res = await syncRecentWorkouts(idToken, sinceISO);
+        const res = await syncRecentWorkouts(idToken, sinceISO, (p) => setProgress(p));
         setLastSyncAt(new Date());
         return res;
       } finally {
         // Always clear the spinner — even if the upload failed mid-stream,
         // the caller will surface the error via its own catch.
         setSyncing(false);
+        setProgress(null);
       }
     },
     [getIdToken],
@@ -123,8 +128,8 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<HealthContextValue>(
-    () => ({ status, syncing, lastSyncAt, connect, resync }),
-    [status, syncing, lastSyncAt, connect, resync],
+    () => ({ status, syncing, lastSyncAt, progress, connect, resync }),
+    [status, syncing, lastSyncAt, progress, connect, resync],
   );
 
   return <HealthCtx.Provider value={value}>{children}</HealthCtx.Provider>;
