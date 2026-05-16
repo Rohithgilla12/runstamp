@@ -108,6 +108,19 @@ export async function apiPost<T>(
   return response.json() as Promise<T>;
 }
 
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  options: Omit<ApiFetchOptions, 'method' | 'body'> = {}
+): Promise<T> {
+  const response = await apiFetch(path, {
+    ...options,
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  });
+  return response.json() as Promise<T>;
+}
+
 export async function apiDelete(
   path: string,
   options: Omit<ApiFetchOptions, 'method' | 'body'> = {}

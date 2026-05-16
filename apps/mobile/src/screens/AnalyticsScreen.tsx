@@ -28,6 +28,8 @@ import { CumulativeChart } from '../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../design/charts/MonthCalendarDots';
 import { WeeklyBars } from '../design/charts/WeeklyBars';
 import { AnalyticsFilters, DEFAULT_FILTERS, filtersAreActive, type Filters } from './_AnalyticsFilters';
+import { useAccount } from '../state/useAccount';
+import { useNavigation } from '@react-navigation/native';
 
 type Scope = 'year' | 'month' | 'all';
 
@@ -40,6 +42,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const [compareOn, setCompareOn] = useState(false);
   const [comparePeriod, setComparePeriod] = useState<Period | null>(null);
   const { activities, loading, refresh } = useActivities();
+  const { me } = useAccount();
+  const nav = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -137,7 +141,16 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
         {activities.length === 0 ? (
           <EmptyState loading={loading} />
         ) : (
-          <StatsView scope={scope} activities={activities} filters={filters} comparePeriod={compareOn ? comparePeriod : null} />
+          <StatsView
+            scope={scope}
+            activities={activities}
+            filters={filters}
+            comparePeriod={compareOn ? comparePeriod : null}
+            hrMax={me?.hrMax ?? DEFAULT_HR_MAX}
+            hrResting={me?.hrResting ?? DEFAULT_HR_RESTING}
+            needsHrProfile={!me?.hrMax && !me?.hrResting}
+            onTapProfile={() => nav.navigate('Profile' as never)}
+          />
         )}
       </View>
     </ScrollView>
@@ -177,8 +190,15 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities, filters, comparePeriod }: {
-  scope: Scope; activities: Activity[]; filters: Filters; comparePeriod: Period | null;
+function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
+  scope: Scope;
+  activities: Activity[];
+  filters: Filters;
+  comparePeriod: Period | null;
+  hrMax: number;
+  hrResting: number;
+  needsHrProfile: boolean;
+  onTapProfile: () => void;
 }) {
   const c = useColors();
   const { units } = useAppState();
@@ -200,8 +220,6 @@ function StatsView({ scope, activities, filters, comparePeriod }: {
     });
   }, [ascending, filters]);
   const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope), [filteredByLens, scope]);
-  const hrMax = DEFAULT_HR_MAX;
-  const hrResting = DEFAULT_HR_RESTING;
   const heatmap = useMemo(() => buildHeatmap(
     filteredByLens.map((a) => ({ date: a.date, distance: a.distance })),
   ), [filteredByLens]);
@@ -344,7 +362,8 @@ function StatsView({ scope, activities, filters, comparePeriod }: {
             <TrainingLoadCard
               series={load}
               isHrBased={hrBased}
-              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+              needsHrProfile={hrBased && needsHrProfile}
+              onTapProfile={onTapProfile}
             />
           </View>
         </>
@@ -363,7 +382,8 @@ function StatsView({ scope, activities, filters, comparePeriod }: {
             <TrainingLoadCard
               series={load}
               isHrBased={hrBased}
-              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+              needsHrProfile={hrBased && needsHrProfile}
+              onTapProfile={onTapProfile}
             />
           </View>
         </>
@@ -383,7 +403,8 @@ function StatsView({ scope, activities, filters, comparePeriod }: {
             <TrainingLoadCard
               series={load}
               isHrBased={hrBased}
-              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+              needsHrProfile={hrBased && needsHrProfile}
+              onTapProfile={onTapProfile}
             />
           </View>
         </>

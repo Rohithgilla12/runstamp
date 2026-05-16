@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
+import type { TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { distUnit } from '../data/sample';
@@ -15,9 +16,11 @@ import { connectStrava, disconnectStrava, getStravaStatus, type StravaStatus } f
 import { reevaluateStamps } from '../services/stamps';
 import { backfillPlaces } from '../services/places';
 import { deleteAccount } from '../services/account';
+import { useAccount } from '../state/useAccount';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
+import { FONT } from '../design/fonts';
 import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';
 import { SectionHeader } from './HomeScreen';
@@ -31,8 +34,25 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const { units, dark, setDark, setHasOnboarded } = useAppState();
   const { signOut, user } = useAuth();
   const { activities } = useActivities();
+  const { me, save: saveAccount } = useAccount();
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [sub, setSub] = useState<Sub>('main');
+  const [hrMax, setHrMax] = useState<string>('');
+  const [hrResting, setHrResting] = useState<string>('');
+  useEffect(() => {
+    if (me) {
+      setHrMax(me.hrMax ? String(me.hrMax) : '');
+      setHrResting(me.hrResting ? String(me.hrResting) : '');
+    }
+  }, [me]);
+  const saveHr = useCallback(async () => {
+    const hr = hrMax === '' ? null : Number(hrMax);
+    const re = hrResting === '' ? null : Number(hrResting);
+    if (hr !== null && (Number.isNaN(hr) || hr < 120 || hr > 230)) { Alert.alert('HR max must be 120–230'); return; }
+    if (re !== null && (Number.isNaN(re) || re < 30 || re > 100)) { Alert.alert('Resting HR must be 30–100'); return; }
+    try { await saveAccount({ hrMax: hr, hrResting: re }); }
+    catch (e) { Alert.alert('Could not save', e instanceof Error ? e.message : String(e)); }
+  }, [hrMax, hrResting, saveAccount]);
   const totalKm = activities.reduce((a, x) => a + x.distance, 0);
   const totalRuns = activities.length;
   const streak = computeStreak(activities.map((a) => a.date));
@@ -82,6 +102,31 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
               </View>
             ))}
           </View>
+        </Card>
+      </View>
+
+      <SectionHeader title="Heart rate profile" />
+      <View style={{ paddingHorizontal: 20 }}>
+        <Card style={{ backgroundColor: c.paper2, gap: 10 }}>
+          <LabeledInput
+            label="MAX HR (BPM)"
+            placeholder="190"
+            value={hrMax}
+            keyboardType="number-pad"
+            onChangeText={setHrMax}
+            onBlur={saveHr}
+          />
+          <LabeledInput
+            label="RESTING HR (BPM)"
+            placeholder="60"
+            value={hrResting}
+            keyboardType="number-pad"
+            onChangeText={setHrResting}
+            onBlur={saveHr}
+          />
+          <TText style={{ fontSize: 11, color: c.ink3 }}>
+            Used to compute training load. Defaults to 190 / 60 if unset.
+          </TText>
         </Card>
       </View>
 
@@ -152,6 +197,24 @@ function Row({
       {value && <TText style={{ fontSize: 12, color: c.ink3 }}>{value}</TText>}
       {(chevron || onPress) && <Icon.chevR size={14} color={c.ink3} />}
     </Pressable>
+  );
+}
+
+function LabeledInput({ label, ...rest }: { label: string } & TextInputProps) {
+  const c = useColors();
+  return (
+    <View style={{ gap: 4 }}>
+      <Eyebrow style={{ color: c.ink3 }}>{label}</Eyebrow>
+      <TextInput
+        {...rest}
+        style={{
+          backgroundColor: c.paper, borderWidth: 1, borderColor: c.line,
+          borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+          fontSize: 16, color: c.ink, fontFamily: FONT.mono,
+        }}
+        placeholderTextColor={c.ink3}
+      />
+    </View>
   );
 }
 
