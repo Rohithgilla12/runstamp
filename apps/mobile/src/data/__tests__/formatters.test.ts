@@ -74,6 +74,19 @@ describe('fmtTime', () => {
     // 10h 0m 0s
     expect(fmtTime(36000)).toBe('10:00:00');
   });
+
+  it('rounds fractional seconds', () => {
+    // VDOT / Riegel predictions return floats; we must not show the noise.
+    expect(fmtTime(409.05)).toBe('6:49');
+    expect(fmtTime(1388.59)).toBe('23:09');
+    expect(fmtTime(2880.35)).toBe('48:00');
+    expect(fmtTime(13242.15)).toBe('3:40:42');
+  });
+
+  it('carries rounding into the next minute', () => {
+    expect(fmtTime(59.7)).toBe('1:00');
+    expect(fmtTime(3599.8)).toBe('1:00:00');
+  });
 });
 
 describe('fmtDist', () => {
