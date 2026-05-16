@@ -237,6 +237,7 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
+			r.Patch("/me", handlers.PatchMe(usersRepo))
 			r.Delete("/me", accountHandler.Delete)
 			r.Get("/activities", activitiesHandler.List)
 			r.Patch("/activities/{id}", activitiesHandler.Patch)

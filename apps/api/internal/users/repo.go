@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -25,6 +26,8 @@ type User struct {
 	DisplayName *string
 	HomeCity    *string
 	Units       string
+	HRMax       *int
+	HRResting   *int
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -49,9 +52,9 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 		ON CONFLICT (firebase_uid) DO UPDATE SET
 			email      = EXCLUDED.email,
 			updated_at = now()
-		RETURNING id, firebase_uid, email, display_name, home_city, units, created_at, updated_at
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
 	`, firebaseUID, email).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("users: upsert by firebase uid: %w", err)
@@ -64,11 +67,11 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 func (r *Repo) FindByFirebaseUID(ctx context.Context, firebaseUID string) (*User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, firebase_uid, email, display_name, home_city, units, created_at, updated_at
+		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
 		FROM users
 		WHERE firebase_uid = $1
 	`, firebaseUID).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -100,4 +103,55 @@ func (r *Repo) HasStravaConnection(ctx context.Context, userID string) (bool, er
 		return false, fmt.Errorf("users: check strava connection: %w", err)
 	}
 	return exists, nil
+}
+
+// ProfilePatch is a partial update for a user's profile fields. Each non-nil
+// pointer is applied; nil means "leave unchanged". COALESCE would block
+// clearing to NULL, so we build the SET list dynamically below.
+type ProfilePatch struct {
+	DisplayName *string
+	HomeCity    *string
+	Units       *string
+	HRMax       *int
+	HRResting   *int
+}
+
+// UpdateProfile applies a partial update and returns the refreshed row.
+func (r *Repo) UpdateProfile(ctx context.Context, userID string, p ProfilePatch) (*User, error) {
+	sets := []string{"updated_at = now()"}
+	args := []any{userID}
+	if p.DisplayName != nil {
+		args = append(args, *p.DisplayName)
+		sets = append(sets, fmt.Sprintf("display_name = $%d", len(args)))
+	}
+	if p.HomeCity != nil {
+		args = append(args, *p.HomeCity)
+		sets = append(sets, fmt.Sprintf("home_city = $%d", len(args)))
+	}
+	if p.Units != nil {
+		args = append(args, *p.Units)
+		sets = append(sets, fmt.Sprintf("units = $%d", len(args)))
+	}
+	if p.HRMax != nil {
+		args = append(args, *p.HRMax)
+		sets = append(sets, fmt.Sprintf("hr_max = $%d", len(args)))
+	}
+	if p.HRResting != nil {
+		args = append(args, *p.HRResting)
+		sets = append(sets, fmt.Sprintf("hr_resting = $%d", len(args)))
+	}
+	q := fmt.Sprintf(`
+		UPDATE users SET %s
+		WHERE id = $1
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
+	`, strings.Join(sets, ", "))
+	var u User
+	err := r.pool.QueryRow(ctx, q, args...).Scan(
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units,
+		&u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("users: update profile: %w", err)
+	}
+	return &u, nil
 }
