@@ -58,7 +58,7 @@ The output is **a 9:16 portrait image** (1080×1920 px target) framed like a sin
 
 1. **Outer canvas** — tier base colour, full bleed. This is the "desk surface" the stamp sits on. Sometimes gets a subtle halftone wash (see Tiers below).
 2. **Stamp paper** — the actual stamp rectangle, inset ~64px from canvas edges, with **perforated edges** (scalloped notches every ~32px around the entire perimeter, punched in canvas colour). Cream paper colour, slight ink-bleed character at the corners.
-3. **Top plate**
+3. **Top plate** — **locked: country code line stays.** Real stamps have a country name; the philately metaphor wants it. The line is restrained enough (mono caps, 14px, generous tracking) that it adds character without visual weight, and it gives temporal+geographic context that pays off in a 5-year-old album view ("the runs I did when I lived in India.")
    - `RUNSTAMP · <ISO country code> · <year>` in JetBrains Mono, letter-spacing 2.4, ~14px
    - Below: a 1px hairline divider (paper2 colour, 60% opacity)
    - Country code comes from `location_country` of the linked activity if present, else `RUNSTAMP · WORLDWIDE · <year>`.
@@ -80,7 +80,7 @@ The output is **a 9:16 portrait image** (1080×1920 px target) framed like a sin
 
 - All measurements scale from the 1080×1920 base. Don't hardcode pixels in the SVG; use viewBox `0 0 1080 1920` and rely on intrinsic ratios.
 - **Asymmetric balance**: illustration left, denomination right. Never centre-on-axis. Real stamps are rarely centered — they have a portrait left and the value right.
-- The postmark **overlaps** the bottom-left corner of the stamp paper by ~20%, like a real cancellation that didn't quite land cleanly. This is the most important "ink character" moment in the design.
+- The postmark **overlaps** the bottom-left corner of the stamp paper by ~25%, like a real cancellation that didn't quite land cleanly. This is the most important "ink character" moment in the design — it's what makes the stamp read as a *postal artifact*, not a digital card. To prevent the overlap from reading as a layout bug, the postmark's ink-bleed splotches **extend past the perforated edge onto the outer canvas** (2–4 splotches, 1–3px each, in postmark ink colour). The ink leaking onto the "desk surface" is the unambiguous "stamp was cancelled after placement" tell — anyone who looks at it for a beat understands it's designed.
 
 ---
 
@@ -103,13 +103,15 @@ The everyday stamp. Like a definitive issue — a stamp you'd see on a postcard.
 
 Other Common base hues that designer can swap in (cycle by category for visual variety across an album):
 
-| Category | Common base hue |
-|---|---|
-| distance | moss `#4a6b3a` |
-| pace | sky `#3c6e8c` |
-| place | warm clay `#b85c2f` (deeper than solar accent) |
-| streak | warn `#c0833a` |
-| milestone | ink `#14110d` (still treated as a Common — full bleed dark with cream paper) |
+| Category | Common base hue | Hex | Note |
+|---|---|---|---|
+| distance | moss | `#4a6b3a` | the family base |
+| pace | sky | `#3c6e8c` | |
+| place | aubergine | `#5a3a4a` | distant from solar; reads as a 19th-c. definitive ink |
+| streak | warn (amber) | `#c0833a` | warm but distinctly amber-not-orange |
+| milestone | ink | `#14110d` | full-bleed dark with cream paper — treated as Common |
+
+These five hues must each be **muted** print tones, never highlighter-vibrant — they're the "definitive issue" plate colour, not the accent pop. Solar `#e85d2f` stays exclusive to Rare overlay accents, Mythic foil ticks, and the in-app one-warm-pop rule.
 
 ### Rare (gold-grade)
 
@@ -266,10 +268,10 @@ A "fallback" Common-tier composition (current behavior with the SunMark) stays a
 
 ---
 
-## Open questions for the runner-author
+## Locked decisions
 
-- Confirm the `RUNSTAMP · IN · 2026` country-code line works (vs. omitting it for cleaner type).
-- Confirm the postmark overlap (bottom-left, intentional offset) reads as "designed", not "broken layout."
-- Confirm the per-category Common hue palette (moss / sky / clay / warn / ink) feels right vs. all-Common-uses-moss.
+The three design judgement calls in the v0 draft are committed:
 
-If any of those land "no", the spec adjusts cleanly — they're modular choices, not architectural ones.
+- **Country code line on top plate — IN.** Reinforces "this is a real stamp", carries place context that compounds in an album view. Restraint of the type setting keeps it from feeling cluttered.
+- **Postmark overlap — IN, with ink-bleed onto canvas.** A 25% bottom-left overlap is the iconic postal-artifact detail. Ink splotches extending past the perforated edge onto the desk surface are the unambiguous "stamp + cancellation" tell that removes any "broken layout" reading.
+- **Per-category Common palette — IN, with aubergine replacing clay.** Five muted definitive-issue plate colours give album variety. Clay was too close to solar; aubergine (`#5a3a4a`) lands further from the accent, in classic 19th-century philately territory. All five hues stay muted — solar `#e85d2f` remains exclusive to Rare overlay accents and Mythic foil ticks.
