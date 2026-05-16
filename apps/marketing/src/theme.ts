@@ -14,11 +14,10 @@ export const colors = {
   line:    "rgba(20,17,13,0.12)",
 } as const;
 
-export const fonts = {
-  display: "'Instrument Serif', 'Iowan Old Style', Georgia, serif",
-  ui:      "'Geist', 'Inter', system-ui, -apple-system, sans-serif",
-  mono:    "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace",
-} as const;
+// Re-exported from loadFonts so callers don't have to import both modules.
+// These are the *hashed* family names Remotion injects via @remotion/google-fonts;
+// using the canonical Google name falls back to a system serif at render time.
+export { fontFamilies as fonts } from "./loadFonts";
 
 export const VIDEO_FPS = 30;
 export const VIDEO_DURATION_FRAMES = 30 * 30; // 30 seconds at 30fps

@@ -25,8 +25,7 @@ export const OutroScene: React.FC<LaunchVideoProps> = ({ orientation }) => {
       <div style={{ opacity: fadeIn, textAlign: "center", color: colors.paper }}>
         <div
           style={{
-            fontFamily: fonts.display,
-            fontStyle: "italic",
+            fontFamily: fonts.serifItalic,
             fontSize: portraitLayout ? 156 : 184,
             fontWeight: 900,
             lineHeight: 0.96,
@@ -48,7 +47,7 @@ export const OutroScene: React.FC<LaunchVideoProps> = ({ orientation }) => {
           <circle cx="100" cy="100" r="86" fill="none" stroke="rgba(20,17,13,0.32)" strokeWidth={1.4} strokeDasharray="2 4" />
           <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(20,17,13,0.55)" strokeWidth={1} />
           <text x="100" y="84" textAnchor="middle" fontFamily={fonts.mono} fontSize="9" letterSpacing="3" fill="rgba(20,17,13,0.65)">RUNSTAMP</text>
-          <text x="100" y="116" textAnchor="middle" fontFamily={fonts.display} fontStyle="italic" fontSize="34" fill={colors.ink}>open</text>
+          <text x="100" y="116" textAnchor="middle" fontFamily={fonts.serifItalic} fontSize="34" fill={colors.ink}>open</text>
           <text x="100" y="142" textAnchor="middle" fontFamily={fonts.mono} fontSize="9" letterSpacing="3" fill="rgba(20,17,13,0.65)">BETA · 2026</text>
         </svg>
       </div>

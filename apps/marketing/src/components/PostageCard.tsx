@@ -2,7 +2,7 @@
 // `apps/landing/src/components/HeroPassStack.astro`. Accepts a small set of
 // data props so different scenes can reuse it for different runs.
 
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 
 interface Props {
   country: string;
@@ -77,7 +77,7 @@ export const PostageCard: React.FC<Props> = ({
       <path d={route} stroke={colors.accent} strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.88} />
 
       <text x="30" y="42" fontFamily="'JetBrains Mono', monospace" fontSize="7.5" letterSpacing="3.2" fill="rgba(243,237,226,0.48)">{country}</text>
-      <text x="30" y="70" fontFamily="'Instrument Serif', Georgia, serif" fontStyle="italic" fontSize="30" fill={colors.paper} letterSpacing="-0.5">{city}</text>
+      <text x="30" y="70" fontFamily={fonts.serifItalic} fontSize="30" fill={colors.paper} letterSpacing="-0.5">{city}</text>
 
       <rect x="196" y="28" width="54" height="18" fill="none" stroke="rgba(243,237,226,0.28)" strokeWidth="1" rx="2" />
       <text x="223" y="41" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="7" fill="rgba(243,237,226,0.48)">NO. {runNo}</text>

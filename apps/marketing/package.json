@@ -11,11 +11,12 @@
     "upgrade": "remotion upgrade"
   },
   "dependencies": {
-    "@remotion/cli": "4.0.318",
-    "@remotion/google-fonts": "4.0.318",
+    "@remotion/cli": "4.0.462",
+    "@remotion/google-fonts": "4.0.462",
+    "@remotion/transitions": "^4.0.462",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "remotion": "4.0.318",
+    "remotion": "4.0.462",
     "zod": "3.25.76"
   },
   "devDependencies": {
