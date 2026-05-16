@@ -22,6 +22,10 @@ import { MonthlyBars } from '../design/charts/MonthlyBars';
 import { DistanceHistogram } from '../design/charts/DistanceHistogram';
 import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
 import { DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
+import { monthlyCumulative } from '../analytics/cumulative';
+import { CumulativeChart } from '../design/charts/CumulativeChart';
+import { MonthCalendarDots } from '../design/charts/MonthCalendarDots';
+import { WeeklyBars } from '../design/charts/WeeklyBars';
 
 type Scope = 'year' | 'month' | 'all';
 
@@ -142,6 +146,31 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
     return out;
   }, [ascending]);
   const histogramCells = useMemo(() => distanceHistogram(filtered), [filtered]);
+  const kmByDate = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const a of ascending) out[a.date] = (out[a.date] ?? 0) + a.distance;
+    return out;
+  }, [ascending]);
+  const now = useMemo(() => new Date(), []);
+  const weeklyKm = useMemo(() => {
+    if (scope !== 'month') return [] as number[];
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const weeks: number[] = [];
+    for (let day = 1; day <= daysInMonth; day += 7) {
+      let sum = 0;
+      for (let i = day; i < day + 7 && i <= daysInMonth; i++) {
+        const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        sum += kmByDate[key] ?? 0;
+      }
+      weeks.push(sum);
+    }
+    return weeks;
+  }, [scope, kmByDate, now]);
+  const cumulative = useMemo(() =>
+    monthlyCumulative(ascending.map((a) => ({ date: a.date, distance: a.distance })))
+  , [ascending]);
 
   return (
     <View>
@@ -174,6 +203,46 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
           </View>
         </>
       )}
+      {scope === 'month' && (
+        <>
+          <SectionHeader title="This month" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <MonthCalendarDots year={now.getFullYear()} month={now.getMonth() + 1} kmByDate={kmByDate} />
+          </Card>
+          <SectionHeader title="By week" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <WeeklyBars values={weeklyKm} />
+          </Card>
+          <View style={{ marginTop: 12 }}>
+            <TrainingLoadCard
+              series={load}
+              isHrBased={hrBased}
+              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+            />
+          </View>
+        </>
+      )}
+
+      {scope === 'all' && (
+        <>
+          <SectionHeader title="Cumulative distance" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <CumulativeChart series={cumulative} />
+          </Card>
+          <SectionHeader title="Longest streak" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <StatTile label="EVER" value={`${streaks.longest} days`} />
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <TrainingLoadCard
+              series={load}
+              isHrBased={hrBased}
+              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+            />
+          </View>
+        </>
+      )}
+
       {efforts.length > 0 && (
         <>
           <SectionHeader title="Personal bests" />
