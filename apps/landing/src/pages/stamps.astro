@@ -1,0 +1,856 @@
+---
+import Base from "../layouts/Base.astro";
+
+const sunRayAngles = Array.from({ length: 8 }, (_, i) => (i * Math.PI * 2) / 8);
+
+const perfSide = (count: number) => Array.from({ length: count }, (_, i) => i);
+const p3 = perfSide(3);
+const p4 = perfSide(4);
+
+interface Stamp {
+  id: string;
+  name: string;
+  description: string;
+  criteria: string;
+  tier: "common" | "rare" | "mythic";
+  category: "distance" | "pace" | "streak" | "place" | "milestone";
+  label: string;
+  bg: string;
+  textPrimary: string;
+}
+
+const stamps: Stamp[] = [
+  // COMMON
+  {
+    id: "first_run",
+    name: "First Run",
+    description: "Logged your first run in Runstamp.",
+    criteria: "Any completed run synced.",
+    tier: "common",
+    category: "milestone",
+    label: "Go",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "first_5k",
+    name: "First 5K",
+    description: "Completed a run of 5 kilometres or more.",
+    criteria: "Single activity ≥ 5 km.",
+    tier: "common",
+    category: "distance",
+    label: "5K",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "first_10k",
+    name: "First 10K",
+    description: "Crossed the 10 km mark in a single run.",
+    criteria: "Single activity ≥ 10 km.",
+    tier: "common",
+    category: "distance",
+    label: "10K",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "first_half",
+    name: "First Half",
+    description: "21.1 km. That's a half marathon.",
+    criteria: "Single activity ≥ 21.1 km.",
+    tier: "common",
+    category: "distance",
+    label: "21K",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "streak_7d",
+    name: "7-Day Streak",
+    description: "Seven consecutive days with at least one run each.",
+    criteria: "7 consecutive calendar days with ≥ 1 run.",
+    tier: "common",
+    category: "streak",
+    label: "7d",
+    bg: "#3a5430",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "streak_14d",
+    name: "14-Day Streak",
+    description: "Two weeks of daily running.",
+    criteria: "14 consecutive calendar days with ≥ 1 run.",
+    tier: "common",
+    category: "streak",
+    label: "14d",
+    bg: "#3a5430",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "cities_3",
+    name: "3 Cities",
+    description: "Run in three different cities. The passport is filling up.",
+    criteria: "Runs recorded in 3 distinct cities.",
+    tier: "common",
+    category: "place",
+    label: "3♦",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "cities_5",
+    name: "5 Cities",
+    description: "Five cities stamped. You're officially a travel runner.",
+    criteria: "Runs recorded in 5 distinct cities.",
+    tier: "common",
+    category: "place",
+    label: "5♦",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "sub_2h_half",
+    name: "Sub-2:00 Half",
+    description: "21.1 km in under two hours.",
+    criteria: "Single activity ≥ 21.1 km, elapsed time < 2:00:00.",
+    tier: "common",
+    category: "pace",
+    label: "Sub-2",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "sub_50_10k",
+    name: "Sub-50 10K",
+    description: "10 km in under 50 minutes.",
+    criteria: "Matched 10 km best effort time < 50:00.",
+    tier: "common",
+    category: "pace",
+    label: "Sub-50",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "night_run",
+    name: "Night Run",
+    description: "A run that started after 21:00.",
+    criteria: "Activity start time ≥ 21:00 local.",
+    tier: "common",
+    category: "milestone",
+    label: "Night",
+    bg: "#1a1714",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "monthly_100k",
+    name: "100K Month",
+    description: "100 km or more in a single calendar month.",
+    criteria: "Monthly total ≥ 100 km.",
+    tier: "common",
+    category: "distance",
+    label: "100K",
+    bg: "#14110d",
+    textPrimary: "#f3ede2",
+  },
+
+  // RARE
+  {
+    id: "first_marathon",
+    name: "First Marathon",
+    description: "42.2 km. You did it.",
+    criteria: "Single activity ≥ 42.2 km.",
+    tier: "rare",
+    category: "distance",
+    label: "42K",
+    bg: "#e85d2f",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "sub_345_marathon",
+    name: "Sub-3:45 Marathon",
+    description: "42.2 km under 3 hours and 45 minutes.",
+    criteria: "Single activity ≥ 42.2 km, elapsed time < 3:45:00.",
+    tier: "rare",
+    category: "pace",
+    label: "3:45",
+    bg: "#e85d2f",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "sub_4h_marathon",
+    name: "Sub-4:00 Marathon",
+    description: "The four-hour wall, broken.",
+    criteria: "Single activity ≥ 42.2 km, elapsed time < 4:00:00.",
+    tier: "rare",
+    category: "pace",
+    label: "Sub-4",
+    bg: "#e85d2f",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "streak_30d",
+    name: "30-Day Streak",
+    description: "Every day for a month. That's discipline.",
+    criteria: "30 consecutive calendar days with ≥ 1 run.",
+    tier: "rare",
+    category: "streak",
+    label: "30d",
+    bg: "#4a6b3a",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "annual_1000k",
+    name: "1000K Year",
+    description: "One thousand kilometres in a single calendar year.",
+    criteria: "Annual total ≥ 1000 km.",
+    tier: "rare",
+    category: "distance",
+    label: "1000",
+    bg: "#e85d2f",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "continents_2",
+    name: "2 Continents",
+    description: "Runs logged on two different continents.",
+    criteria: "Runs in cities on ≥ 2 distinct continents.",
+    tier: "rare",
+    category: "place",
+    label: "2C",
+    bg: "#3a342b",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "continents_3",
+    name: "3 Continents",
+    description: "Three continents stamped. Your passport is a passport.",
+    criteria: "Runs in cities on ≥ 3 distinct continents.",
+    tier: "rare",
+    category: "place",
+    label: "3C",
+    bg: "#3a342b",
+    textPrimary: "#f3ede2",
+  },
+  {
+    id: "trail_20k",
+    name: "Trail Blazer",
+    description: "A single trail run over 20 km. Mud expected.",
+    criteria: "Single trail activity ≥ 20 km.",
+    tier: "rare",
+    category: "milestone",
+    label: "Trail",
+    bg: "#4a6b3a",
+    textPrimary: "#f3ede2",
+  },
+
+  // MYTHIC
+  {
+    id: "boston_q",
+    name: "Boston Qualifier",
+    description: "A marathon time that qualifies for Boston. Age-graded standard.",
+    criteria: "Marathon time ≤ Boston qualifying standard for age group.",
+    tier: "mythic",
+    category: "pace",
+    label: "BQ",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+  {
+    id: "sub_3h_marathon",
+    name: "Sub-3 Marathon",
+    description: "42.2 km in under three hours. Serious territory.",
+    criteria: "Single activity ≥ 42.2 km, elapsed time < 3:00:00.",
+    tier: "mythic",
+    category: "pace",
+    label: "Sub-3",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+  {
+    id: "ultra",
+    name: "Ultra Finisher",
+    description: "Any ultra-marathon finish. 50K and beyond.",
+    criteria: "Single activity ≥ 50 km.",
+    tier: "mythic",
+    category: "distance",
+    label: "Ultra",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+  {
+    id: "streak_100d",
+    name: "100-Day Streak",
+    description: "One hundred consecutive days of running. You are not normal.",
+    criteria: "100 consecutive calendar days with ≥ 1 run.",
+    tier: "mythic",
+    category: "streak",
+    label: "100d",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+  {
+    id: "annual_5000k",
+    name: "5000K Year",
+    description: "Five thousand kilometres in a year. ~140 km/week.",
+    criteria: "Annual total ≥ 5000 km.",
+    tier: "mythic",
+    category: "distance",
+    label: "5000",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+  {
+    id: "all_continents",
+    name: "All Continents",
+    description: "Runs logged on all six inhabited continents. Antarctica at your discretion.",
+    criteria: "Runs in cities on ≥ 6 distinct continents.",
+    tier: "mythic",
+    category: "place",
+    label: "6C",
+    bg: "#1a1612",
+    textPrimary: "#c9b05a",
+  },
+];
+
+const grouped = {
+  common: stamps.filter((s) => s.tier === "common"),
+  rare: stamps.filter((s) => s.tier === "rare"),
+  mythic: stamps.filter((s) => s.tier === "mythic"),
+};
+
+const tierMeta = {
+  common: {
+    label: "Common",
+    desc: "Earned by building the habit. Most runners will collect all of these over time.",
+    count: grouped.common.length,
+    accent: "var(--ink)",
+  },
+  rare: {
+    label: "Rare",
+    desc: "Meaningful milestones that require real training. Not everyone gets here.",
+    count: grouped.rare.length,
+    accent: "var(--solar)",
+  },
+  mythic: {
+    label: "Mythic",
+    desc: "Serious territory. Earned by running, not by using the app.",
+    count: grouped.mythic.length,
+    accent: "oklch(72% 0.12 80)",
+  },
+} as const;
+---
+
+<Base
+  title="Stamp Catalogue — Runstamp"
+  description="All planned stamps in the Runstamp catalogue. Common, Rare, and Mythic tiers — earned by running, not by app engagement."
+>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="wordmark" aria-label="Runstamp home">
+        <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true">
+          <circle cx="14" cy="14" r="5.5" fill="var(--solar)"></circle>
+          {sunRayAngles.map((a) => (
+            <line
+              x1={(14 + Math.cos(a) * 8.5).toFixed(2)}
+              y1={(14 + Math.sin(a) * 8.5).toFixed(2)}
+              x2={(14 + Math.cos(a) * 12).toFixed(2)}
+              y2={(14 + Math.sin(a) * 12).toFixed(2)}
+              stroke="var(--solar)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          ))}
+        </svg>
+        <span>Runstamp</span>
+      </a>
+      <nav aria-label="Site navigation">
+        <ul class="nav-links">
+          <li><a href="/" class="nav-link">Home</a></li>
+          <li><a href="/gallery" class="nav-link">Gallery</a></li>
+          <li><a href="/#waitlist" class="nav-cta">Join waitlist</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <p class="eyebrow">Catalogue</p>
+        <h1 class="page-headline">
+          Stamp catalogue.
+        </h1>
+        <p class="page-sub">
+          {stamps.length} stamps at launch. Common through Mythic. Awarded automatically
+          when a qualifying run syncs — no manual claiming, no timed challenges.
+          You earn them by running.
+        </p>
+
+        <div class="tier-summary" aria-label="Stamp tiers summary">
+          {(["common", "rare", "mythic"] as const).map((tier) => (
+            <div class="tier-chip" data-tier={tier}>
+              <span class="tier-chip-count">{tierMeta[tier].count}</span>
+              <span class="tier-chip-label eyebrow">{tierMeta[tier].label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {(["common", "rare", "mythic"] as const).map((tier) => (
+      <section class={`tier-section tier-section--${tier}`} aria-labelledby={`tier-${tier}`}>
+        <div class="container">
+          <header class="tier-header">
+            <div class="tier-title-row">
+              <h2 id={`tier-${tier}`} class="tier-headline">{tierMeta[tier].label}</h2>
+              <span class="tier-count eyebrow">{tierMeta[tier].count} stamps</span>
+            </div>
+            <p class="tier-desc">{tierMeta[tier].desc}</p>
+          </header>
+
+          <ul class="stamps-grid" aria-label={`${tierMeta[tier].label} stamps`}>
+            {grouped[tier].map((stamp) => (
+              <li class={`stamp-card stamp-card--${tier}`}>
+                <div class="stamp-visual" aria-hidden="true">
+                  {tier === "mythic" ? (
+                    <svg viewBox="0 0 100 116" width="100" height="116" class="stamp-svg mythic-svg">
+                      <defs>
+                        <linearGradient id={`foil-${stamp.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#c9b05a"></stop>
+                          <stop offset="22%" stop-color="#f0dfa0"></stop>
+                          <stop offset="45%" stop-color="#a07840"></stop>
+                          <stop offset="68%" stop-color="#e8d890"></stop>
+                          <stop offset="100%" stop-color="#c9b05a"></stop>
+                        </linearGradient>
+                      </defs>
+                      <rect width="100" height="116" fill={stamp.bg} rx="1"></rect>
+                      <rect x="1.5" y="1.5" width="97" height="113" fill="none" stroke={`url(#foil-${stamp.id})`} stroke-width="1.4" rx="1"></rect>
+                      {p3.map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill={stamp.bg} stroke={`url(#foil-${stamp.id})`} stroke-width="1" />)}
+                      {p3.map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill={stamp.bg} stroke={`url(#foil-${stamp.id})`} stroke-width="1" />)}
+                      {p3.map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill={stamp.bg} stroke={`url(#foil-${stamp.id})`} stroke-width="1" />)}
+                      {p3.map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill={stamp.bg} stroke={`url(#foil-${stamp.id})`} stroke-width="1" />)}
+                      <text x="50" y="34" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="2.5" fill={`url(#foil-${stamp.id})`}>MYTHIC</text>
+                      <text x="50" y="72" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size={stamp.label.length > 4 ? "14" : "20"} fill={`url(#foil-${stamp.id})`}>{stamp.label}</text>
+                      <rect x="18" y="82" width="64" height="0.8" fill={`url(#foil-${stamp.id})`} opacity="0.45"></rect>
+                      <text x="50" y="97" text-anchor="middle" font-family="monospace" font-size="6.5" fill={`url(#foil-${stamp.id})`} letter-spacing="1.5" opacity="0.85">{stamp.category.toUpperCase()}</text>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 100 116" width="100" height="116" class="stamp-svg">
+                      <rect width="100" height="116" fill={stamp.bg} rx="1"></rect>
+                      {p3.map((i) => <circle cx="10" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+                      {p3.map((i) => <circle cx="90" cy={20 + i * 36} r="6.5" fill="#f3ede2" />)}
+                      {p3.map((i) => <circle cx={20 + i * 36} cy="10" r="6.5" fill="#f3ede2" />)}
+                      {p3.map((i) => <circle cx={20 + i * 36} cy="106" r="6.5" fill="#f3ede2" />)}
+                      <text x="50" y="34" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="2.5" fill={`rgba(243,237,226,${tier === "rare" ? "0.65" : "0.45"})`}>{tier.toUpperCase()}</text>
+                      <text x="50" y="72" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size={stamp.label.length > 4 ? "14" : "22"} fill="#f3ede2">{stamp.label}</text>
+                      <rect x="22" y="80" width="56" height="0.8" fill={`rgba(243,237,226,${tier === "rare" ? "0.30" : "0.18"})`}></rect>
+                      <text x="50" y="96" text-anchor="middle" font-family="monospace" font-size="6.5" fill={`rgba(243,237,226,${tier === "rare" ? "0.50" : "0.35"})`} letter-spacing="1.5">{stamp.category.toUpperCase()}</text>
+                    </svg>
+                  )}
+                </div>
+
+                <div class="stamp-info">
+                  <h3 class="stamp-name">{stamp.name}</h3>
+                  <p class="stamp-desc">{stamp.description}</p>
+                  <p class="stamp-criteria eyebrow">
+                    <span class="criteria-label">Criteria:</span> {stamp.criteria}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    ))}
+
+    <!-- CTA strip -->
+    <section class="stamps-footer-cta">
+      <div class="container">
+        <p class="stamps-cta-text">
+          Stamps are awarded automatically — no manual claiming. When a qualifying
+          run syncs, the stamp appears in your collection within seconds.
+        </p>
+        <a href="/#waitlist" class="cta-btn">Join waitlist to be first</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+      <p class="footer-copy">&copy; 2026 Runstamp.</p>
+      <nav class="footer-nav" aria-label="Footer links">
+        <a href="/" class="footer-link">Home</a>
+        <a href="/gallery" class="footer-link">Gallery</a>
+        <a href="/privacy" class="footer-link">Privacy</a>
+        <a href="https://github.com/Rohithgilla12/runstamp" class="footer-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</Base>
+
+<style>
+  .container {
+    width: 100%;
+    max-width: 1140px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 5vw, 3rem);
+  }
+
+  /* Header — shared with index */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: oklch(93% 0.025 68 / 92%);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 0.875rem;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    list-style: none;
+  }
+
+  .nav-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: color 0.12s ease;
+  }
+
+  .nav-link:hover { color: var(--ink); }
+
+  .nav-cta {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-decoration: none;
+    border: 1px solid var(--ink);
+    padding: 0.4rem 0.875rem;
+    border-radius: 2px;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+
+  .nav-cta:hover { background: var(--ink); color: var(--paper); }
+
+  /* Page hero */
+  .page-hero {
+    padding-block: clamp(3.5rem, 8vw, 6rem);
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+
+  .page-hero .eyebrow { margin-bottom: 0.625rem; }
+
+  .page-headline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(2.75rem, 6vw, 5.5rem);
+    color: var(--ink);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.25rem;
+  }
+
+  .page-sub {
+    font-size: clamp(0.9375rem, 1.5vw, 1.0625rem);
+    color: var(--ink-2);
+    max-width: 56ch;
+    line-height: 1.72;
+    margin-bottom: 2.5rem;
+  }
+
+  .tier-summary {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .tier-chip {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+  }
+
+  .tier-chip[data-tier="rare"] { border-color: var(--solar); }
+  .tier-chip[data-tier="mythic"] { border-color: oklch(72% 0.12 80); }
+
+  .tier-chip-count {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .tier-chip[data-tier="rare"] .tier-chip-count { color: var(--solar); }
+  .tier-chip[data-tier="mythic"] .tier-chip-count { color: oklch(62% 0.12 78); }
+
+  .tier-chip-label { color: var(--ink-3); }
+
+  /* Tier sections */
+  .tier-section {
+    padding-block: clamp(3rem, 7vw, 5rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tier-section--rare { background: var(--paper-2); }
+  .tier-section--mythic { background: var(--ink); color: var(--paper); }
+
+  .tier-header {
+    margin-bottom: clamp(2rem, 5vw, 3rem);
+  }
+
+  .tier-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.625rem;
+    flex-wrap: wrap;
+  }
+
+  .tier-headline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+  }
+
+  .tier-section--mythic .tier-headline { color: oklch(82% 0.12 80); }
+
+  .tier-count {
+    color: var(--ink-3);
+  }
+
+  .tier-section--mythic .tier-count { color: rgba(243,237,226,0.45); }
+
+  .tier-desc {
+    font-size: 1rem;
+    color: var(--ink-2);
+    max-width: 56ch;
+    line-height: 1.7;
+  }
+
+  .tier-section--mythic .tier-desc { color: rgba(243,237,226,0.55); }
+
+  /* Stamps grid */
+  .stamps-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  @media (min-width: 480px) {
+    .stamps-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (min-width: 768px) {
+    .stamps-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (min-width: 1024px) {
+    .stamps-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .stamp-card {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    transition: transform 0.15s ease;
+  }
+
+  .stamp-card:hover { transform: translateY(-2px); }
+
+  .stamp-card--rare { border-color: rgba(232, 93, 47, 0.2); }
+
+  .stamp-card--mythic {
+    background: rgba(243,237,226,0.04);
+    border-color: rgba(201, 176, 90, 0.25);
+  }
+
+  .stamp-visual { flex-shrink: 0; }
+
+  .stamp-svg {
+    box-shadow: 0 2px 8px rgba(20,17,13,0.12);
+    border-radius: 1px;
+  }
+
+  .mythic-svg {
+    filter: drop-shadow(0 0 8px rgba(201, 176, 90, 0.35));
+    animation: mythic-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes mythic-pulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(201, 176, 90, 0.28)); }
+    50% { filter: drop-shadow(0 0 16px rgba(201, 176, 90, 0.52)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mythic-svg { animation: none; }
+  }
+
+  .stamp-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .stamp-name {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: var(--ink);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .stamp-card--mythic .stamp-name { color: oklch(85% 0.10 80); }
+
+  .stamp-desc {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+    line-height: 1.65;
+  }
+
+  .stamp-card--mythic .stamp-desc { color: rgba(243,237,226,0.55); }
+
+  .stamp-criteria {
+    margin-top: 0.25rem;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+
+  .stamp-card--mythic .stamp-criteria { color: rgba(243,237,226,0.35); }
+
+  .criteria-label {
+    color: var(--solar);
+    margin-right: 0.25rem;
+  }
+
+  /* CTA strip */
+  .stamps-footer-cta {
+    padding-block: clamp(3rem, 7vw, 5rem);
+    background: var(--paper-2);
+    border-top: 1px solid var(--line);
+  }
+
+  .stamps-footer-cta .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: center;
+  }
+
+  .stamps-cta-text {
+    font-size: 1rem;
+    color: var(--ink-2);
+    max-width: 52ch;
+    line-height: 1.72;
+  }
+
+  .cta-btn {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.875rem 1.5rem;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    border-radius: 2px;
+    transition: background-color 0.12s ease;
+  }
+
+  .cta-btn:hover { background: var(--ink-2); }
+
+  /* Footer */
+  .site-footer {
+    padding-block: 1.75rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  @media (min-width: 640px) {
+    .footer-inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  .footer-copy {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+
+  .footer-nav {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .footer-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-decoration: none;
+    transition: color 0.12s ease;
+  }
+
+  .footer-link:hover { color: var(--ink); }
+</style>

@@ -75,21 +75,14 @@ const canonicalURL = new URL(
     </script>
 
     <!--
-      Font loading strategy:
-      - Preload the two weights we paint above-the-fold: Anybody italic (display)
-        and Geist regular (body). JetBrains Mono loads after.
-      - font-display: swap prevents invisible text on slow connections.
-      - Preconnect reduces DNS + TLS handshake latency for Google Fonts.
+      Font loading: Instrument Serif italic (display, per brand) + Geist (body)
+      + JetBrains Mono (numerals). font-display: swap prevents invisible text
+      on slow connections. Preconnect cuts DNS + TLS handshake on Google Fonts.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!--
-      Anybody: condensed variable display font — editorial, runner-coded,
-      nothing like the reflex serif choices. Pairs well with JetBrains Mono.
-      Geist: clean geometric sans from Vercel, excellent at small sizes.
-    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@1,75,700;1,100,900&family=Geist:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
 
@@ -120,7 +113,7 @@ const canonicalURL = new URL(
         --error:      oklch(52% 0.18 25);
 
         /* Typography */
-        --font-display: "Anybody", "Georgia", serif;
+        --font-display: "Instrument Serif", "Georgia", serif;
         --font-sans:    "Geist", -apple-system, system-ui, sans-serif;
         --font-mono:    "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
