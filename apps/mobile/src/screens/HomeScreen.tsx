@@ -230,7 +230,7 @@ function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect: () => 
         <TText variant="serif" style={{ fontSize: 26, lineHeight: 28, color: c.paper, letterSpacing: -0.4 }}>
           Connect a source to{'\n'}stamp your first run.
         </TText>
-        <TText style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: 10, lineHeight: 18 }}>
+        <TText style={{ fontSize: 13, color: c.onInk2, marginTop: 10, lineHeight: 18 }}>
           Runstamp reads from Strava or Apple Health. Read-only — we never write back.
         </TText>
         <Pressable
@@ -389,24 +389,24 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
           {(run.avgHr > 0 || run.elev > 0 || run.cal > 0) && (
             <View style={{
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-              marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(243,237,226,0.12)'
+              marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.onInkDivider
             }}>
               {run.avgHr > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Icon.heart size={12} color={c.accent} />
-                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.avgHr} avg · {run.maxHr} max</TText>
+                  <TText variant="mono" style={{ fontSize: 11, color: c.onInk2 }}>{run.avgHr} avg · {run.maxHr} max</TText>
                 </View>
               )}
               {run.elev > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Icon.mountain size={12} color="rgba(243,237,226,0.7)" />
-                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.elev} m</TText>
+                  <TText variant="mono" style={{ fontSize: 11, color: c.onInk2 }}>{run.elev} m</TText>
                 </View>
               )}
               {run.cal > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Icon.flame size={12} color="rgba(243,237,226,0.7)" />
-                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>{run.cal} kcal</TText>
+                  <TText variant="mono" style={{ fontSize: 11, color: c.onInk2 }}>{run.cal} kcal</TText>
                 </View>
               )}
             </View>

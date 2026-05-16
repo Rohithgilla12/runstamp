@@ -119,7 +119,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
             <TText variant="serifItalic" style={{ fontSize: 20, color: c.paper, lineHeight: 22 }}>2026</TText>
             <TText variant="serif" style={{ fontSize: 20, color: c.paper, lineHeight: 22 }}> Runstamp Album.</TText>
           </View>
-          <TText style={{ fontSize: 12, color: 'rgba(243,237,226,0.6)', marginTop: 4, lineHeight: 18 }}>
+          <TText style={{ fontSize: 12, color: c.onInk2, marginTop: 4, lineHeight: 18 }}>
             A swipeable card stack for every stamp earned this year — drops Dec 15 so it lands before the holiday post window.
           </TText>
           <View style={{ marginTop: 12 }}>

@@ -131,35 +131,35 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
         )}
       </View>
       {scope !== 'all' && (
-        <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Pressable onPress={() => stepPrimary(-1)}>
-            <TText style={{ fontSize: 16, color: c.ink }}>‹</TText>
-          </Pressable>
-          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 96, textAlign: 'center' }}>
-            {primaryLabel}
-          </TText>
-          <Pressable onPress={() => stepPrimary(1)}>
-            <TText style={{ fontSize: 16, color: c.ink }}>›</TText>
-          </Pressable>
+        <View style={{ paddingHorizontal: 14, paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <StepperButton onPress={() => stepPrimary(-1)} label="‹" accessibilityLabel="Previous period" />
+          <View style={{ minWidth: 128, paddingHorizontal: 8, alignItems: 'center' }}>
+            <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>
+              {primaryLabel}
+            </TText>
+          </View>
+          <StepperButton onPress={() => stepPrimary(1)} label="›" accessibilityLabel="Next period" />
           {!isToday && (
-            <Pressable onPress={jumpToToday} style={{ marginLeft: 4 }}>
-              <TText style={{ fontSize: 11, color: c.accent, textDecorationLine: 'underline' }}>Today</TText>
+            <Pressable
+              onPress={jumpToToday}
+              hitSlop={8}
+              style={{ marginLeft: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line }}
+            >
+              <TText style={{ fontSize: 12, color: c.accent, fontWeight: '500' }}>Today</TText>
             </Pressable>
           )}
         </View>
       )}
       {compareOn && comparePeriod && scope !== 'all' && (
-        <View style={{ paddingHorizontal: 14, paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TText style={{ fontSize: 12, color: c.ink3 }}>vs</TText>
-          <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, -1))}>
-            <TText style={{ fontSize: 16, color: c.ink }}>‹</TText>
-          </Pressable>
-          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 96, textAlign: 'center' }}>
-            {labelPeriod(comparePeriod)}
-          </TText>
-          <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, 1))}>
-            <TText style={{ fontSize: 16, color: c.ink }}>›</TText>
-          </Pressable>
+        <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TText style={{ fontSize: 12, color: c.ink3, marginRight: 4 }}>vs</TText>
+          <StepperButton onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, -1))} label="‹" accessibilityLabel="Previous compare period" />
+          <View style={{ minWidth: 128, paddingHorizontal: 8, alignItems: 'center' }}>
+            <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>
+              {labelPeriod(comparePeriod)}
+            </TText>
+          </View>
+          <StepperButton onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, 1))} label="›" accessibilityLabel="Next compare period" />
         </View>
       )}
 
@@ -641,6 +641,24 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <Eyebrow style={{ color: c.ink3 }}>{label}</Eyebrow>
       <TText variant="monoMedium" style={{ fontSize: 22, color: c.ink, marginTop: 4 }}>{value}</TText>
     </View>
+  );
+}
+
+function StepperButton({ onPress, label, accessibilityLabel }: { onPress: () => void; label: string; accessibilityLabel: string }) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => ({
+        width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: pressed ? c.paper3 : c.paper2,
+        borderWidth: 1, borderColor: c.line,
+      })}
+    >
+      <TText style={{ fontSize: 18, lineHeight: 18, color: c.ink, marginTop: -2 }}>{label}</TText>
+    </Pressable>
   );
 }
 
