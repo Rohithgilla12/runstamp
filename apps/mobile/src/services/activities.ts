@@ -30,9 +30,12 @@ export interface ListActivitiesResponse {
   total: number;
 }
 
+// Pull the full history by default — analytics, places, best-efforts all
+// compute client-side off the same in-memory list, so capping it here means
+// "the user thinks Runstamp only knows 50 of their 5,000 runs."
 export function listActivities(
   idToken: string | null,
-  limit = 50,
+  limit = 10000,
 ): Promise<ListActivitiesResponse> {
   return apiGet<ListActivitiesResponse>(`/v1/activities?limit=${limit}`, { idToken });
 }

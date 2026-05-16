@@ -25,6 +25,7 @@ export function useActivities(): UseActivitiesState {
     setError(null);
     try {
       const idToken = await getIdToken();
+      // No explicit limit — services/activities.ts already defaults to 10k.
       const resp = await listActivities(idToken);
       setActivities(resp.activities.map(mapApiToActivity));
     } catch (e) {

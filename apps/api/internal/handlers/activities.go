@@ -23,8 +23,12 @@ type ActivitiesHandler struct {
 	Log        *slog.Logger
 }
 
-const defaultActivitiesLimit = 50
-const maxActivitiesLimit = 200
+// Analytics, places aggregation, and best-efforts all run client-side, so the
+// mobile app pulls the whole list once and computes off it. 10k cap is the
+// hard ceiling — a runner with that many lifetime runs is still <5MB of JSON
+// at our ~500-byte-per-row payload.
+const defaultActivitiesLimit = 2000
+const maxActivitiesLimit = 10000
 
 type activityResponse struct {
 	ID             string   `json:"id"`
