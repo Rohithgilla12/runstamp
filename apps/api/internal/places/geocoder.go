@@ -125,7 +125,67 @@ type nominatimResponse struct {
 	} `json:"address"`
 }
 
+// fetch resolves (lat, lon) → Result by hitting Nominatim, with a coarse-
+// to-fine fallback: try zoom=10 first (good enough for any place modeled
+// as a place=city in OSM); if zoom=10 only yields admin-level locality
+// (county or state_district) and CityAliases doesn't rewrite it, refetch
+// at zoom=14 and prefer that. Two Nominatim hits cost ~2.2s thanks to the
+// rate limiter, but the fallback only fires for cells where zoom=10 was
+// going to give a bad answer anyway.
 func (g *Geocoder) fetch(ctx context.Context, lat, lon float64) (Result, error) {
+	parsed10, err := g.fetchAtZoom(ctx, lat, lon, 10)
+	if err != nil {
+		return Result{}, err
+	}
+	rawCity10 := pickCity(parsed10)
+	res := Result{
+		City:        normalizeCity(rawCity10),
+		Country:     parsed10.Address.Country,
+		CountryCode: parsed10.Address.CountryCode,
+	}
+
+	if shouldRefineAtFinerZoom(rawCity10, res.City, parsed10) {
+		parsed14, ferr := g.fetchAtZoom(ctx, lat, lon, 14)
+		if ferr != nil {
+			// Don't fail the whole lookup if the refinement request errors —
+			// the zoom=10 result is still a valid (if coarse) answer.
+			g.log.Warn("places: zoom=14 refine failed", "lat", lat, "lon", lon, "err", ferr)
+			return res, nil
+		}
+		if refined := normalizeCity(pickCity(parsed14)); refined != "" {
+			res.City = refined
+		}
+		if res.Country == "" {
+			res.Country = parsed14.Address.Country
+		}
+		if res.CountryCode == "" {
+			res.CountryCode = parsed14.Address.CountryCode
+		}
+	}
+	return res, nil
+}
+
+// shouldRefineAtFinerZoom reports whether the zoom=10 result was so coarse
+// that retrying at zoom=14 might yield a real city. It fires when pickCity
+// fell back to county/state_district AND CityAliases didn't rewrite it.
+//
+// rawCity is what pickCity returned before alias normalization;
+// normalizedCity is the post-alias form. If those differ, an alias caught
+// the admin name (e.g. "Mumbai City District" → "Mumbai") and there's no
+// point hitting Nominatim again.
+func shouldRefineAtFinerZoom(rawCity, normalizedCity string, p nominatimResponse) bool {
+	if rawCity == "" {
+		return true
+	}
+	if normalizedCity != rawCity {
+		return false // alias handled it
+	}
+	return rawCity == p.Address.County || rawCity == p.Address.StateDistrict
+}
+
+// fetchAtZoom does the rate-limited HTTP roundtrip to Nominatim and returns
+// the parsed response. Caller is responsible for picking + normalizing.
+func (g *Geocoder) fetchAtZoom(ctx context.Context, lat, lon float64, zoom int) (nominatimResponse, error) {
 	g.mu.Lock()
 	wait := time.Until(g.last.Add(requestInterval))
 	if wait > 0 {
@@ -133,7 +193,7 @@ func (g *Geocoder) fetch(ctx context.Context, lat, lon float64) (Result, error) 
 		case <-time.After(wait):
 		case <-ctx.Done():
 			g.mu.Unlock()
-			return Result{}, ctx.Err()
+			return nominatimResponse{}, ctx.Err()
 		}
 	}
 	g.last = time.Now()
@@ -143,35 +203,30 @@ func (g *Geocoder) fetch(ctx context.Context, lat, lon float64) (Result, error) 
 	q.Set("format", "jsonv2")
 	q.Set("lat", fmt.Sprintf("%.6f", lat))
 	q.Set("lon", fmt.Sprintf("%.6f", lon))
-	q.Set("zoom", "10")
+	q.Set("zoom", fmt.Sprintf("%d", zoom))
 	q.Set("addressdetails", "1")
 	urlStr := nominatimBase + "?" + q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
 	if err != nil {
-		return Result{}, err
+		return nominatimResponse{}, err
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
 	resp, err := g.client.Do(req)
 	if err != nil {
-		return Result{}, fmt.Errorf("places: nominatim request: %w", err)
+		return nominatimResponse{}, fmt.Errorf("places: nominatim request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return Result{}, fmt.Errorf("places: nominatim status %d: %s", resp.StatusCode, string(body))
+		return nominatimResponse{}, fmt.Errorf("places: nominatim status %d: %s", resp.StatusCode, string(body))
 	}
 	var parsed nominatimResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return Result{}, fmt.Errorf("places: decode nominatim: %w", err)
+		return nominatimResponse{}, fmt.Errorf("places: decode nominatim: %w", err)
 	}
-
-	return Result{
-		City:        normalizeCity(pickCity(parsed)),
-		Country:     parsed.Address.Country,
-		CountryCode: parsed.Address.CountryCode,
-	}, nil
+	return parsed, nil
 }
 
 // pickCity picks the best available locality from Nominatim's response.
@@ -207,6 +262,10 @@ func pickCity(p nominatimResponse) string {
 // someone who ran in South Mumbai. Exported so the backfill sweep can
 // re-normalize already-geocoded rows in the activities table.
 var CityAliases = map[string]string{
+	// Mumbai — OSM models the city as an administrative state_district
+	// ("Mumbai City District") rather than a place=city node. At zoom=10
+	// pickCity ends up at state_district; at zoom=12 it'd be city_district
+	// ("Mumbai Zone N"). Both collapse to "Mumbai".
 	"Mumbai Suburban":          "Mumbai",
 	"Mumbai Suburban District": "Mumbai",
 	"Mumbai City District":     "Mumbai",
@@ -221,12 +280,25 @@ var CityAliases = map[string]string{
 	"Bombay":                   "Mumbai",
 	"Bombay Suburban":          "Mumbai",
 	"Greater Bombay":           "Mumbai",
-	"Bengaluru Urban":          "Bengaluru",
-	"Bangalore Urban":          "Bengaluru",
-	"Bangalore":                "Bengaluru",
-	"Calcutta":                 "Kolkata",
-	"Madras":                   "Chennai",
-	"Gurgaon":                  "Gurugram",
+	// US counties that pickCity falls back to when there's no place=city
+	// hit — alias to the underlying city.
+	"Santa Clara County": "Santa Clara",
+	// Telangana mandals — OSM exposes mandals (rural admin subdivisions)
+	// as `county` at zoom=10. zoom=14 returns village names that aren't
+	// recognizable; the user's intent is the parent city these mandals
+	// belong to.
+	"Hanamkonda mandal":    "Hanamkonda", // mandal seat IS the town
+	"Kothapally mandal":    "Karimnagar", // Karimnagar district
+	"Nandigama mandal":     "Hyderabad",  // Ranga Reddy / Hyderabad metro
+	"Balapur mandal":       "Hyderabad",  // Ranga Reddy / Hyderabad metro
+	"Yadagirigutta mandal": "Yadagirigutta",
+	// Historical / canonical names.
+	"Bengaluru Urban": "Bengaluru",
+	"Bangalore Urban": "Bengaluru",
+	"Bangalore":       "Bengaluru",
+	"Calcutta":        "Kolkata",
+	"Madras":          "Chennai",
+	"Gurgaon":         "Gurugram",
 }
 
 // NormalizeCity rewrites city names to their canonical form. Idempotent.

@@ -16,6 +16,14 @@ func TestNormalizeCity(t *testing.T) {
 		{"Calcutta", "Kolkata"},
 		{"Madras", "Chennai"},
 		{"Gurgaon", "Gurugram"},
+		// US: county fallback when no city is set at zoom=10.
+		{"Santa Clara County", "Santa Clara"},
+		// Telangana mandals — rollup to parent city/district.
+		{"Hanamkonda mandal", "Hanamkonda"},
+		{"Kothapally mandal", "Karimnagar"},
+		{"Nandigama mandal", "Hyderabad"},
+		{"Balapur mandal", "Hyderabad"},
+		{"Yadagirigutta mandal", "Yadagirigutta"},
 		// Pass-through for canonical or unknown values.
 		{"Mumbai", "Mumbai"},
 		{"London", "London"},
@@ -101,5 +109,84 @@ func TestPickThenNormalizeForMumbaiMarathon(t *testing.T) {
 	got := normalizeCity(pickCity(resp))
 	if got != "Mumbai" {
 		t.Errorf("Mumbai Marathon start: got %q; want %q", got, "Mumbai")
+	}
+}
+
+func TestShouldRefineAtFinerZoom(t *testing.T) {
+	mk := func(set func(a *nominatimResponse)) nominatimResponse {
+		var r nominatimResponse
+		set(&r)
+		return r
+	}
+	cases := []struct {
+		name    string
+		raw     string
+		norm    string
+		resp    nominatimResponse
+		refines bool
+	}{
+		{
+			name: "refines: zoom=10 only returned a county we don't alias",
+			raw:  "Santa Clara County", norm: "Santa Clara County",
+			resp: mk(func(a *nominatimResponse) {
+				a.Address.County = "Santa Clara County"
+				a.Address.State = "California"
+				a.Address.Country = "United States"
+			}),
+			refines: true,
+		},
+		{
+			name: "no refine: alias handled the admin name",
+			raw:  "Mumbai City District", norm: "Mumbai",
+			resp: mk(func(a *nominatimResponse) {
+				a.Address.StateDistrict = "Mumbai City District"
+				a.Address.State = "Maharashtra"
+				a.Address.Country = "India"
+			}),
+			refines: false,
+		},
+		{
+			name: "no refine: zoom=10 had a real city",
+			raw:  "Karimnagar", norm: "Karimnagar",
+			resp: mk(func(a *nominatimResponse) {
+				a.Address.City = "Karimnagar"
+				a.Address.State = "Telangana"
+				a.Address.Country = "India"
+			}),
+			refines: false,
+		},
+		{
+			name: "refines: empty raw (Nominatim returned no locality fields)",
+			raw:  "", norm: "",
+			resp:    nominatimResponse{},
+			refines: true,
+		},
+		{
+			name: "refines: zoom=10 returned a state_district we don't alias",
+			raw:  "Some Unmapped District", norm: "Some Unmapped District",
+			resp: mk(func(a *nominatimResponse) {
+				a.Address.StateDistrict = "Some Unmapped District"
+				a.Address.Country = "Wherever"
+			}),
+			refines: true,
+		},
+		{
+			name: "no refine: zoom=10 picked from suburb (not admin)",
+			raw:  "Worli", norm: "Worli",
+			resp: mk(func(a *nominatimResponse) {
+				a.Address.Suburb = "Worli"
+				a.Address.County = "Mumbai Suburban"
+				a.Address.Country = "India"
+			}),
+			refines: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shouldRefineAtFinerZoom(tc.raw, tc.norm, tc.resp)
+			if got != tc.refines {
+				t.Errorf("shouldRefineAtFinerZoom = %v; want %v", got, tc.refines)
+			}
+		})
 	}
 }
