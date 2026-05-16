@@ -56,9 +56,38 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const totalKm = activities.reduce((a, x) => a + x.distance, 0);
   const totalRuns = activities.length;
   const streak = computeStreak(activities.map((a) => a.date));
-  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Runner';
+  // Server-stored displayName beats the Firebase token's — users can override
+  // their Apple/Google name in Runstamp without rewiring their auth provider.
+  const displayName = me?.displayName?.trim()
+    || user?.displayName?.trim()
+    || user?.email?.split('@')[0]
+    || 'Runner';
   const initial = (displayName[0] ?? 'R').toUpperCase();
   const joinedLabel = formatJoined(user?.metadata?.creationTime);
+  const handleEditName = useCallback(() => {
+    Alert.prompt(
+      'Edit name',
+      'Shown on your share cards and recap.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (text?: string) => {
+            const next = (text ?? '').trim();
+            if (!next || next === displayName) return;
+            if (next.length > 40) { Alert.alert('Too long', 'Keep it under 40 characters.'); return; }
+            try {
+              await saveAccount({ displayName: next });
+            } catch (e) {
+              Alert.alert('Couldn’t save', e instanceof Error ? e.message : String(e));
+            }
+          },
+        },
+      ],
+      'plain-text',
+      displayName,
+    );
+  }, [displayName, saveAccount]);
 
   if (sub === 'shoes') return <ShoesScreen back={() => setSub('main')} />;
   if (sub === 'connections') return <ConnectionsScreen back={() => setSub('main')} />;
@@ -82,7 +111,17 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
               <TText variant="serif" style={{ fontSize: 24, color: '#fff' }}>{initial}</TText>
             </View>
             <View style={{ flex: 1 }}>
-              <TText variant="serif" style={{ fontSize: 22, color: c.ink, lineHeight: 24, letterSpacing: -0.3 }}>{displayName}</TText>
+              <Pressable
+                onPress={handleEditName}
+                onLongPress={handleEditName}
+                delayLongPress={300}
+                hitSlop={6}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 })}
+                accessibilityLabel="Edit name"
+              >
+                <TText variant="serif" style={{ fontSize: 22, color: c.ink, lineHeight: 24, letterSpacing: -0.3 }}>{displayName}</TText>
+                <TText variant="mono" style={{ fontSize: 10, color: c.ink3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Edit</TText>
+              </Pressable>
               {joinedLabel && <TText style={{ fontSize: 12, color: c.ink3, marginTop: 2 }}>{joinedLabel}</TText>}
             </View>
           </View>

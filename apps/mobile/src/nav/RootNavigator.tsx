@@ -11,6 +11,7 @@ import { AnalyticsScreen } from '../screens/AnalyticsScreen';
 import { PlacesScreen } from '../screens/PlacesScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ActivityScreen } from '../screens/ActivityScreen';
+import { ActivitiesScreen } from '../screens/ActivitiesScreen';
 import { EditorScreen } from '../screens/EditorScreen';
 import { StampsScreen } from '../screens/StampsScreen';
 import { YearInStampsScreen } from '../screens/YearInStampsScreen';
@@ -129,7 +130,8 @@ export function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
       <Stack.Screen name="Tabs"     component={TabsNavigator} />
-      <Stack.Screen name="Activity" component={ActivityScreen} options={{ presentation: 'card', animation: 'slide_from_right' }} />
+      <Stack.Screen name="Activity"   component={ActivityScreen}   options={{ presentation: 'card', animation: 'slide_from_right' }} />
+      <Stack.Screen name="Activities" component={ActivitiesScreen} options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="Editor"   component={EditorScreen}   options={{ presentation: 'modal',  animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Stamps"       component={StampsScreen}       options={{ presentation: 'card',  animation: 'slide_from_right' }} />
       <Stack.Screen name="YearInStamps" component={YearInStampsScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

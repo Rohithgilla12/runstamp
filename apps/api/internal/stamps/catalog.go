@@ -100,13 +100,18 @@ var Catalog = []Definition{
 		SortOrder:   70,
 	},
 	// ── Rare: pace milestones ──────────────────────────────────────────
+	// Upper distance bounds are deliberately loose. GPS drift on a real-world
+	// marathon often clocks 42.5–43.5 km (sometimes higher in urban canyons),
+	// so a tight 42.6 km cap was locking sub-4 / sub-3:45 stamps for users
+	// who genuinely earned them. The new caps still exclude ultras (50K+)
+	// from masquerading as marathon PRs.
 	{
 		ID:          "sub_50_10k",
 		Name:        "Sub-50 10K",
 		Description: "10K under 50 minutes.",
 		Tier:        "rare",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":10000,"distance_m_lte":10500,"time_seconds_lte":3000}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":10000,"distance_m_lte":11000,"time_seconds_lte":3000}`),
 		SortOrder:   80,
 	},
 	{
@@ -115,7 +120,7 @@ var Catalog = []Definition{
 		Description: "21.1 km under 2 hours.",
 		Tier:        "rare",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":21097,"distance_m_lte":21700,"time_seconds_lte":7200}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":21097,"distance_m_lte":22500,"time_seconds_lte":7200}`),
 		SortOrder:   90,
 	},
 	{
@@ -124,7 +129,7 @@ var Catalog = []Definition{
 		Description: "42.2 km under 4 hours.",
 		Tier:        "rare",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":42600,"time_seconds_lte":14400}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":44500,"time_seconds_lte":14400}`),
 		SortOrder:   100,
 	},
 	{
@@ -133,7 +138,7 @@ var Catalog = []Definition{
 		Description: "42.2 km under 3:45.",
 		Tier:        "rare",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":42600,"time_seconds_lte":13500}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":44500,"time_seconds_lte":13500}`),
 		SortOrder:   110,
 	},
 	// ── Mythic: elite pace ─────────────────────────────────────────────
@@ -143,7 +148,7 @@ var Catalog = []Definition{
 		Description: "42.2 km under 3 hours.",
 		Tier:        "mythic",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":42600,"time_seconds_lte":10800}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":44500,"time_seconds_lte":10800}`),
 		SortOrder:   120,
 	},
 	{
@@ -152,7 +157,7 @@ var Catalog = []Definition{
 		Description: "Marathon under a Boston qualifying time (general M18-34 standard).",
 		Tier:        "mythic",
 		Category:    "pace",
-		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":42600,"time_seconds_lte":10800}`),
+		Criteria:    j(`{"kind":"single_activity","sport":"run","distance_m_gte":42195,"distance_m_lte":44500,"time_seconds_lte":10800}`),
 		SortOrder:   130,
 	},
 	// ── Mythic: ultra ──────────────────────────────────────────────────
@@ -185,7 +190,13 @@ var Catalog = []Definition{
 		SortOrder:   160,
 	},
 
-	// ── India regional flagship batch (PRD §6.6 + docs/design/stamp-catalog-expansion.md) ──
+	// City- and event-specific stamps were removed: picking favourites is
+	// hard to maintain fairly and inevitably privileges one region over
+	// another. Existing earned rows stay (Sync never deletes), but no new
+	// awards are issued. The generic place stamps (cities_5, countries_3)
+	// remain — they reward breadth, not specific locations. The seasonal
+	// monsoon_run stamp lives on as a country-tagged climate stamp rather
+	// than a city stamp.
 	{
 		ID:          "monsoon_run",
 		Name:        "Monsoon long run",
@@ -194,60 +205,6 @@ var Catalog = []Definition{
 		Category:    "event",
 		Criteria:    j(`{"kind":"monsoon_run","sport":"run","distance_m_gte":15000,"months":[6,7,8,9],"country_iso":"IN"}`),
 		SortOrder:   200,
-	},
-	{
-		ID:          "indian_metros_3",
-		Name:        "3 Indian metros",
-		Description: "Run in 3 of India's 8 metro cities.",
-		Tier:        "common",
-		Category:    "place",
-		Criteria:    j(`{"kind":"named_cities_count","cities_gte":3,"country_iso":"IN","city_set":["Mumbai","Delhi","New Delhi","Bengaluru","Bangalore","Chennai","Kolkata","Hyderabad","Ahmedabad","Pune"]}`),
-		SortOrder:   210,
-	},
-	{
-		ID:          "tata_mumbai_marathon",
-		Name:        "Tata Mumbai Marathon",
-		Description: "Finished the Tata Mumbai Marathon.",
-		Tier:        "rare",
-		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["mumbai marathon","tata mumbai","standard chartered mumbai","tmm 20","tmm20","scmm"],"country_iso":"IN"}`),
-		SortOrder:   220,
-	},
-	{
-		ID:          "vedanta_delhi_half",
-		Name:        "Vedanta Delhi Half Marathon",
-		Description: "Finished the Vedanta Delhi Half Marathon (formerly ADHM).",
-		Tier:        "rare",
-		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":20500,"distance_m_lte":22500,"title_patterns":["delhi half","vedanta delhi","airtel delhi half","adhm"],"country_iso":"IN"}`),
-		SortOrder:   230,
-	},
-	{
-		ID:          "bengaluru_marathon",
-		Name:        "Bengaluru Marathon",
-		Description: "Finished the Bengaluru Marathon.",
-		Tier:        "rare",
-		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["bengaluru marathon","bangalore marathon"],"country_iso":"IN"}`),
-		SortOrder:   240,
-	},
-	{
-		ID:          "hyderabad_marathon",
-		Name:        "Hyderabad Marathon",
-		Description: "Finished the NMDC Hyderabad Marathon.",
-		Tier:        "rare",
-		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["hyderabad marathon","nmdc hyderabad"],"country_iso":"IN"}`),
-		SortOrder:   250,
-	},
-	{
-		ID:          "ladakh_marathon",
-		Name:        "Ladakh Marathon",
-		Description: "Finished the Ladakh Marathon at ~3,500m altitude.",
-		Tier:        "mythic",
-		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["ladakh marathon"],"country_iso":"IN"}`),
-		SortOrder:   260,
 	},
 }
 
