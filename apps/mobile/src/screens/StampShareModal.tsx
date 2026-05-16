@@ -11,6 +11,43 @@ import { Button } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { StampShareCard } from '../design/StampShareCard';
 
+const COUNTRY_ISO: Record<string, string> = {
+  India: 'IN',
+  'United States': 'US',
+  'United Kingdom': 'GB',
+  Germany: 'DE',
+  France: 'FR',
+  Japan: 'JP',
+  Australia: 'AU',
+  Canada: 'CA',
+  China: 'CN',
+  Brazil: 'BR',
+  Spain: 'ES',
+  Italy: 'IT',
+  Singapore: 'SG',
+  Thailand: 'TH',
+  Netherlands: 'NL',
+  Switzerland: 'CH',
+  Sweden: 'SE',
+  Norway: 'NO',
+  Denmark: 'DK',
+  Ireland: 'IE',
+  Mexico: 'MX',
+  'South Africa': 'ZA',
+  Kenya: 'KE',
+  Ethiopia: 'ET',
+  'New Zealand': 'NZ',
+  Portugal: 'PT',
+  Poland: 'PL',
+  Belgium: 'BE',
+  Austria: 'AT',
+};
+
+function isoFor(country?: string): string | undefined {
+  if (!country) return undefined;
+  return COUNTRY_ISO[country] ?? country.slice(0, 2).toUpperCase();
+}
+
 interface Props {
   stamp: CatalogStamp | null;
   onClose: () => void;
@@ -125,6 +162,7 @@ export function StampShareModal({ stamp, onClose }: Props) {
                 activityCity={linked?.city}
                 activityDistanceKm={linked?.distance}
                 activityTitle={linked?.title}
+                countryISO={isoFor(linked?.country)}
                 width={cardW}
                 height={cardH}
               />
