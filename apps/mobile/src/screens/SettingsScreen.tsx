@@ -378,31 +378,48 @@ function ConnectionsScreen({ back }: { back: () => void }) {
         <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.6, color: c.ink }}>Where your runs come from.</TText>
       </View>
       <View style={{ paddingHorizontal: 14, paddingTop: 18, gap: 10 }}>
-        <ConnCard
-          bg={stravaConnected ? '#fc4c02' : c.paper2}
-          iconNode={<Icon.strava size={28} color={stravaConnected ? '#fff' : c.ink2} />}
-          name="Strava"
-          status={stravaStatusLabel}
-          statusConnected={stravaConnected}
-          sub={stravaSub}
-          onPress={handleStravaPress}
-          busy={stravaBusy}
-          action={stravaConnected ? (
-            <Pressable
-              onPress={handleStravaPress}
-              disabled={stravaBusy}
-              style={({ pressed }) => [{
-                marginTop: 10, paddingTop: 10,
-                borderTopWidth: 1, borderTopColor: c.line2,
-                opacity: pressed || stravaBusy ? 0.5 : 1,
-              }]}
-            >
-              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
-                {stravaBusy ? 'WORKING…' : 'DISCONNECT'}
-              </TText>
-            </Pressable>
-          ) : undefined}
-        />
+        {stravaConnected ? (
+          // Existing Strava-app-owner accounts keep their working tile until
+          // they choose to disconnect — flip the gate below to re-enable for
+          // everyone once Strava approves the athlete quota increase.
+          <ConnCard
+            bg="#fc4c02"
+            iconNode={<Icon.strava size={28} color="#fff" />}
+            name="Strava"
+            status={stravaStatusLabel}
+            statusConnected
+            sub={stravaSub}
+            busy={stravaBusy}
+            action={
+              <Pressable
+                onPress={handleStravaPress}
+                disabled={stravaBusy}
+                style={({ pressed }) => [{
+                  marginTop: 10, paddingTop: 10,
+                  borderTopWidth: 1, borderTopColor: c.line2,
+                  opacity: pressed || stravaBusy ? 0.5 : 1,
+                }]}
+              >
+                <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>
+                  {stravaBusy ? 'WORKING…' : 'DISCONNECT'}
+                </TText>
+              </Pressable>
+            }
+          />
+        ) : (
+          // Strava locked: free-tier API apps are capped at 1 connected
+          // athlete. Until quota approval lands, surface a "Coming soon"
+          // card instead of a live tap so we don't 403 every user. Re-enable
+          // by deleting this branch and the conditional above.
+          <ConnCard
+            bg={c.paper2}
+            iconNode={<Icon.strava size={28} color={c.ink3} />}
+            name="Strava"
+            status="Coming soon · quota approval pending"
+            statusConnected={false}
+            sub="Strava caps new developer apps at 1 athlete. We’ve applied for an increase — you’ll be able to connect as soon as Strava approves it."
+          />
+        )}
         <ConnCard
           bg={healthConnected ? '#fb466c' : c.paper2}
           iconNode={<Icon.heart size={24} color={healthConnected ? '#fff' : c.ink2} />}
