@@ -31,6 +31,8 @@ import { cadenceSeries, currentCadence, deltaCadence } from '../analytics/cadenc
 import { CadenceCard } from '../design/charts/CadenceCard';
 import { buildRacePredictor } from '../analytics/racePredictor';
 import { RacePredictorCard } from '../design/charts/RacePredictorCard';
+import { decouplingSeries, recentAvg } from '../analytics/decoupling';
+import { DecouplingCard } from '../design/charts/DecouplingCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -396,6 +398,15 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
     today,
   ), [efforts, ascending, today]);
 
+  // Aerobic decoupling — per-run Pa:HR from splits halves. Falls back to
+  // empty when no run in scope has splits (real Strava activities don't
+  // surface splits to the mobile pipeline yet).
+  const decoupling = useMemo(() => decouplingSeries(
+    filteredByLens.map((a) => ({ date: a.date, splits: a.splits })),
+  ), [filteredByLens]);
+  const decouplingRecent = useMemo(() => recentAvg(decoupling, 4), [decoupling]);
+  const hasDecoupling = decoupling.length > 0;
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -490,6 +501,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
             </View>
           )}
+          {hasDecoupling && (
+            <View style={{ marginTop: 12 }}>
+              <DecouplingCard series={decoupling} recent={decouplingRecent} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -546,6 +562,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
             </View>
           )}
+          {hasDecoupling && (
+            <View style={{ marginTop: 12 }}>
+              <DecouplingCard series={decoupling} recent={decouplingRecent} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -582,6 +603,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasCadence && (
             <View style={{ marginTop: 12 }}>
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
+          {hasDecoupling && (
+            <View style={{ marginTop: 12 }}>
+              <DecouplingCard series={decoupling} recent={decouplingRecent} />
             </View>
           )}
           <View style={{ marginTop: 12 }}>
@@ -623,6 +649,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasCadence && (
             <View style={{ marginTop: 12 }}>
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
+          {hasDecoupling && (
+            <View style={{ marginTop: 12 }}>
+              <DecouplingCard series={decoupling} recent={decouplingRecent} />
             </View>
           )}
           <View style={{ marginTop: 12 }}>
