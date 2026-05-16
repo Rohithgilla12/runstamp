@@ -13,9 +13,10 @@ import (
 // controls the batch size — typically a few hundred per invocation since
 // Nominatim is 1 req/sec.
 //
-// Returns the number of activities updated. Stops at the first geocoder error
-// (likely a Nominatim 429) so we don't burn through the rate window with
-// repeated failures.
+// Returns the number of activities updated. Individual lookup failures are
+// logged and skipped so a transient Nominatim error doesn't strand the rest
+// of the batch (the rate limiter already gates outbound requests at 1.1s,
+// so failures don't burn the rate window).
 type Backfiller struct {
 	pool *pgxpool.Pool
 	geo  *Geocoder
@@ -65,7 +66,7 @@ WHERE user_id = $1
 		res, err := b.geo.Lookup(ctx, p.lat, p.lon)
 		if err != nil {
 			b.log.Warn("places: lookup failed mid-backfill", "user_id", userID, "activity_id", p.id, "err", err)
-			break
+			continue
 		}
 		if res.City == "" && res.Country == "" {
 			continue
