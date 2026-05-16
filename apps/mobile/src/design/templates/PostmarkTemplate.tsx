@@ -6,12 +6,14 @@ import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
+import { EYEBROW_SIZE, PAD, formatMonthDay, type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // PostmarkTemplate
@@ -22,7 +24,7 @@ interface Props {
 // denomination at the top of the ring, pace + time as small mono labels
 // along the lower arc. The route map (or photo / solid colour) bleeds behind
 // the stamp, muted by a dark scrim.
-export function PostmarkTemplate({ run, width, height, background }: Props) {
+export function PostmarkTemplate({ run, width, height, background, units = 'km' }: Props) {
   const c = useColors();
 
   return (
@@ -51,22 +53,22 @@ export function PostmarkTemplate({ run, width, height, background }: Props) {
       <View pointerEvents="none" style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(14,13,11,0.62)' }} />
 
       {/* Distance as denomination — top header strip */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 18, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingTop: PAD.lg, paddingHorizontal: PAD.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View>
-          <Eyebrow style={{ color: 'rgba(243,237,226,0.5)' }}>DENOMINATION</Eyebrow>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: EYEBROW_SIZE }}>DISTANCE</Eyebrow>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 }}>
             <TText variant="monoSemi" style={{ fontSize: Math.min(width * 0.13, 52), color: '#f3ede2', letterSpacing: -2, lineHeight: Math.min(width * 0.13, 52) }}>
-              {fmtDist(run.distance, 'km')}
+              {fmtDist(run.distance, units)}
             </TText>
             <TText variant="mono" style={{ fontSize: 13, color: 'rgba(243,237,226,0.65)', marginLeft: 5 }}>
-              {distUnit('km').toUpperCase()}
+              {distUnit(units).toUpperCase()}
             </TText>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end', paddingTop: 4 }}>
-          <Eyebrow style={{ color: 'rgba(243,237,226,0.5)' }}>NO.</Eyebrow>
-          <TText variant="mono" style={{ fontSize: 10, color: 'rgba(243,237,226,0.6)', marginTop: 1 }}>
-            {run.id.toUpperCase()}
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: EYEBROW_SIZE }}>NO.</Eyebrow>
+          <TText variant="mono" style={{ fontSize: 10, color: 'rgba(243,237,226,0.6)', marginTop: 2 }}>
+            {run.id.slice(0, 6).toUpperCase()}
           </TText>
         </View>
       </View>
@@ -76,22 +78,21 @@ export function PostmarkTemplate({ run, width, height, background }: Props) {
         <PostmarkRing
           width={width}
           height={height}
-          city={run.city}
-          country={run.country.toUpperCase()}
-          date={`${run.day.toUpperCase()} · ${run.date.slice(5).replace('-', ' ')}`}
-          pace={fmtPace(run.pace)}
+          city={run.city || run.title}
+          country={(run.country || 'RUNSTAMP').toUpperCase()}
+          date={`${run.day.toUpperCase()} · ${formatMonthDay(run.date)}`}
+          pace={fmtPace(run.pace, units)}
           time={fmtTime(run.seconds)}
           accent={c.accent}
         />
       </View>
 
-      {/* Run title — bottom left */}
-      <View style={{ position: 'absolute', bottom: 18, left: 20, right: 20 }}>
-        <TText variant="serifItalic" style={{ fontSize: 15, color: 'rgba(243,237,226,0.75)', lineHeight: 18 }} numberOfLines={1}>
+      {/* Run title + airmail stripe — bottom */}
+      <View style={{ position: 'absolute', bottom: PAD.lg, left: PAD.lg, right: PAD.lg }}>
+        <TText variant="serifItalic" style={{ fontSize: 15, color: 'rgba(243,237,226,0.78)', lineHeight: 18 }} numberOfLines={1}>
           {run.title}
         </TText>
-        {/* Airmail bottom stripe */}
-        <View style={{ flexDirection: 'row', marginTop: 10, height: 3 }}>
+        <View style={{ flexDirection: 'row', marginTop: 12, height: 3 }}>
           {Array.from({ length: 16 }).map((_, i) => (
             <View key={i} style={{ flex: 1, backgroundColor: i % 2 === 0 ? c.accent : '#f3ede2', opacity: 0.7 }} />
           ))}

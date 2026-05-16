@@ -2,16 +2,18 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
-import { fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
+import { type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // CustomsTemplate
@@ -22,7 +24,7 @@ interface Props {
 // "DECLARATION OF RUN" as the italic Instrument Serif title at the top.
 // Personal Best checkbox in the lower right.
 // Signature line at the very bottom.
-export function CustomsTemplate({ run, width, height, background }: Props) {
+export function CustomsTemplate({ run, width, height, background, units = 'km' }: Props) {
   const c = useColors();
 
   const paperTone = '#f5eedf';
@@ -30,15 +32,16 @@ export function CustomsTemplate({ run, width, height, background }: Props) {
 
   const isPB = run.kind === 'long' || run.distance > 21;
 
+  const unitLabel = distUnit(units).toUpperCase();
   const formRows: { label: string; value: string }[] = [
-    { label: 'DISTANCE DECLARED',  value: `${fmtDist(run.distance, 'km')} KM` },
-    { label: 'PACE DECLARED',      value: `${fmtPace(run.pace)} / KM` },
-    { label: 'TIME DECLARED',      value: fmtTime(run.seconds) },
-    { label: 'ELEVATION GAIN',     value: `${run.elev} M` },
-    { label: 'CALORIES CONSUMED',  value: `${run.cal} KCAL` },
-    { label: 'PURPOSE OF VISIT',   value: purposeFromKind(run.kind) },
-    { label: 'CITY OF ORIGIN',     value: run.city.toUpperCase() },
-    { label: 'COUNTRY',            value: run.country.toUpperCase() },
+    { label: 'DISTANCE DECLARED', value: `${fmtDist(run.distance, units)} ${unitLabel}` },
+    { label: 'PACE DECLARED',     value: `${fmtPace(run.pace, units)} / ${unitLabel}` },
+    { label: 'TIME DECLARED',     value: fmtTime(run.seconds) },
+    { label: 'ELEVATION GAIN',    value: `${run.elev} M` },
+    { label: 'CALORIES CONSUMED', value: run.cal > 0 ? `${run.cal} KCAL` : '—' },
+    { label: 'PURPOSE OF VISIT',  value: purposeFromKind(run.kind) },
+    { label: 'CITY OF ORIGIN',    value: (run.city || '—').toUpperCase() },
+    { label: 'COUNTRY',           value: (run.country || '—').toUpperCase() },
   ];
 
   return (

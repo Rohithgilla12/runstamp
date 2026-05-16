@@ -9,16 +9,18 @@ import Svg, {
   TextPath,
 } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
-import { fmtDist, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
+import { type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // Seeded LCG — Mulberry32-inspired, deterministic.
@@ -50,14 +52,14 @@ function seedFromId(id: string): number {
 // Around the rim, curved TextPath reads: "PERSONAL BEST · <dist> KM · <city> · <date>"
 // In the centre: time in big mono, run title in italic underneath.
 // The background bleeds through the gaps between ribbons.
-export function WaxSealTemplate({ run, width, height, background }: Props) {
+export function WaxSealTemplate({ run, width, height, background, units = 'km' }: Props) {
   const c = useColors();
 
   const sealSize = Math.min(width, height) * 0.72;
   const cx = width / 2;
   const cy = height / 2;
 
-  const rimText = `PERSONAL BEST · ${fmtDist(run.distance, 'km')} KM · ${run.city.toUpperCase()} · ${formatWaxDate(run.date)} `;
+  const rimText = `PERSONAL BEST · ${fmtDist(run.distance, units)} ${distUnit(units).toUpperCase()} · ${(run.city || 'RUNSTAMP').toUpperCase()} · ${formatWaxDate(run.date)} `;
 
   // Derive ribbon offsets deterministically
   const rand = mulberry32(seedFromId(run.id));

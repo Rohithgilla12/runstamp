@@ -2,17 +2,19 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, Line, Path, Rect, Text as SvgText, TextPath } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
-import { fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { PostmarkMark } from '../SunMark';
+import { EYEBROW_SIZE, type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // PassportTemplate
@@ -23,7 +25,7 @@ interface Props {
 // the left, distance + pace stacked on the right, faint horizontal guide
 // rules across the mid section like a real biometric page.
 // Bottom-right stamp zone uses PostmarkMark from SunMark.
-export function PassportTemplate({ run, width, height, background }: Props) {
+export function PassportTemplate({ run, width, height, background, units = 'km' }: Props) {
   const c = useColors();
 
   // Warm paper tones — passport pages are off-white / ecru
@@ -87,7 +89,7 @@ export function PassportTemplate({ run, width, height, background }: Props) {
       }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>
               REPUBLIC OF RUNNING
             </Eyebrow>
             <TText variant="serif" style={{ fontSize: 13, color: inkTone, lineHeight: 16, marginTop: 2, letterSpacing: 0.3 }}>
@@ -95,7 +97,7 @@ export function PassportTemplate({ run, width, height, background }: Props) {
             </TText>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>ISSUED</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>ISSUED</Eyebrow>
             <TText variant="mono" style={{ fontSize: 10, color: inkTone, marginTop: 2 }}>
               {formatPassportDate(run.date)}
             </TText>
@@ -121,13 +123,13 @@ export function PassportTemplate({ run, width, height, background }: Props) {
             ENTRY
           </TText>
           <View style={{ marginTop: 10 }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>CITY OF ENTRY</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>CITY OF ENTRY</Eyebrow>
             <TText variant="serif" style={{ fontSize: 15, color: inkTone, marginTop: 2 }}>
               {run.city}
             </TText>
           </View>
           <View style={{ marginTop: 10 }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>RUN TITLE</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>RUN TITLE</Eyebrow>
             <TText
               variant="serifItalic"
               style={{ fontSize: 12, color: inkTone, lineHeight: 15, marginTop: 2, opacity: 0.75 }}
@@ -144,7 +146,7 @@ export function PassportTemplate({ run, width, height, background }: Props) {
         {/* Right: Distance + Pace stacked */}
         <View style={{ width: width * 0.36, justifyContent: 'flex-start', alignItems: 'flex-end' }}>
           <View style={{ alignItems: 'flex-end', marginBottom: 16 }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>DISTANCE</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>DISTANCE</Eyebrow>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 3 }}>
               <TText
                 variant="monoSemi"
@@ -155,24 +157,24 @@ export function PassportTemplate({ run, width, height, background }: Props) {
                   lineHeight: Math.min(width * 0.12, 42)
                 }}
               >
-                {fmtDist(run.distance, 'km')}
+                {fmtDist(run.distance, units)}
               </TText>
-              <TText variant="mono" style={{ fontSize: 10, color: 'rgba(28,24,18,0.5)', marginLeft: 3 }}>km</TText>
+              <TText variant="mono" style={{ fontSize: 10, color: 'rgba(28,24,18,0.5)', marginLeft: 3 }}>{distUnit(units)}</TText>
             </View>
           </View>
 
           <View style={{ alignItems: 'flex-end', marginBottom: 16 }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>AVG PACE</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>AVG PACE</Eyebrow>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 3 }}>
               <TText variant="monoSemi" style={{ fontSize: Math.min(width * 0.07, 26), color: inkTone, letterSpacing: -0.5, lineHeight: Math.min(width * 0.07, 26) }}>
-                {fmtPace(run.pace)}
+                {fmtPace(run.pace, units)}
               </TText>
-              <TText variant="mono" style={{ fontSize: 8, color: 'rgba(28,24,18,0.5)', marginLeft: 2 }}>/km</TText>
+              <TText variant="mono" style={{ fontSize: 8, color: 'rgba(28,24,18,0.5)', marginLeft: 2 }}>/{distUnit(units)}</TText>
             </View>
           </View>
 
           <View style={{ alignItems: 'flex-end' }}>
-            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: 8 }}>DURATION</Eyebrow>
+            <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>DURATION</Eyebrow>
             <TText variant="mono" style={{ fontSize: Math.min(width * 0.055, 20), color: inkTone, letterSpacing: -0.3, marginTop: 3 }}>
               {fmtTime(run.seconds)}
             </TText>
@@ -186,7 +188,8 @@ export function PassportTemplate({ run, width, height, background }: Props) {
           size={Math.min(width * 0.28, 96)}
           city={run.city.toUpperCase()}
           date={formatStampDate(run.date)}
-          distance={fmtDist(run.distance, 'km')}
+          distance={fmtDist(run.distance, units)}
+          unitLabel={distUnit(units).toUpperCase()}
           stampColor={stampColor}
         />
       </View>
@@ -279,10 +282,11 @@ interface PassportStampCircleProps {
   city: string;
   date: string;
   distance: string;
+  unitLabel: string;
   stampColor: string;
 }
 
-function PassportStampCircle({ size, city, date, distance, stampColor }: PassportStampCircleProps) {
+function PassportStampCircle({ size, city, date, distance, unitLabel, stampColor }: PassportStampCircleProps) {
   const cx = size / 2;
   const cy = size / 2;
   const outerR = size / 2 - 2;
@@ -336,7 +340,7 @@ function PassportStampCircle({ size, city, date, distance, stampColor }: Passpor
         fontFamily="JetBrainsMono_400Regular"
         opacity={0.75}
       >
-        KM
+        {unitLabel}
       </SvgText>
 
       {/* Date at the bottom */}

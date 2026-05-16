@@ -6,12 +6,14 @@ import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
+import { EYEBROW_SIZE, PAD, type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // Seeded LCG — deterministic, no Math.random() in render paths.
@@ -36,7 +38,7 @@ function seededSequence(seed: number, count: number): number[] {
 // small circles). Left column holds ORIGIN → DESTINATION with city/country.
 // Right "stub" column shows distance, pace, time stacked. A fake barcode strip
 // sits at the bottom. Airmail red/blue diagonal stripe bands at top and bottom.
-export function BoardingPassTemplate({ run, width, height, background }: Props) {
+export function BoardingPassTemplate({ run, width, height, background, units = 'km' }: Props) {
   const c = useColors();
 
   const stripH = 18;
@@ -99,7 +101,7 @@ export function BoardingPassTemplate({ run, width, height, background }: Props) 
 
             {/* ORIGIN */}
             <View style={{ marginBottom: 6 }}>
-              <Eyebrow style={{ color: c.ink3, fontSize: 8 }}>FROM</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>FROM</Eyebrow>
               <TText variant="mono" style={{ fontSize: 22, color: c.ink, letterSpacing: -1, lineHeight: 26, marginTop: 1 }}>
                 {cityCode(run.city)}
               </TText>
@@ -116,7 +118,7 @@ export function BoardingPassTemplate({ run, width, height, background }: Props) 
 
             {/* DESTINATION — same city, running is a circular journey */}
             <View>
-              <Eyebrow style={{ color: c.ink3, fontSize: 8 }}>TO</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>TO</Eyebrow>
               <TText variant="mono" style={{ fontSize: 22, color: c.accent, letterSpacing: -1, lineHeight: 26, marginTop: 1 }}>
                 {cityCode(run.city)}
               </TText>
@@ -130,19 +132,19 @@ export function BoardingPassTemplate({ run, width, height, background }: Props) 
             <View style={{ height: 0.8, backgroundColor: 'rgba(20,17,13,0.15)', marginBottom: 10 }} />
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <View>
-                <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>DATE</Eyebrow>
+                <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>DATE</Eyebrow>
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink, marginTop: 1 }}>
                   {formatBoardingDate(run.date)}
                 </TText>
               </View>
               <View>
-                <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>GATE</Eyebrow>
+                <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>GATE</Eyebrow>
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink, marginTop: 1 }}>
                   {run.time}
                 </TText>
               </View>
               <View>
-                <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>SEAT</Eyebrow>
+                <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>SEAT</Eyebrow>
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink, marginTop: 1 }}>
                   {run.id.toUpperCase()}
                 </TText>
@@ -162,31 +164,31 @@ export function BoardingPassTemplate({ run, width, height, background }: Props) 
 
             {/* Distance */}
             <View style={{ marginBottom: 14 }}>
-              <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>DISTANCE</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>DISTANCE</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
                 <TText variant="monoSemi" style={{ fontSize: Math.min(rightW * 0.28, 28), color: c.ink, letterSpacing: -1, lineHeight: Math.min(rightW * 0.28, 28) }}>
-                  {fmtDist(run.distance, 'km')}
+                  {fmtDist(run.distance, units)}
                 </TText>
                 <TText variant="mono" style={{ fontSize: 9, color: c.ink3, marginLeft: 3 }}>
-                  {distUnit('km')}
+                  {distUnit(units)}
                 </TText>
               </View>
             </View>
 
             {/* Pace */}
             <View style={{ marginBottom: 14 }}>
-              <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>AVG PACE</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>AVG PACE</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
                 <TText variant="monoSemi" style={{ fontSize: Math.min(rightW * 0.22, 20), color: c.ink, letterSpacing: -0.5, lineHeight: Math.min(rightW * 0.22, 20) }}>
-                  {fmtPace(run.pace)}
+                  {fmtPace(run.pace, units)}
                 </TText>
-                <TText variant="mono" style={{ fontSize: 8, color: c.ink3, marginLeft: 2 }}>/km</TText>
+                <TText variant="mono" style={{ fontSize: 8, color: c.ink3, marginLeft: 2 }}>/{distUnit(units)}</TText>
               </View>
             </View>
 
             {/* Time */}
             <View style={{ marginBottom: 14 }}>
-              <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>DURATION</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>DURATION</Eyebrow>
               <TText variant="monoSemi" style={{ fontSize: Math.min(rightW * 0.22, 20), color: c.ink, letterSpacing: -0.5, marginTop: 2 }}>
                 {fmtTime(run.seconds)}
               </TText>
@@ -194,7 +196,7 @@ export function BoardingPassTemplate({ run, width, height, background }: Props) 
 
             {/* Elev */}
             <View>
-              <Eyebrow style={{ color: c.ink3, fontSize: 7 }}>ELEVATION</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>ELEVATION</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
                 <TText variant="mono" style={{ fontSize: Math.min(rightW * 0.18, 16), color: c.ink2, letterSpacing: -0.3, lineHeight: Math.min(rightW * 0.18, 16) }}>
                   {run.elev}

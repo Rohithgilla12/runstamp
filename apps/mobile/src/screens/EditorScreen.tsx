@@ -68,6 +68,7 @@ const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
 export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { units } = useAppState();
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
@@ -240,31 +241,31 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'postmark' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'boarding' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'passport' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'customs' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'engraved' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : template === 'wax' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} />
+              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
             </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{

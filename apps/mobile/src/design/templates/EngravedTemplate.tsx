@@ -6,15 +6,17 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
-import { fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
+import { type Units } from './shared';
 
 interface Props {
   run: Activity;
   width: number;
   height: number;
   background: 'map' | 'photo' | 'solid';
+  units?: Units;
 }
 
 // EngravedTemplate
@@ -26,7 +28,7 @@ interface Props {
 // No accent colour — pure ink (#14110d) on paper (#f3ede2) regardless of theme.
 // Background variant has no effect on colour; only the solid variant gets a
 // slightly darker paper to simulate thick card stock.
-export function EngravedTemplate({ run, width, height, background }: Props) {
+export function EngravedTemplate({ run, width, height, background, units = 'km' }: Props) {
   // Monochrome — intentionally bypass theme accent
   const paper = background === 'solid' ? '#ede5d4' : '#f3ede2';
   const ink = '#14110d';
@@ -97,7 +99,7 @@ export function EngravedTemplate({ run, width, height, background }: Props) {
             fontFamily="InstrumentSerif_400Regular"
             letterSpacing={-4}
           >
-            {fmtDist(run.distance, 'km')}
+            {fmtDist(run.distance, units)}
           </SvgText>
         </Svg>
         <TText
@@ -111,7 +113,7 @@ export function EngravedTemplate({ run, width, height, background }: Props) {
             marginTop: -4
           }}
         >
-          KILOMETRES
+          {units === 'mi' ? 'MILES' : 'KILOMETRES'}
         </TText>
       </View>
 
@@ -120,7 +122,7 @@ export function EngravedTemplate({ run, width, height, background }: Props) {
 
       {/* Stats row */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 24 }}>
-        <StatBlock label="PACE" value={`${fmtPace(run.pace)}/km`} ink={ink} />
+        <StatBlock label="PACE" value={`${fmtPace(run.pace, units)}/${distUnit(units)}`} ink={ink} />
         <View style={{ width: 0.7, backgroundColor: ink, opacity: 0.15 }} />
         <StatBlock label="TIME" value={fmtTime(run.seconds)} ink={ink} />
         <View style={{ width: 0.7, backgroundColor: ink, opacity: 0.15 }} />
@@ -196,13 +198,13 @@ function StatBlock({ label, value, ink }: StatBlockProps) {
     <View style={{ alignItems: 'center', paddingHorizontal: 6 }}>
       <TText
         variant="mono"
-        style={{ fontSize: 7, color: ink, opacity: 0.45, letterSpacing: 2, textTransform: 'uppercase' }}
+        style={{ fontSize: 9, color: ink, opacity: 0.5, letterSpacing: 1.6, textTransform: 'uppercase' }}
       >
         {label}
       </TText>
       <TText
         variant="mono"
-        style={{ fontSize: 14, color: ink, opacity: 0.85, letterSpacing: -0.3, marginTop: 3 }}
+        style={{ fontSize: 14, color: ink, opacity: 0.85, letterSpacing: -0.3, marginTop: 4 }}
       >
         {value}
       </TText>
