@@ -28,8 +28,17 @@ func NewBackfiller(pool *pgxpool.Pool, geo *Geocoder, log *slog.Logger) *Backfil
 }
 
 // BackfillUser runs at most `limit` lookups for activities needing geocoding.
-// limit 0 means unbounded (use carefully).
+// limit 0 means unbounded (use carefully). It also rewrites any already-
+// geocoded rows whose city name has a canonical alias (e.g. "Mumbai
+// Suburban" → "Mumbai") so the Places list collapses correctly.
 func (b *Backfiller) BackfillUser(ctx context.Context, userID string, limit int) (int, error) {
+	// First, cheaply normalize any rows that already have a non-canonical
+	// city name. No Nominatim call needed — just an UPDATE per alias.
+	normalized, err := b.normalizeAliases(ctx, userID)
+	if err != nil {
+		b.log.Warn("places: alias normalization failed", "user_id", userID, "err", err)
+	}
+
 	q := `
 SELECT id, ST_Y(location_start::geometry) AS lat, ST_X(location_start::geometry) AS lon
 FROM activities
@@ -61,7 +70,7 @@ WHERE user_id = $1
 	}
 	rows.Close()
 
-	updated := 0
+	updated := normalized
 	for _, p := range todo {
 		res, err := b.geo.Lookup(ctx, p.lat, p.lon)
 		if err != nil {
@@ -83,6 +92,24 @@ WHERE id = $1`, p.id, nullable(res.City), nullable(res.Country))
 		updated++
 	}
 	return updated, nil
+}
+
+// normalizeAliases rewrites already-geocoded rows whose city name has a
+// canonical form (CityAliases). One UPDATE per alias — cheap, no network.
+func (b *Backfiller) normalizeAliases(ctx context.Context, userID string) (int, error) {
+	total := 0
+	for from, to := range CityAliases {
+		tag, err := b.pool.Exec(ctx, `
+UPDATE activities
+SET location_city = $3
+WHERE user_id = $1
+  AND location_city = $2`, userID, from, to)
+		if err != nil {
+			return total, fmt.Errorf("places: normalize %q→%q: %w", from, to, err)
+		}
+		total += int(tag.RowsAffected())
+	}
+	return total, nil
 }
 
 // GeocodeActivity is the single-activity entry point used by the post-ingest

@@ -74,6 +74,9 @@ SELECT city, country, country_code
 FROM geocode_cache
 WHERE lat_cell = $1 AND lon_cell = $2`, latCell, lonCell).Scan(&cached.City, &cached.Country, &cached.CountryCode)
 	if err == nil {
+		// Normalize on read so legacy cache rows ("Mumbai Suburban", "Bombay")
+		// surface as the canonical city without needing a cache invalidation.
+		cached.City = normalizeCity(cached.City)
 		return cached, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -160,7 +163,7 @@ func (g *Geocoder) fetch(ctx context.Context, lat, lon float64) (Result, error) 
 	}
 
 	return Result{
-		City:        pickCity(parsed),
+		City:        normalizeCity(pickCity(parsed)),
 		Country:     parsed.Address.Country,
 		CountryCode: parsed.Address.CountryCode,
 	}, nil
@@ -175,4 +178,33 @@ func pickCity(p nominatimResponse) string {
 		}
 	}
 	return ""
+}
+
+// CityAliases is the canonical form for cities Nominatim returns under
+// administrative-district or historical names. Without this, a user who ran
+// in Bandra gets "Mumbai Suburban" and shows up as a separate city from
+// someone who ran in South Mumbai. Exported so the backfill sweep can
+// re-normalize already-geocoded rows in the activities table.
+var CityAliases = map[string]string{
+	"Mumbai Suburban":          "Mumbai",
+	"Mumbai Suburban District": "Mumbai",
+	"Bombay":                   "Mumbai",
+	"Bombay Suburban":          "Mumbai",
+	"Greater Bombay":           "Mumbai",
+	"Bengaluru Urban":          "Bengaluru",
+	"Bangalore Urban":          "Bengaluru",
+	"Bangalore":                "Bengaluru",
+	"Calcutta":                 "Kolkata",
+	"Madras":                   "Chennai",
+	"Gurgaon":                  "Gurugram",
+}
+
+// NormalizeCity rewrites city names to their canonical form. Idempotent.
+func NormalizeCity(name string) string { return normalizeCity(name) }
+
+func normalizeCity(name string) string {
+	if alias, ok := CityAliases[name]; ok {
+		return alias
+	}
+	return name
 }

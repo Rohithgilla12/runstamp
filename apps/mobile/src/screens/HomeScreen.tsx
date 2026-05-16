@@ -74,6 +74,7 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
           onOpenActivity={(id) => navigation.navigate('Activity', { id })}
           onOpenEditor={(id) => navigation.navigate('Editor', { id })}
           onOpenStamps={() => navigation.navigate('Stamps')}
+          onOpenAllActivities={() => navigation.navigate('Activities')}
         />
       ) : (
         <EmptyHome loading={loading} onConnect={() => navigation.navigate('Profile')} />
@@ -88,12 +89,14 @@ function ConnectedHome({
   onOpenActivity,
   onOpenEditor,
   onOpenStamps,
+  onOpenAllActivities,
 }: {
   activities: Activity[];
   latest: Activity;
   onOpenActivity: (id: string) => void;
   onOpenEditor: (id: string) => void;
   onOpenStamps: () => void;
+  onOpenAllActivities: () => void;
 }) {
   const c = useColors();
   const { units } = useAppState();
@@ -145,7 +148,16 @@ function ConnectedHome({
 
       {earned.length > 0 && <RecentlyEarned earned={earned} onOpenStamps={onOpenStamps} />}
 
-      <SectionHeader title="Recent runs" />
+      <SectionHeader
+        title="Recent runs"
+        right={
+          activities.length > 5 ? (
+            <Pressable onPress={onOpenAllActivities} hitSlop={8}>
+              <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
+            </Pressable>
+          ) : null
+        }
+      />
       <View style={{ paddingHorizontal: 20, gap: 8 }}>
         {activities.slice(0, 5).map((a) => (
           <Pressable
@@ -166,8 +178,35 @@ function ConnectedHome({
               <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
               <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{fmtTime(a.seconds)}</TText>
             </View>
+            <Pressable
+              onPress={() => onOpenEditor(a.id)}
+              hitSlop={8}
+              accessibilityLabel={`Share ${a.title}`}
+              style={({ pressed }) => [{
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: c.ink, alignItems: 'center', justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <Icon.share size={14} color={c.paper} />
+            </Pressable>
           </Pressable>
         ))}
+        {activities.length > 5 && (
+          <Pressable
+            onPress={onOpenAllActivities}
+            hitSlop={8}
+            style={({ pressed }) => [{
+              alignItems: 'center', paddingVertical: 12, marginTop: 4,
+              borderRadius: 12, borderWidth: 1, borderColor: c.line,
+              backgroundColor: 'transparent', opacity: pressed ? 0.85 : 1,
+            }]}
+          >
+            <TText style={{ fontSize: 13, color: c.ink2 }}>
+              See all {activities.length} runs  ›
+            </TText>
+          </Pressable>
+        )}
       </View>
     </>
   );
