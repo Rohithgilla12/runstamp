@@ -29,7 +29,7 @@ const formRowsB = [
   { label: "Time Declared",     value: "2:39:14" },
   { label: "Elevation Gain",    value: "86 M" },
   { label: "Purpose of Visit",  value: "Long Run" },
-  { label: "City of Origin",    value: "Bangalore" },
+  { label: "City of Origin",    value: "Hyderabad" },
   { label: "Country",           value: "India" },
 ];
 
@@ -41,12 +41,12 @@ interface Card {
 
 const cards: Card[] = [
   { id: "card-postage-tokyo",    template: "postage-tokyo",    caption: "Imperial Palace loop — Tokyo, 10 km." },
-  { id: "card-postmark-blr",     template: "postmark-blr",     caption: "Cubbon Park long run — Bangalore, 24 km." },
+  { id: "card-postmark-blr",     template: "postmark-blr",     caption: "KBR Park long run — Hyderabad, 24 km." },
   { id: "card-customs-tokyo",    template: "customs-tokyo",    caption: "Shinjuku half — Tokyo. Sub-3:45 attempt." },
   { id: "card-passport-london",  template: "passport-london",  caption: "Hampstead Heath trails — London, 11.2 km." },
   { id: "card-postage-goa",      template: "postage-goa",      caption: "Vagator beach run — Goa. 9.4 km." },
   { id: "card-postmark-mumbai",  template: "postmark-mumbai",  caption: "Marine Drive sunrise — Mumbai, 12.1 km." },
-  { id: "card-customs-blr",      template: "customs-blr",      caption: "Sankey Tank loops — Bangalore. Easy day." },
+  { id: "card-customs-blr",      template: "customs-blr",      caption: "Hussain Sagar loops — Hyderabad. Easy day." },
   { id: "card-postage-london",   template: "postage-london",   caption: "Autumn morning in London — 11 km." },
   { id: "card-postmark-tokyo2",  template: "postmark-tokyo2",  caption: "Late evening tempo — Tokyo, 9 km." },
   { id: "card-passport-blr",     template: "passport-blr",     caption: "400m intervals — Kanteerava Stadium." },
@@ -140,7 +140,7 @@ const cards: Card[] = [
             </button>
           </li>
 
-          <!-- 2: Postmark — Bangalore Cubbon Park 24K -->
+          <!-- 2: Postmark — Hyderabad KBR Park 24K -->
           <li class="gallery-item">
             <button class="gallery-trigger" aria-haspopup="dialog" aria-controls="modal-card-postmark-blr" data-modal="modal-card-postmark-blr" type="button">
               <figure class="card-figure" aria-label={cards[1].caption}>
@@ -154,7 +154,7 @@ const cards: Card[] = [
                     <line x1="42" y1="184" x2="238" y2="184" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
                     <line x1="42" y1="193" x2="238" y2="193" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
                     <line x1="42" y1="202" x2="238" y2="202" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
-                    <text x="140" y="176" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Bangalore</text>
+                    <text x="140" y="176" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Hyderabad</text>
                     <text x="140" y="218" text-anchor="middle" font-family="monospace" font-size="7.5" letter-spacing="3" fill="rgba(243,237,226,0.42)">INDIA</text>
                     <text x="30" y="36" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(243,237,226,0.36)">DENOMINATION</text>
                     <text x="30" y="60" font-family="monospace" font-size="34" font-weight="500" fill="#f3ede2" letter-spacing="-1.5">24.0</text>
@@ -332,7 +332,7 @@ const cards: Card[] = [
             </button>
           </li>
 
-          <!-- 7: Customs — Sankey Tank easy day -->
+          <!-- 7: Customs — Hussain Sagar easy day -->
           <li class="gallery-item">
             <button class="gallery-trigger" aria-haspopup="dialog" aria-controls="modal-card-customs-blr" data-modal="modal-card-customs-blr" type="button">
               <figure class="card-figure" aria-label={cards[6].caption}>
@@ -434,7 +434,7 @@ const cards: Card[] = [
             </button>
           </li>
 
-          <!-- 10: Passport — Bangalore intervals -->
+          <!-- 10: Passport — Hyderabad intervals -->
           <li class="gallery-item">
             <button class="gallery-trigger" aria-haspopup="dialog" aria-controls="modal-card-passport-blr" data-modal="modal-card-passport-blr" type="button">
               <figure class="card-figure" aria-label={cards[9].caption}>
@@ -451,7 +451,7 @@ const cards: Card[] = [
                     <text x="244" y="50" text-anchor="end" font-family="monospace" font-size="10" fill="#1c1812">10 MAY 2026</text>
                     <text x="24" y="118" font-family="Georgia, serif" font-style="italic" font-size="54" fill="#e85d2f" opacity="0.88" letter-spacing="-1">ENTRY</text>
                     <text x="24" y="140" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(28,24,18,0.42)">CITY OF ENTRY</text>
-                    <text x="24" y="156" font-family="Georgia, serif" font-size="16" fill="#1c1812">Bangalore</text>
+                    <text x="24" y="156" font-family="Georgia, serif" font-size="16" fill="#1c1812">Hyderabad</text>
                     <text x="24" y="178" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(28,24,18,0.42)">RUN TITLE</text>
                     <text x="24" y="194" font-family="Georgia, serif" font-style="italic" font-size="13" fill="rgba(28,24,18,0.72)">400m × 10 intervals</text>
                     <line x1="188" y1="66" x2="188" y2="296" stroke="rgba(28,24,18,0.12)" stroke-width="0.8"></line>

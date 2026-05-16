@@ -24,9 +24,9 @@ interface CardData {
 const cards: CardData[] = [
   { key: "waxseal",   template: "waxseal",  caption: "Wax Seal — Reykjavík · 16 km",     fan: { x:   0,  y:  72, rot:  -2, jitter:  0.4 } },
   { key: "boarding",  template: "boarding", caption: "Boarding Pass — Mumbai · 42.2 km", fan: { x:  92,  y:  46, rot:  14, jitter: -0.6 } },
-  { key: "customs",   template: "customs",  caption: "Customs — Cubbon Park · 24 km",    fan: { x: -92,  y:  46, rot: -14, jitter:  0.5 } },
+  { key: "customs",   template: "customs",  caption: "Customs — KBR Park · 24 km",       fan: { x: -92,  y:  46, rot: -14, jitter:  0.5 } },
   { key: "passport",  template: "passport", caption: "Passport — London · 10 km",        fan: { x:  52,  y:  20, rot:   7, jitter: -0.3 } },
-  { key: "postmark",  template: "postmark", caption: "Postmark — Bangalore · 32 km",     fan: { x: -52,  y:  20, rot:  -7, jitter:  0.7 } },
+  { key: "postmark",  template: "postmark", caption: "Postmark — Hyderabad · 32 km",     fan: { x: -52,  y:  20, rot:  -7, jitter:  0.7 } },
   { key: "postage",   template: "postage",  caption: "Postage — Tokyo · 21.1 km",        fan: { x:   0,  y:   0, rot:   0, jitter:  0.0 } },
 ];
 
@@ -107,7 +107,7 @@ const routeD = routePts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).j
                 <line x1="42" y1="184" x2="238" y2="184" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
                 <line x1="42" y1="193" x2="238" y2="193" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
                 <line x1="42" y1="202" x2="238" y2="202" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
-                <text x="140" y="176" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Bangalore</text>
+                <text x="140" y="176" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Hyderabad</text>
                 <text x="140" y="218" text-anchor="middle" font-family="monospace" font-size="7.5" letter-spacing="3" fill="rgba(243,237,226,0.42)">INDIA</text>
                 <text x="30" y="36" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(243,237,226,0.36)">DENOMINATION</text>
                 <text x="30" y="60" font-family="monospace" font-size="34" font-weight="500" fill="#f3ede2" letter-spacing="-1.5">32.0</text>
@@ -131,7 +131,7 @@ const routeD = routePts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).j
                 <text x="24" y="36" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.38)">DEPT. OF ATHLETIC AFFAIRS</text>
                 <text x="24" y="58" font-family="Georgia, serif" font-style="italic" font-size="20" fill="#1c1812">Declaration of Run</text>
                 <line x1="18" y1="66" x2="262" y2="66" stroke="rgba(28,24,18,0.15)" stroke-width="1"></line>
-                {["DISTANCE / 24.02 KM", "PACE / 5:30 / KM", "TIME / 2:12:00", "ELEV / 86 M", "AVG HR / 152 BPM", "PURPOSE / LONG RUN", "ORIGIN / BANGALORE"].map((row, i) => {
+                {["DISTANCE / 24.02 KM", "PACE / 5:30 / KM", "TIME / 2:12:00", "ELEV / 86 M", "AVG HR / 152 BPM", "PURPOSE / LONG RUN", "ORIGIN / HYDERABAD"].map((row, i) => {
                   const [label, value] = row.split(" / ");
                   return (
                     <g>
