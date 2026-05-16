@@ -1,0 +1,510 @@
+---
+// Hero "pass stack" — six share-card templates fanned out like a hand of Apple
+// Wallet passes. On load each card springs into its fan position with a
+// staggered postmark thump. Any peeking card can be tapped to promote it to
+// the front via View Transitions.
+
+interface FanPos {
+  x: number;
+  y: number;
+  rot: number;
+  jitter: number;
+}
+
+interface CardData {
+  key: string;
+  template: "postage" | "postmark" | "customs" | "boarding" | "passport" | "waxseal";
+  caption: string;
+  fan: FanPos;
+}
+
+// Order: deepest in stack first, front-most last. Front is whichever has
+// data-front="true" — initialised to the Postage card to match the previous
+// hero artwork users saw before this change.
+const cards: CardData[] = [
+  { key: "waxseal",   template: "waxseal",  caption: "Wax Seal — Reykjavík · 16 km",     fan: { x:   0,  y:  72, rot:  -2, jitter:  0.4 } },
+  { key: "boarding",  template: "boarding", caption: "Boarding Pass — Mumbai · 42.2 km", fan: { x:  92,  y:  46, rot:  14, jitter: -0.6 } },
+  { key: "customs",   template: "customs",  caption: "Customs — Cubbon Park · 24 km",    fan: { x: -92,  y:  46, rot: -14, jitter:  0.5 } },
+  { key: "passport",  template: "passport", caption: "Passport — London · 10 km",        fan: { x:  52,  y:  20, rot:   7, jitter: -0.3 } },
+  { key: "postmark",  template: "postmark", caption: "Postmark — Bangalore · 32 km",     fan: { x: -52,  y:  20, rot:  -7, jitter:  0.7 } },
+  { key: "postage",   template: "postage",  caption: "Postage — Tokyo · 21.1 km",        fan: { x:   0,  y:   0, rot:   0, jitter:  0.0 } },
+];
+
+const frontKey = "postage";
+
+const perfs = (count: number) => Array.from({ length: count }, (_, i) => i);
+const perfV = perfs(9);
+const perfHList = perfs(7);
+
+// Deterministic Imperial Palace loop for the Postage card route.
+const routePts: [number, number][] = [
+  [40, 240], [56, 200], [78, 180], [108, 172], [142, 175],
+  [170, 188], [188, 212], [192, 244], [178, 270], [148, 282],
+  [112, 280], [82, 264], [62, 246], [50, 244], [42, 244],
+];
+const routeD = routePts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).join(" ");
+---
+
+<div class="pass-stack" data-stack>
+  <ul class="pass-stack-list" role="list" aria-label="Sample Runstamp share cards">
+    {cards.map((c) => (
+      <li
+        class={`pass-card pass-card--${c.template}`}
+        data-key={c.key}
+        data-front={c.key === frontKey ? "true" : "false"}
+        style={`
+          --fan-x: ${c.fan.x}px;
+          --fan-y: ${c.fan.y}px;
+          --fan-rot: ${(c.fan.rot + c.fan.jitter).toFixed(2)}deg;
+        `}
+      >
+        <button
+          type="button"
+          class="pass-card-btn"
+          aria-label={c.key === frontKey
+            ? `${c.caption} — flip to next card`
+            : `${c.caption} — bring to front`}
+          data-key={c.key}
+        >
+          <svg viewBox="0 0 280 370" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="pass-card-svg">
+            {c.template === "postage" && (
+              <g>
+                <rect width="280" height="370" fill="#f3ede2"></rect>
+                <rect x="16" y="16" width="248" height="338" fill="#14110d"></rect>
+                {Array.from({ length: 7 }, (_, row) =>
+                  Array.from({ length: 11 }, (_, col) => (
+                    <circle cx={32 + col * 22} cy={88 + row * 24} r={0.65 + ((row + col) % 3) * 0.2} fill="rgba(243,237,226,0.055)"></circle>
+                  ))
+                )}
+                {Array.from({ length: 18 }, (_, i) => (
+                  <rect x={16 + i * 14.2} y="338" width="7.1" height="16" fill={i % 2 === 0 ? "#e85d2f" : "#f3ede2"} opacity="0.72"></rect>
+                ))}
+                <path d={routeD} stroke="#e85d2f" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.88" class="pass-route"></path>
+                <text x="30" y="42" font-family="'JetBrains Mono', monospace" font-size="7.5" letter-spacing="3.2" fill="rgba(243,237,226,0.48)">JAPAN</text>
+                <text x="30" y="70" font-family="Georgia, serif" font-style="italic" font-size="30" fill="#f3ede2" letter-spacing="-0.5">Tokyo</text>
+                <rect x="196" y="28" width="54" height="18" fill="none" stroke="rgba(243,237,226,0.28)" stroke-width="1" rx="2"></rect>
+                <text x="223" y="41" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="7" fill="rgba(243,237,226,0.48)">NO. A0009</text>
+                <text x="30" y="310" font-family="'JetBrains Mono', monospace" font-size="54" font-weight="500" fill="#f3ede2" letter-spacing="-3">21.1</text>
+                <text x="30" y="326" font-family="'JetBrains Mono', monospace" font-size="8" fill="rgba(243,237,226,0.42)" letter-spacing="2.8">KILOMETRES</text>
+                <text x="252" y="300" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="13.5" fill="rgba(243,237,226,0.78)">5:12/km</text>
+                <text x="252" y="317" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="10" fill="rgba(243,237,226,0.46)">1:49:43</text>
+                <text x="252" y="334" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="7.5" fill="rgba(243,237,226,0.28)" letter-spacing="0.6">2026 · JAN · 22</text>
+                <circle cx="210" cy="180" r="38" fill="none" stroke="rgba(243,237,226,0.10)" stroke-width="1.2" stroke-dasharray="2 3"></circle>
+                <circle cx="210" cy="180" r="28" fill="none" stroke="rgba(243,237,226,0.07)" stroke-width="0.8"></circle>
+                {perfV.map((i) => <circle cx="16" cy={32 + i * 36} r="9" fill="#f3ede2" />)}
+                {perfV.map((i) => <circle cx="264" cy={32 + i * 36} r="9" fill="#f3ede2" />)}
+                {perfHList.map((i) => <circle cx={36 + i * 34} cy="16" r="9" fill="#f3ede2" />)}
+                {perfHList.map((i) => <circle cx={36 + i * 34} cy="354" r="9" fill="#f3ede2" />)}
+              </g>
+            )}
+
+            {c.template === "postmark" && (
+              <g>
+                <rect width="280" height="370" fill="#14110d"></rect>
+                <path d="M30 320 Q70 255 110 285 Q150 315 185 250 Q220 185 258 210" stroke="#e85d2f" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.15"></path>
+                <circle cx="140" cy="192" r="108" fill="none" stroke="rgba(243,237,226,0.72)" stroke-width="1.8" stroke-dasharray="3 3"></circle>
+                <circle cx="140" cy="192" r="90" fill="none" stroke="rgba(243,237,226,0.32)" stroke-width="1"></circle>
+                <line x1="42" y1="184" x2="238" y2="184" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
+                <line x1="42" y1="193" x2="238" y2="193" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
+                <line x1="42" y1="202" x2="238" y2="202" stroke="rgba(243,237,226,0.5)" stroke-width="1.6"></line>
+                <text x="140" y="176" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Bangalore</text>
+                <text x="140" y="218" text-anchor="middle" font-family="monospace" font-size="7.5" letter-spacing="3" fill="rgba(243,237,226,0.42)">INDIA</text>
+                <text x="30" y="36" font-family="monospace" font-size="7.5" letter-spacing="2" fill="rgba(243,237,226,0.36)">DENOMINATION</text>
+                <text x="30" y="60" font-family="monospace" font-size="34" font-weight="500" fill="#f3ede2" letter-spacing="-1.5">32.0</text>
+                <text x="82" y="65" font-family="monospace" font-size="11" fill="rgba(243,237,226,0.48)">km</text>
+                <text x="30" y="334" font-family="monospace" font-size="8" fill="rgba(243,237,226,0.36)" letter-spacing="1.5">PACE</text>
+                <text x="30" y="350" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.78)">4:58/km</text>
+                <text x="140" y="334" text-anchor="middle" font-family="monospace" font-size="8" fill="rgba(243,237,226,0.36)" letter-spacing="1.5">TIME</text>
+                <text x="140" y="350" text-anchor="middle" font-family="monospace" font-size="13" fill="rgba(243,237,226,0.78)">2:39:14</text>
+                <text x="250" y="334" text-anchor="end" font-family="monospace" font-size="7" fill="rgba(243,237,226,0.28)" letter-spacing="1">NO.</text>
+                <text x="250" y="350" text-anchor="end" font-family="monospace" font-size="11" fill="rgba(243,237,226,0.48)">A0001</text>
+              </g>
+            )}
+
+            {c.template === "customs" && (
+              <g>
+                <rect width="280" height="370" fill="#f5eedf"></rect>
+                {Array.from({ length: 22 }, (_, i) => (
+                  <rect x={i * 28 - 30} y="0" width="14" height="370" fill={i % 2 === 0 ? "#e85d2f" : "#14110d"} opacity="0.07" transform="skewX(-14)"></rect>
+                ))}
+                <rect x="10" y="10" width="260" height="350" fill="none" stroke="rgba(28,24,18,0.20)" stroke-width="1" rx="1"></rect>
+                <text x="24" y="36" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.38)">DEPT. OF ATHLETIC AFFAIRS</text>
+                <text x="24" y="58" font-family="Georgia, serif" font-style="italic" font-size="20" fill="#1c1812">Declaration of Run</text>
+                <line x1="18" y1="66" x2="262" y2="66" stroke="rgba(28,24,18,0.15)" stroke-width="1"></line>
+                {["DISTANCE / 24.02 KM", "PACE / 5:30 / KM", "TIME / 2:12:00", "ELEV / 86 M", "AVG HR / 152 BPM", "PURPOSE / LONG RUN", "ORIGIN / BANGALORE"].map((row, i) => {
+                  const [label, value] = row.split(" / ");
+                  return (
+                    <g>
+                      <text x="24" y={90 + i * 32} font-family="monospace" font-size="7" letter-spacing="1.2" fill="rgba(28,24,18,0.40)">{label}</text>
+                      <text x="256" y={90 + i * 32 + 13} text-anchor="end" font-family="monospace" font-size="12" fill="#1c1812">{value}</text>
+                      <line x1="18" y1={90 + i * 32 + 18} x2="262" y2={90 + i * 32 + 18} stroke="rgba(28,24,18,0.08)" stroke-width="0.8" stroke-dasharray="3,3"></line>
+                    </g>
+                  );
+                })}
+                <circle cx="228" cy="338" r="22" fill="none" stroke="rgba(232,93,47,0.40)" stroke-width="1.4" stroke-dasharray="2 2"></circle>
+                <text x="228" y="335" text-anchor="middle" font-family="monospace" font-size="7" fill="rgba(232,93,47,0.52)" letter-spacing="1">2026</text>
+                <line x1="210" y1="340" x2="246" y2="340" stroke="rgba(232,93,47,0.28)" stroke-width="1"></line>
+                <text x="228" y="348" text-anchor="middle" font-family="monospace" font-size="6.5" fill="rgba(232,93,47,0.46)" letter-spacing="1">CLEARED</text>
+              </g>
+            )}
+
+            {c.template === "boarding" && (
+              <g>
+                <rect width="280" height="370" fill="#ede1c8"></rect>
+                <rect x="0" y="0" width="280" height="44" fill="#1c1812"></rect>
+                <text x="20" y="28" font-family="monospace" font-size="9" letter-spacing="2.5" fill="rgba(243,237,226,0.62)">RUNSTAMP AIRWAYS</text>
+                <text x="260" y="28" text-anchor="end" font-family="monospace" font-size="9" letter-spacing="2.5" fill="#e85d2f">BOARDING PASS</text>
+                {/* Perforated stub on right edge */}
+                <line x1="200" y1="56" x2="200" y2="364" stroke="rgba(28,24,18,0.55)" stroke-width="0.8" stroke-dasharray="3 4"></line>
+                {/* Left passenger side */}
+                <text x="20" y="78" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.45)">PASSENGER</text>
+                <text x="20" y="98" font-family="Georgia, serif" font-style="italic" font-size="20" fill="#1c1812">Runner · No. 014</text>
+                <text x="20" y="130" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.45)">FROM</text>
+                <text x="20" y="156" font-family="Georgia, serif" font-style="italic" font-size="28" fill="#1c1812" letter-spacing="-0.5">BOM</text>
+                <text x="20" y="174" font-family="monospace" font-size="8" fill="rgba(28,24,18,0.55)">Mumbai</text>
+                <text x="20" y="200" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.45)">TO</text>
+                <text x="20" y="226" font-family="Georgia, serif" font-style="italic" font-size="28" fill="#1c1812" letter-spacing="-0.5">FIN</text>
+                <text x="20" y="244" font-family="monospace" font-size="8" fill="rgba(28,24,18,0.55)">Finish line</text>
+                <text x="20" y="280" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.45)">DISTANCE</text>
+                <text x="20" y="306" font-family="monospace" font-size="26" fill="#1c1812" letter-spacing="-1.2">42.2 KM</text>
+                <text x="20" y="332" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.45)">DEPARTED · 2026·JAN·19</text>
+                <text x="20" y="350" font-family="monospace" font-size="9" fill="rgba(28,24,18,0.55)">PACE 4:48/km · TIME 3:22:48</text>
+                {/* Right stub */}
+                <text x="232" y="78" font-family="monospace" font-size="7" letter-spacing="1.5" fill="rgba(28,24,18,0.45)" text-anchor="middle">GATE</text>
+                <text x="232" y="118" font-family="Georgia, serif" font-style="italic" font-size="36" fill="#e85d2f" text-anchor="middle">26</text>
+                <line x1="210" y1="138" x2="254" y2="138" stroke="rgba(28,24,18,0.25)" stroke-width="0.8"></line>
+                <text x="232" y="158" font-family="monospace" font-size="7" letter-spacing="1.5" fill="rgba(28,24,18,0.45)" text-anchor="middle">SEAT</text>
+                <text x="232" y="180" font-family="monospace" font-size="18" fill="#1c1812" text-anchor="middle">A1</text>
+                <line x1="210" y1="198" x2="254" y2="198" stroke="rgba(28,24,18,0.25)" stroke-width="0.8"></line>
+                <text x="232" y="220" font-family="monospace" font-size="7" letter-spacing="1.5" fill="rgba(28,24,18,0.45)" text-anchor="middle">BOARD</text>
+                <text x="232" y="240" font-family="monospace" font-size="14" fill="#1c1812" text-anchor="middle">05:30</text>
+                <line x1="210" y1="258" x2="254" y2="258" stroke="rgba(28,24,18,0.25)" stroke-width="0.8"></line>
+                {/* Bar code stub */}
+                {Array.from({ length: 28 }, (_, i) => (
+                  <rect x={210 + i * 1.5} y="280" width={(i % 3 === 0) ? 1 : 0.6} height="60" fill="#1c1812"></rect>
+                ))}
+                <text x="232" y="352" font-family="monospace" font-size="6.5" letter-spacing="1" fill="rgba(28,24,18,0.45)" text-anchor="middle">RUN · M0014</text>
+              </g>
+            )}
+
+            {c.template === "passport" && (
+              <g>
+                <rect width="280" height="370" fill="#f3ede2"></rect>
+                {/* Passport navy strip */}
+                <rect x="0" y="0" width="280" height="76" fill="#1f2a44"></rect>
+                <text x="20" y="32" font-family="monospace" font-size="7" letter-spacing="3" fill="rgba(243,237,226,0.55)">RUNSTAMP PASSPORT</text>
+                <text x="20" y="58" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">United Kingdom</text>
+                <text x="258" y="32" text-anchor="end" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(243,237,226,0.55)">TYPE · R</text>
+                <text x="258" y="50" text-anchor="end" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(243,237,226,0.55)">CODE · GBR</text>
+                {/* Photo placeholder */}
+                <rect x="22" y="98" width="78" height="100" fill="#e6dcc6" stroke="rgba(28,24,18,0.18)" stroke-width="1"></rect>
+                <text x="61" y="152" text-anchor="middle" font-family="monospace" font-size="8" fill="rgba(28,24,18,0.35)" letter-spacing="2">PHOTO</text>
+                <text x="61" y="166" text-anchor="middle" font-family="monospace" font-size="6.5" fill="rgba(28,24,18,0.30)">04·14·2026</text>
+                {/* Details right column */}
+                <text x="112" y="112" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.40)">SURNAME / FORENAMES</text>
+                <text x="112" y="132" font-family="Georgia, serif" font-style="italic" font-size="14" fill="#1c1812">The Runner</text>
+                <line x1="112" y1="140" x2="262" y2="140" stroke="rgba(28,24,18,0.18)" stroke-width="0.6"></line>
+                <text x="112" y="156" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.40)">CITY OF VISIT</text>
+                <text x="112" y="176" font-family="Georgia, serif" font-style="italic" font-size="14" fill="#1c1812">London</text>
+                <line x1="112" y1="184" x2="262" y2="184" stroke="rgba(28,24,18,0.18)" stroke-width="0.6"></line>
+                <text x="112" y="200" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(28,24,18,0.40)">DURATION OF VISIT</text>
+                <text x="112" y="220" font-family="monospace" font-size="13" fill="#1c1812">47:02</text>
+                {/* Embossed entry stamp circle */}
+                <circle cx="208" cy="284" r="42" fill="none" stroke="rgba(232,93,47,0.55)" stroke-width="1.4" stroke-dasharray="3 3"></circle>
+                <circle cx="208" cy="284" r="32" fill="none" stroke="rgba(232,93,47,0.30)" stroke-width="0.8"></circle>
+                <text x="208" y="270" text-anchor="middle" font-family="monospace" font-size="6.5" fill="rgba(232,93,47,0.65)" letter-spacing="1.5">ENTRY</text>
+                <text x="208" y="290" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="14" fill="rgba(232,93,47,0.85)">10K</text>
+                <text x="208" y="304" text-anchor="middle" font-family="monospace" font-size="6.5" fill="rgba(232,93,47,0.65)" letter-spacing="1.5">2026</text>
+                {/* Machine-readable zone */}
+                <text x="20" y="338" font-family="monospace" font-size="9" fill="#1c1812" letter-spacing="1.2">P&lt;GBR&lt;RUNNER&lt;&lt;THE&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>
+                <text x="20" y="354" font-family="monospace" font-size="9" fill="#1c1812" letter-spacing="1.2">L0010KM&lt;26GBR2604147M&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06</text>
+              </g>
+            )}
+
+            {c.template === "waxseal" && (
+              <g>
+                <rect width="280" height="370" fill="#0e0d0b"></rect>
+                {/* Foil halftone */}
+                {Array.from({ length: 8 }, (_, row) =>
+                  Array.from({ length: 12 }, (_, col) => (
+                    <circle cx={20 + col * 22} cy={50 + row * 38} r={0.6 + ((row * 3 + col) % 4) * 0.18} fill="rgba(232,93,47,0.16)"></circle>
+                  ))
+                )}
+                {/* Wax seal — solar circle with cross-hair break */}
+                <circle cx="140" cy="186" r="78" fill="#e85d2f"></circle>
+                <circle cx="140" cy="186" r="78" fill="none" stroke="rgba(20,17,13,0.32)" stroke-width="1.4" stroke-dasharray="2 4"></circle>
+                <circle cx="140" cy="186" r="60" fill="none" stroke="rgba(20,17,13,0.55)" stroke-width="1"></circle>
+                {/* Seal monogram */}
+                <text x="140" y="172" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="2.5" fill="rgba(20,17,13,0.65)">REYKJAVÍK</text>
+                <text x="140" y="200" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="34" fill="#0e0d0b" letter-spacing="-1">16.4</text>
+                <text x="140" y="218" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="2.5" fill="rgba(20,17,13,0.65)">KILOMETRES</text>
+                {/* Top eyebrow */}
+                <text x="140" y="36" text-anchor="middle" font-family="monospace" font-size="7.5" letter-spacing="3.2" fill="rgba(243,237,226,0.55)">MYTHIC · ICELAND</text>
+                <text x="140" y="60" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#f3ede2">Northern lights run</text>
+                {/* Bottom statline */}
+                <text x="30" y="324" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(243,237,226,0.45)">PACE</text>
+                <text x="30" y="346" font-family="monospace" font-size="14" fill="#f3ede2">5:48/km</text>
+                <text x="140" y="324" text-anchor="middle" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(243,237,226,0.45)">TIME</text>
+                <text x="140" y="346" text-anchor="middle" font-family="monospace" font-size="14" fill="#f3ede2">1:35:11</text>
+                <text x="250" y="324" text-anchor="end" font-family="monospace" font-size="7" letter-spacing="2" fill="rgba(243,237,226,0.45)">RUN</text>
+                <text x="250" y="346" text-anchor="end" font-family="monospace" font-size="14" fill="#f3ede2">M0003</text>
+              </g>
+            )}
+          </svg>
+          <span class="pass-thump" aria-hidden="true"></span>
+        </button>
+        <span class="visually-hidden">{c.caption}</span>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .pass-stack {
+    /* Reserve a stable area roughly the size of the front card plus a bit of
+       fan headroom — keeps CLS at zero while cards fan into position. The
+       fan extends beyond this box visually; the wrap's overflow stays visible
+       so the back cards aren't clipped. */
+    position: relative;
+    width: min(310px, 80vw);
+    aspect-ratio: 280 / 440;
+    margin-inline: auto;
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .pass-stack-list {
+    position: absolute;
+    inset: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pass-card {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 100%;
+    aspect-ratio: 280 / 370;
+    transform-origin: 50% 60%;
+    will-change: transform, opacity, filter;
+    /* Default = back card. Fan vars come from inline style. */
+    transform: translate(var(--fan-x), var(--fan-y)) rotate(var(--fan-rot)) scale(0.76);
+    opacity: 0.96;
+    filter: drop-shadow(0 4px 14px rgba(20, 17, 13, 0.14))
+            drop-shadow(0 1px 3px rgba(20, 17, 13, 0.08));
+    transition:
+      transform 720ms cubic-bezier(0.32, 1.4, 0.5, 1) var(--enter-delay, 0ms),
+      opacity 480ms ease var(--enter-delay, 0ms),
+      filter 480ms ease var(--enter-delay, 0ms);
+    z-index: 1;
+  }
+
+  /* @starting-style runs once on first-paint — cards begin centred + small
+     + blurred, then transition into their fan positions. */
+  @starting-style {
+    .pass-card {
+      transform: translate(0, 0) rotate(0deg) scale(0.55);
+      opacity: 0;
+      filter: blur(2px);
+    }
+  }
+
+  .pass-card[data-front="true"] {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    z-index: 6;
+    opacity: 1;
+    filter: drop-shadow(0 14px 40px rgba(20, 17, 13, 0.24))
+            drop-shadow(0 3px 10px rgba(20, 17, 13, 0.12));
+  }
+
+  /* Z-order so the front card sits above peeks even before JS swaps */
+  .pass-stack-list > li:nth-child(1) { z-index: 1; }
+  .pass-stack-list > li:nth-child(2) { z-index: 2; }
+  .pass-stack-list > li:nth-child(3) { z-index: 2; }
+  .pass-stack-list > li:nth-child(4) { z-index: 3; }
+  .pass-stack-list > li:nth-child(5) { z-index: 3; }
+  .pass-stack-list > li:nth-child(6) { z-index: 6; }
+
+  .pass-card-btn {
+    all: unset;
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    cursor: pointer;
+    border-radius: 2px;
+    outline-offset: 6px;
+  }
+
+  .pass-card-btn:focus-visible {
+    outline: 2px solid var(--solar);
+  }
+
+  .pass-card-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Peek cards get a small lift on hover/focus to invite the click. */
+  .pass-card:not([data-front="true"]) .pass-card-btn:hover,
+  .pass-card:not([data-front="true"]) .pass-card-btn:focus-visible {
+    transform: translateY(-4px) scale(1.02);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Postmark thump — a small ring that scales in over each card as it lands */
+  .pass-thump {
+    position: absolute;
+    top: 18%;
+    right: 12%;
+    width: 38%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1.5px dashed rgba(232, 93, 47, 0.55);
+    pointer-events: none;
+    transform: scale(0);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  /* Postmark thump — one-shot pulse driven by a keyframe, since transitions
+     can't return to a starting value naturally. */
+  @keyframes pass-thump-in {
+    0%   { transform: scale(0); opacity: 0; }
+    55%  { transform: scale(1.18); opacity: 0.85; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
+  .pass-card .pass-thump {
+    animation: pass-thump-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Per-card stagger: back cards land first, front lands last. The fan
+     transition uses --enter-delay; the thump keyframe gets its own delay. */
+  .pass-stack-list > li:nth-child(1)               { --enter-delay: 120ms; }
+  .pass-stack-list > li:nth-child(1) .pass-thump   { animation-delay: 600ms; }
+  .pass-stack-list > li:nth-child(2)               { --enter-delay: 200ms; }
+  .pass-stack-list > li:nth-child(2) .pass-thump   { animation-delay: 680ms; }
+  .pass-stack-list > li:nth-child(3)               { --enter-delay: 280ms; }
+  .pass-stack-list > li:nth-child(3) .pass-thump   { animation-delay: 760ms; }
+  .pass-stack-list > li:nth-child(4)               { --enter-delay: 360ms; }
+  .pass-stack-list > li:nth-child(4) .pass-thump   { animation-delay: 840ms; }
+  .pass-stack-list > li:nth-child(5)               { --enter-delay: 440ms; }
+  .pass-stack-list > li:nth-child(5) .pass-thump   { animation-delay: 920ms; }
+  .pass-stack-list > li:nth-child(6)               { --enter-delay: 540ms; }
+  .pass-stack-list > li:nth-child(6) .pass-thump   { animation-delay: 1020ms; }
+
+  /* View-transition names — set per card so the click-to-front swap morphs
+     between positions instead of cross-fading. */
+  .pass-card[data-key="postage"]  { view-transition-name: pass-postage; }
+  .pass-card[data-key="postmark"] { view-transition-name: pass-postmark; }
+  .pass-card[data-key="customs"]  { view-transition-name: pass-customs; }
+  .pass-card[data-key="boarding"] { view-transition-name: pass-boarding; }
+  .pass-card[data-key="passport"] { view-transition-name: pass-passport; }
+  .pass-card[data-key="waxseal"]  { view-transition-name: pass-waxseal; }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 520ms;
+    animation-timing-function: cubic-bezier(0.32, 1.4, 0.5, 1);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pass-card,
+    .pass-card .pass-thump {
+      animation: none !important;
+      transition: none !important;
+    }
+    .pass-card .pass-thump { opacity: 0; }
+    .pass-card:not([data-front="true"]) .pass-card-btn:hover,
+    .pass-card:not([data-front="true"]) .pass-card-btn:focus-visible {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  // Click-to-promote: tap any peeking pass to bring it to the front. The DOM
+  // swap is wrapped in startViewTransition so each card's view-transition-name
+  // makes the browser morph between its old and new transform instead of
+  // cross-fading.
+  type CardEl = HTMLElement & { dataset: { key: string; front: string } };
+
+  const root = document.querySelector<HTMLElement>("[data-stack]");
+  if (root) {
+    const cards = Array.from(root.querySelectorAll<CardEl>(".pass-card"));
+
+    function readCurrentFan(card: CardEl) {
+      return {
+        x: card.style.getPropertyValue("--fan-x"),
+        y: card.style.getPropertyValue("--fan-y"),
+        rot: card.style.getPropertyValue("--fan-rot"),
+      };
+    }
+
+    function promote(nextKey: string) {
+      const current = cards.find((c) => c.dataset.front === "true");
+      const next = cards.find((c) => c.dataset.key === nextKey);
+      if (!current || !next || current === next) return;
+
+      // The previous front card takes whatever fan slot the promoted card is
+      // vacating — read it live, not from the snapshot, so cycling still
+      // works after multiple swaps.
+      const vacatingSlot = readCurrentFan(next);
+
+      const apply = () => {
+        current.dataset.front = "false";
+        current.style.setProperty("--fan-x", vacatingSlot.x);
+        current.style.setProperty("--fan-y", vacatingSlot.y);
+        current.style.setProperty("--fan-rot", vacatingSlot.rot);
+
+        next.dataset.front = "true";
+        next.style.setProperty("--fan-x", "0px");
+        next.style.setProperty("--fan-y", "0px");
+        next.style.setProperty("--fan-rot", "0deg");
+      };
+
+      const docWithVT = document as Document & {
+        startViewTransition?: (cb: () => void) => unknown;
+      };
+
+      if (typeof docWithVT.startViewTransition === "function") {
+        docWithVT.startViewTransition(apply);
+      } else {
+        apply();
+      }
+    }
+
+    function cycleForward() {
+      const frontIdx = cards.findIndex((c) => c.dataset.front === "true");
+      if (frontIdx === -1) return;
+      // Cycle through the stack in nth-child order; the *previous* index in
+      // the array is the next card the user expects to "flip up", since
+      // deeper-in-stack cards render lower in source order.
+      const nextIdx = frontIdx === 0 ? cards.length - 1 : frontIdx - 1;
+      promote(cards[nextIdx].dataset.key);
+    }
+
+    for (const card of cards) {
+      const btn = card.querySelector<HTMLButtonElement>(".pass-card-btn");
+      if (!btn) continue;
+      btn.addEventListener("click", () => {
+        if (card.dataset.front === "true") cycleForward();
+        else promote(card.dataset.key);
+      });
+    }
+  }
+</script>

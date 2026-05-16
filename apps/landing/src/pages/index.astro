@@ -1,29 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import WaitlistForm from "../components/WaitlistForm.astro";
-
-// Deterministic route polyline points for the hero animation
-// Based on the Imperial Palace loop route (a9) from sample.ts
-const routePoints = [
-  [0.5, 0.5], [0.52, 0.42], [0.56, 0.36], [0.62, 0.32],
-  [0.70, 0.30], [0.78, 0.33], [0.82, 0.40], [0.83, 0.48],
-  [0.80, 0.56], [0.74, 0.62], [0.66, 0.65], [0.58, 0.63],
-  [0.52, 0.58], [0.48, 0.52], [0.48, 0.50], [0.50, 0.50]
-];
-
-// Scale route points to SVG coordinate space
-const svgW = 248;
-const svgH = 200;
-const scaledRoute = routePoints.map(([x, y]) => [
-  24 + (x * svgW * 0.82),
-  28 + (y * svgH * 0.72)
-]);
-
-function pointsToSvgPath(pts: number[][]): string {
-  return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-}
-
-const routePath = pointsToSvgPath(scaledRoute);
+import HeroPassStack from "../components/HeroPassStack.astro";
 
 // Postage perforations
 const perfH = (count: number) => Array.from({ length: count }, (_, i) => i);
@@ -204,109 +182,13 @@ const features = [
           </ul>
         </div>
 
-        <!-- Right column: hero share card -->
-        <figure
-          class="hero-card"
-          aria-label="Sample Runstamp share card — Postage template, Imperial Palace loop, Tokyo, 10 km"
-        >
-          <div class="hero-card-inner">
-            <svg
-              viewBox="0 0 280 370"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-              class="hero-card-svg"
-              role="img"
-            >
-              <!-- Paper backdrop that perfs punch through to -->
-              <rect width="280" height="370" fill="#f3ede2"></rect>
-
-              <!-- Dark stamp body -->
-              <rect x="16" y="16" width="248" height="338" fill="#14110d"></rect>
-
-              <!-- Halftone texture — subtle dots -->
-              {Array.from({ length: 7 }, (_, row) =>
-                Array.from({ length: 11 }, (_, col) => (
-                  <circle
-                    cx={32 + col * 22}
-                    cy={88 + row * 24}
-                    r={0.65 + ((row + col) % 3) * 0.2}
-                    fill="rgba(243,237,226,0.055)"
-                  />
-                ))
-              )}
-
-              <!-- Air-mail accent strip at bottom of inner card -->
-              {Array.from({ length: 18 }, (_, i) => (
-                <rect
-                  x={16 + i * 14.2}
-                  y="338"
-                  width="7.1"
-                  height="16"
-                  fill={i % 2 === 0 ? "#e85d2f" : "#f3ede2"}
-                  opacity="0.72"
-                />
-              ))}
-
-              <!-- Route polyline — animated draw-in -->
-              <path
-                id="hero-route"
-                d={routePath}
-                stroke="#e85d2f"
-                stroke-width="2.2"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                opacity="0.88"
-                class="route-line"
-              ></path>
-
-              <!-- Country eyebrow -->
-              <text x="30" y="42" font-family="'JetBrains Mono', monospace" font-size="7.5" letter-spacing="3.2" fill="rgba(243,237,226,0.48)">JAPAN</text>
-
-              <!-- City — Instrument Serif italic equivalent rendered via serif -->
-              <text x="30" y="70" font-family="Georgia, serif" font-style="italic" font-size="30" fill="#f3ede2" letter-spacing="-0.5">Tokyo</text>
-
-              <!-- Run ID badge -->
-              <rect x="196" y="28" width="54" height="18" fill="none" stroke="rgba(243,237,226,0.28)" stroke-width="1" rx="2"></rect>
-              <text x="223" y="41" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="7" fill="rgba(243,237,226,0.48)">NO. A0009</text>
-
-              <!-- Distance denomination — dominant numeral -->
-              <text x="30" y="310" font-family="'JetBrains Mono', monospace" font-size="54" font-weight="500" fill="#f3ede2" letter-spacing="-3">10</text>
-              <text x="30" y="326" font-family="'JetBrains Mono', monospace" font-size="8" fill="rgba(243,237,226,0.42)" letter-spacing="2.8">KILOMETRES</text>
-
-              <!-- Pace + time — right-aligned -->
-              <text x="252" y="300" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="13.5" fill="rgba(243,237,226,0.78)">4:48/km</text>
-              <text x="252" y="317" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="10" fill="rgba(243,237,226,0.46)">48:00</text>
-
-              <!-- Date -->
-              <text x="252" y="334" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="7.5" fill="rgba(243,237,226,0.28)" letter-spacing="0.6">2026 · JAN · 22</text>
-
-              <!-- Postmark circle watermark in the mid-right area -->
-              <circle cx="210" cy="180" r="38" fill="none" stroke="rgba(243,237,226,0.10)" stroke-width="1.2" stroke-dasharray="2 3"></circle>
-              <circle cx="210" cy="180" r="28" fill="none" stroke="rgba(243,237,226,0.07)" stroke-width="0.8"></circle>
-
-              <!-- Perforated left edge -->
-              {perfLeft.map((i) => (
-                <circle cx="16" cy={32 + i * 36} r="9" fill="#f3ede2" />
-              ))}
-              <!-- Perforated right edge -->
-              {perfRight.map((i) => (
-                <circle cx="264" cy={32 + i * 36} r="9" fill="#f3ede2" />
-              ))}
-              <!-- Perforated top edge -->
-              {perfTop.map((i) => (
-                <circle cx={36 + i * 34} cy="16" r="9" fill="#f3ede2" />
-              ))}
-              <!-- Perforated bottom edge -->
-              {perfBot.map((i) => (
-                <circle cx={36 + i * 34} cy="354" r="9" fill="#f3ede2" />
-              ))}
-            </svg>
-          </div>
-          <figcaption class="visually-hidden">
-            Sample Runstamp share card in the Postage template: Imperial Palace loop, Tokyo, Japan. 10 km at 4:48/km, 48 minutes. January 22, 2026.
-          </figcaption>
-        </figure>
+        <!-- Right column: pass-stack of six share-card templates -->
+        <div class="hero-stack-wrap">
+          <HeroPassStack />
+          <p class="hero-stack-hint" aria-hidden="true">
+            Tap to flip through the deck.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -1124,40 +1006,32 @@ const features = [
     line-height: 1;
   }
 
-  /* Hero card */
-  .hero-card {
+  /* Hero pass-stack */
+  .hero-stack-wrap {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
     flex-shrink: 0;
+    padding-inline: clamp(0.5rem, 4vw, 3rem);
   }
 
-  .hero-card-inner {
-    width: min(290px, 85vw);
-    filter: drop-shadow(0 6px 32px rgba(20, 17, 13, 0.16))
-            drop-shadow(0 2px 8px rgba(20, 17, 13, 0.08));
+  .hero-stack-hint {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    opacity: 0;
+    animation: hero-hint-fade 600ms ease 1500ms forwards;
   }
 
-  .hero-card-svg {
-    width: 100%;
-    height: auto;
-  }
-
-  /* Route animation */
-  .route-line {
-    stroke-dasharray: 800;
-    stroke-dashoffset: 800;
-    animation: draw-route 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
-  }
-
-  @keyframes draw-route {
-    to { stroke-dashoffset: 0; }
+  @keyframes hero-hint-fade {
+    to { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .route-line {
-      stroke-dashoffset: 0;
-      animation: none;
-    }
+    .hero-stack-hint { animation: none; opacity: 1; }
   }
 
   /* ─── Section shared ─────────────────────────────────── */
