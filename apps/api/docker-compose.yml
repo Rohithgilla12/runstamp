@@ -92,10 +92,8 @@ services:
       - runstamp-internal
 
   # NOTE: the marketing + legal landing site lives at apps/landing/ as an
-  # Astro project deployed to Cloudflare Pages (not a Docker container here).
-  # If for any reason you want to serve the static HTML in `landing/` from
-  # the VPS instead, the cadence-style nginx sidecar pattern works — see
-  # `landing/nginx.conf` for the ready config. Not wired by default.
+  # Astro project deployed to a Cloudflare Worker (Workers Static Assets) —
+  # not a Docker container here. See apps/landing/wrangler.jsonc.
 
   # Outbound-only Cloudflare Tunnel — no inbound ports opened on the VPS.
   # Token mode: ingress routing (runstamp-api.gilla.fun → http://runstamp-api:8080)
