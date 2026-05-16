@@ -101,6 +101,8 @@ export interface Activity {
   maxHr: number;
   cal: number;
   cadence?: number;
+  vo2max?: number;
+  power?: number;
   shoe: string;
   splits?: Split[];
   streamHr?: number[];

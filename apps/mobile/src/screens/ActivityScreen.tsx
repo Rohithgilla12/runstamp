@@ -171,18 +171,30 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 14, flexWrap: 'wrap' }}>
-          <Chip>
-            <Icon.fog size={14} color={c.ink2} />
-            <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{run.weather.t}° · {run.weather.w}</TText>
-          </Chip>
-          <Chip>
-            <Icon.shoe size={14} color={c.ink2} />
-            <TText style={{ fontSize: 11.5, color: c.ink2 }}>Saucony Endorphin Speed</TText>
-          </Chip>
-          <Chip>
-            <Icon.bolt size={12} color={c.accent} />
-            <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{run.cadence ?? 174} spm</TText>
-          </Chip>
+          {run.weather.w !== '—' && (
+            <Chip>
+              <Icon.fog size={14} color={c.ink2} />
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{run.weather.t}° · {run.weather.w}</TText>
+            </Chip>
+          )}
+          {run.cadence !== undefined && run.cadence > 0 && (
+            <Chip>
+              <Icon.bolt size={12} color={c.accent} />
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{run.cadence} spm</TText>
+            </Chip>
+          )}
+          {run.vo2max !== undefined && (
+            <Chip>
+              <Icon.heart size={12} color={c.accent} />
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>VO₂ {run.vo2max}</TText>
+            </Chip>
+          )}
+          {run.power !== undefined && (
+            <Chip>
+              <Icon.bolt size={12} color={c.ink2} />
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{run.power} W</TText>
+            </Chip>
+          )}
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: c.line, marginTop: 12 }}>
