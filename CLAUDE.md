@@ -135,6 +135,10 @@ docker exec api-postgres-1 psql -U runstamp -d runstamp -c 'SELECT version, dirt
 - Motifs: perforated edges, postmark circles, halftone, air-mail stripes, holographic foil for Mythic stamps
 - Voice: plain, runner-coded, slightly dry. **Not Duolingo. Not Nike.** "Sub-3:45 marathon. Stamped." — not "AMAZING WORK!! 🔥🔥"
 
+## Design context — see `.impeccable.md`
+
+**Before any UI change, read `.impeccable.md` at the repo root.** It's the single source of truth for visual + interaction design — users, brand personality (quiet · earned · collectible), aesthetic direction, the reference triangle (Things 3/Bear/Linear · Apple Wallet/Mail passes · Polaroid/Field Notes/Riso), the five design principles (quiet over loud · real-world materials · type carries the load · one warm pop per surface · honest empty states), and the accessibility bar (WCAG AA). Update it whenever a design decision evolves the rules.
+
 ## Memory references
 
 Project memory (`~/.claude/projects/.../memory/`):
