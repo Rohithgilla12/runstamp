@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
+import { filterByPeriod, delta, type Period } from '../analytics/compare';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useBestEfforts } from '../state/useBestEfforts';
@@ -36,12 +37,18 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const [scope, setScope] = useState<Scope>('year');
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [compareOn, setCompareOn] = useState(false);
+  const [comparePeriod, setComparePeriod] = useState<Period | null>(null);
   const { activities, loading, refresh } = useActivities();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try { await refresh(); } finally { setRefreshing(false); }
   }, [refresh]);
+
+  useEffect(() => {
+    if (scope === 'all') { setCompareOn(false); setComparePeriod(null); }
+  }, [scope]);
 
   return (
     <ScrollView
@@ -59,8 +66,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: 14, paddingTop: 18 }}>
-        <View style={{ flexDirection: 'row', backgroundColor: c.paper2, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: c.line }}>
+      <View style={{ paddingHorizontal: 14, paddingTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.paper2, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: c.line }}>
           {(['year', 'month', 'all'] as const).map((id) => (
             <Pressable key={id} onPress={() => setScope(id)} style={{
               flex: 1, paddingVertical: 9, borderRadius: 9,
@@ -72,7 +79,37 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
             </Pressable>
           ))}
         </View>
+        {scope !== 'all' && (
+          <Pressable
+            onPress={() => {
+              const next = !compareOn;
+              setCompareOn(next);
+              if (next && !comparePeriod) setComparePeriod(defaultComparePeriod(scope));
+            }}
+            style={{
+              paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10,
+              backgroundColor: compareOn ? c.ink : c.paper2,
+              borderWidth: 1, borderColor: compareOn ? c.ink : c.line,
+            }}
+          >
+            <TText style={{ fontSize: 12, color: compareOn ? c.paper : c.ink }}>Compare</TText>
+          </Pressable>
+        )}
       </View>
+      {compareOn && comparePeriod && scope !== 'all' && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TText style={{ fontSize: 12, color: c.ink3 }}>vs</TText>
+          <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, -1))}>
+            <TText style={{ fontSize: 16, color: c.ink }}>‹</TText>
+          </Pressable>
+          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 80, textAlign: 'center' }}>
+            {labelPeriod(comparePeriod)}
+          </TText>
+          <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, 1))}>
+            <TText style={{ fontSize: 16, color: c.ink }}>›</TText>
+          </Pressable>
+        </View>
+      )}
 
       <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Pressable onPress={() => setFiltersOpen((v) => !v)} style={{
@@ -100,7 +137,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
         {activities.length === 0 ? (
           <EmptyState loading={loading} />
         ) : (
-          <StatsView scope={scope} activities={activities} filters={filters} />
+          <StatsView scope={scope} activities={activities} filters={filters} comparePeriod={compareOn ? comparePeriod : null} />
         )}
       </View>
     </ScrollView>
@@ -140,8 +177,11 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities, filters }: { scope: Scope; activities: Activity[]; filters: Filters }) {
+function StatsView({ scope, activities, filters, comparePeriod }: {
+  scope: Scope; activities: Activity[]; filters: Filters; comparePeriod: Period | null;
+}) {
   const c = useColors();
+  const { units } = useAppState();
   const filtered = useMemo(() => filterByScope(activities, scope), [activities, scope]);
   const all = useMemo(() => aggregate(activities), [activities]);
   const scoped = useMemo(() => aggregate(filtered), [filtered]);
@@ -209,18 +249,87 @@ function StatsView({ scope, activities, filters }: { scope: Scope; activities: A
     monthlyCumulative(filteredByLens.map((a) => ({ date: a.date, distance: a.distance })))
   , [filteredByLens]);
 
+  const periodB = useMemo(() => {
+    if (!comparePeriod) return null;
+    return filterByPeriod(filteredByLens, comparePeriod);
+  }, [filteredByLens, comparePeriod]);
+
+  const aggB = useMemo(() => periodB ? aggregate(periodB) : null, [periodB]);
+
+  const heatmapB = useMemo(() => {
+    if (!periodB || !comparePeriod) return null;
+    const refForB = comparePeriod.kind === 'year'
+      ? new Date(comparePeriod.year, 11, 31)
+      : new Date(comparePeriod.year, comparePeriod.month, 0);
+    return buildHeatmap(periodB.map((a) => ({ date: a.date, distance: a.distance })), refForB);
+  }, [periodB, comparePeriod]);
+
+  const monthlyKmB = useMemo(() => {
+    if (!periodB || !comparePeriod || comparePeriod.kind !== 'year') return undefined;
+    const out: number[] = Array(12).fill(0);
+    for (const a of periodB) {
+      const d = new Date(a.date);
+      if (d.getFullYear() === comparePeriod.year) out[d.getMonth()] += a.distance;
+    }
+    return out;
+  }, [periodB, comparePeriod]);
+
+  const weeklyKmB = useMemo(() => {
+    if (!periodB || !comparePeriod || comparePeriod.kind !== 'month') return undefined;
+    const daysInMonth = new Date(comparePeriod.year, comparePeriod.month, 0).getDate();
+    const weeks: number[] = [];
+    const kmByDateB: Record<string, number> = {};
+    for (const a of periodB) kmByDateB[a.date] = (kmByDateB[a.date] ?? 0) + a.distance;
+    for (let day = 1; day <= daysInMonth; day += 7) {
+      let sum = 0;
+      for (let i = day; i < day + 7 && i <= daysInMonth; i++) {
+        const key = `${comparePeriod.year}-${String(comparePeriod.month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        sum += kmByDateB[key] ?? 0;
+      }
+      weeks.push(sum);
+    }
+    return weeks;
+  }, [periodB, comparePeriod]);
+
   return (
     <View>
-      {scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} /> : <LifetimeHero agg={all} />}
+      {comparePeriod && aggB ? (
+        <Card style={{ backgroundColor: c.paper2 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3 }}>
+                {scope === 'year' ? String(new Date().getFullYear()) : new Date().toLocaleDateString('en-US', { month: 'long' }).toUpperCase()}
+              </Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 32, color: c.ink, letterSpacing: -0.8 }}>{fmtDist(scoped.totalKm, units)}</TText>
+              <TText style={{ fontSize: 10, color: c.ink3 }}>{scoped.runs} runs · {fmtTime(scoped.totalSec)}</TText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3 }}>{labelPeriod(comparePeriod).toUpperCase()}</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 32, color: c.ink2, letterSpacing: -0.8 }}>{fmtDist(aggB.totalKm, units)}</TText>
+              <TText style={{ fontSize: 10, color: c.ink3 }}>{aggB.runs} runs · {fmtTime(aggB.totalSec)}</TText>
+              {(() => {
+                const d = delta(scoped.totalKm, aggB.totalKm);
+                const sign = d.abs >= 0 ? '+' : '';
+                const tone = d.abs >= 0 ? c.moss : c.accent;
+                return (
+                  <TText variant="mono" style={{ fontSize: 10, color: tone, marginTop: 2 }}>
+                    {sign}{Math.round(d.abs)} km{d.pct === null ? '' : ` · ${sign}${d.pct}%`}
+                  </TText>
+                );
+              })()}
+            </View>
+          </View>
+        </Card>
+      ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} /> : <LifetimeHero agg={all} />}
       {scope === 'year' && (
         <>
           <SectionHeader title="Activity heatmap" />
           <Card style={{ backgroundColor: c.paper2 }}>
-            <HeatmapCalendar grid={heatmap} />
+            <HeatmapCalendar grid={heatmap} ghost={comparePeriod ? (heatmapB ?? undefined) : undefined} />
           </Card>
           <SectionHeader title="By month" />
           <Card style={{ backgroundColor: c.paper2 }}>
-            <MonthlyBars values={monthlyKm} />
+            <MonthlyBars values={monthlyKm} compare={comparePeriod ? monthlyKmB : undefined} />
           </Card>
           <SectionHeader title="By distance" />
           <Card style={{ backgroundColor: c.paper2 }}>
@@ -248,7 +357,7 @@ function StatsView({ scope, activities, filters }: { scope: Scope; activities: A
           </Card>
           <SectionHeader title="By week" />
           <Card style={{ backgroundColor: c.paper2 }}>
-            <WeeklyBars values={weeklyKm} />
+            <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
           </Card>
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
@@ -423,4 +532,27 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <TText variant="monoMedium" style={{ fontSize: 22, color: c.ink, marginTop: 4 }}>{value}</TText>
     </View>
   );
+}
+
+function defaultComparePeriod(scope: Scope): Period {
+  const now = new Date();
+  if (scope === 'year') return { kind: 'year', year: now.getFullYear() - 1 };
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return { kind: 'month', year: prev.getFullYear(), month: prev.getMonth() + 1 };
+}
+
+function stepComparePeriod(p: Period, dir: 1 | -1): Period {
+  if (p.kind === 'year') return { kind: 'year', year: p.year + dir };
+  let m = p.month + dir;
+  let y = p.year;
+  if (m < 1) { m = 12; y -= 1; }
+  else if (m > 12) { m = 1; y += 1; }
+  return { kind: 'month', year: y, month: m };
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
+
+function labelPeriod(p: Period): string {
+  if (p.kind === 'year') return String(p.year);
+  return `${MONTH_NAMES[p.month - 1]} ${p.year}`;
 }
