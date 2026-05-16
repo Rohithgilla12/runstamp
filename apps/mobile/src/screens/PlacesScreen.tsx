@@ -36,6 +36,10 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const cities = places.length;
   const countries = new Set(places.map((p) => p.country)).size;
   const totalKm = places.reduce((a, p) => a + p.km, 0);
+  const ungeocoded = useMemo(
+    () => activities.filter((a) => (a.route?.length ?? 0) > 0 && !a.city?.trim()).length,
+    [activities],
+  );
 
   return (
     <ScrollView
@@ -71,6 +75,12 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
               <TText variant="monoMedium" style={{ fontSize: 24, lineHeight: 24, color: c.ink }}>{Math.round(totalKm).toLocaleString()}</TText>
             </View>
           </View>
+
+          {ungeocoded > 0 && (
+            <View style={{ paddingHorizontal: 14, marginTop: 16 }}>
+              <BackfillBanner count={ungeocoded} onAfterBackfill={refresh} />
+            </View>
+          )}
 
           <SectionHeader title="By distance" />
           <View style={{ paddingHorizontal: 14 }}>
@@ -176,6 +186,65 @@ function EmptyPlaces({
         )}
       </Card>
     </View>
+  );
+}
+
+function BackfillBanner({
+  count,
+  onAfterBackfill,
+}: {
+  count: number;
+  onAfterBackfill: () => Promise<void>;
+}) {
+  const c = useColors();
+  const { getIdToken } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  const runBackfill = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const idToken = await getIdToken();
+      const res = await backfillPlaces(idToken);
+      const awarded = (res.awardedStamps ?? []).length;
+      const parts = [`Geocoded ${res.updated} runs`];
+      if (awarded > 0) parts.push(`+${awarded} stamps`);
+      setStatus(parts.join(' · '));
+      await onAfterBackfill();
+    } catch (e) {
+      setStatus(`Failed: ${e instanceof Error ? e.message : 'unknown'}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, getIdToken, onAfterBackfill]);
+
+  return (
+    <Card style={{ backgroundColor: c.paper2, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ flex: 1 }}>
+        <TText style={{ fontSize: 13, color: c.ink2, lineHeight: 18 }}>
+          {count} {count === 1 ? 'run' : 'runs'} without a city — tap to look up (up to 50 per tap).
+        </TText>
+        {status && (
+          <TText style={{ fontSize: 11, color: c.ink3, marginTop: 4 }}>{status}</TText>
+        )}
+      </View>
+      <Pressable
+        onPress={runBackfill}
+        disabled={busy}
+        style={({ pressed }) => [{
+          paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
+          backgroundColor: c.ink, flexDirection: 'row', alignItems: 'center', gap: 6,
+          opacity: pressed || busy ? 0.7 : 1,
+        }]}
+      >
+        <Icon.pin size={12} color={c.paper} />
+        <TText style={{ color: c.paper, fontSize: 12, fontWeight: '500' }}>
+          {busy ? '…' : 'Look up'}
+        </TText>
+      </Pressable>
+    </Card>
   );
 }
 
