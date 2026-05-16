@@ -14,6 +14,7 @@ import { ActivityScreen } from '../screens/ActivityScreen';
 import { EditorScreen } from '../screens/EditorScreen';
 import { StampsScreen } from '../screens/StampsScreen';
 import { YearInStampsScreen } from '../screens/YearInStampsScreen';
+import { useStampNotificationTap } from '../state/useStampNotificationTap';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -124,6 +125,7 @@ function TabsNavigator() {
 }
 
 export function RootNavigator() {
+  useStampNotificationTap();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
       <Stack.Screen name="Tabs"     component={TabsNavigator} />

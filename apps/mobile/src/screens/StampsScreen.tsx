@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Stamp, type StampTier } from '../data/sample';
@@ -15,13 +15,26 @@ type Filter = 'all' | StampTier;
 
 const TIER_ORDER: StampTier[] = ['common', 'rare', 'mythic'];
 
-export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
+export function StampsScreen({ navigation, route }: RootStackProps<'Stamps'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('all');
   const { stamps, loading, refresh } = useStamps();
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState<CatalogStamp | null>(null);
+
+  // Notification-tap deep link: open the share modal for the stamp ID
+  // passed in route params. Clears the param after handling so re-renders
+  // don't reopen.
+  useEffect(() => {
+    const id = route?.params?.openStampId;
+    if (!id) return;
+    const target = stamps.find((s) => s.id === id);
+    if (target) {
+      setSharing(target);
+      navigation.setParams({ openStampId: undefined });
+    }
+  }, [route?.params?.openStampId, stamps, navigation]);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try { await refresh(); } finally { setRefreshing(false); }

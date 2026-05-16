@@ -7,7 +7,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Activity: { id: string };
   Editor: { id: string };
-  Stamps: undefined;
+  Stamps: { openStampId?: string } | undefined;
   YearInStamps: undefined;
 };
 
