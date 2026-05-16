@@ -36,7 +36,10 @@ type Scope = 'year' | 'month' | 'all';
 export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const today = useMemo(() => new Date(), []);
   const [scope, setScope] = useState<Scope>('year');
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareOn, setCompareOn] = useState(false);
@@ -53,6 +56,32 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   useEffect(() => {
     if (scope === 'all') { setCompareOn(false); setComparePeriod(null); }
   }, [scope]);
+
+  const isToday = scope === 'year'
+    ? selectedYear === today.getFullYear()
+    : selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1;
+
+  const stepPrimary = (dir: 1 | -1) => {
+    if (scope === 'year') {
+      setSelectedYear((y) => y + dir);
+    } else if (scope === 'month') {
+      let m = selectedMonth + dir;
+      let y = selectedYear;
+      if (m < 1) { m = 12; y -= 1; }
+      else if (m > 12) { m = 1; y += 1; }
+      setSelectedYear(y);
+      setSelectedMonth(m);
+    }
+    setComparePeriod(null);
+    setCompareOn(false);
+  };
+  const jumpToToday = () => {
+    setSelectedYear(today.getFullYear());
+    setSelectedMonth(today.getMonth() + 1);
+  };
+  const primaryLabel = scope === 'year'
+    ? String(selectedYear)
+    : `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
 
   return (
     <ScrollView
@@ -88,7 +117,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
             onPress={() => {
               const next = !compareOn;
               setCompareOn(next);
-              if (next && !comparePeriod) setComparePeriod(defaultComparePeriod(scope));
+              if (next && !comparePeriod) setComparePeriod(defaultComparePeriod(scope, selectedYear, selectedMonth));
             }}
             style={{
               paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10,
@@ -100,13 +129,31 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
           </Pressable>
         )}
       </View>
-      {compareOn && comparePeriod && scope !== 'all' && (
+      {scope !== 'all' && (
         <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Pressable onPress={() => stepPrimary(-1)}>
+            <TText style={{ fontSize: 16, color: c.ink }}>‹</TText>
+          </Pressable>
+          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 96, textAlign: 'center' }}>
+            {primaryLabel}
+          </TText>
+          <Pressable onPress={() => stepPrimary(1)}>
+            <TText style={{ fontSize: 16, color: c.ink }}>›</TText>
+          </Pressable>
+          {!isToday && (
+            <Pressable onPress={jumpToToday} style={{ marginLeft: 4 }}>
+              <TText style={{ fontSize: 11, color: c.accent, textDecorationLine: 'underline' }}>Today</TText>
+            </Pressable>
+          )}
+        </View>
+      )}
+      {compareOn && comparePeriod && scope !== 'all' && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TText style={{ fontSize: 12, color: c.ink3 }}>vs</TText>
           <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, -1))}>
             <TText style={{ fontSize: 16, color: c.ink }}>‹</TText>
           </Pressable>
-          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 80, textAlign: 'center' }}>
+          <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink, minWidth: 96, textAlign: 'center' }}>
             {labelPeriod(comparePeriod)}
           </TText>
           <Pressable onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, 1))}>
@@ -145,6 +192,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
             scope={scope}
             activities={activities}
             filters={filters}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
             comparePeriod={compareOn ? comparePeriod : null}
             hrMax={me?.hrMax ?? DEFAULT_HR_MAX}
             hrResting={me?.hrResting ?? DEFAULT_HR_RESTING}
@@ -190,10 +239,12 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
+function StatsView({ scope, activities, filters, selectedYear, selectedMonth, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
   scope: Scope;
   activities: Activity[];
   filters: Filters;
+  selectedYear: number;
+  selectedMonth: number;
   comparePeriod: Period | null;
   hrMax: number;
   hrResting: number;
@@ -202,10 +253,11 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
 }) {
   const c = useColors();
   const { units } = useAppState();
-  const filtered = useMemo(() => filterByScope(activities, scope), [activities, scope]);
+  const filtered = useMemo(() => filterByScope(activities, scope, selectedYear, selectedMonth), [activities, scope, selectedYear, selectedMonth]);
   const all = useMemo(() => aggregate(activities), [activities]);
   const scoped = useMemo(() => aggregate(filtered), [filtered]);
   const { efforts } = useBestEfforts();
+  const today = useMemo(() => new Date(), []);
 
   const ascending = useMemo(() => sortByDateAsc(activities), [activities]);
   const filteredByLens = useMemo(() => {
@@ -219,50 +271,65 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
       return true;
     });
   }, [ascending, filters]);
-  const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope), [filteredByLens, scope]);
+  const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope, selectedYear, selectedMonth), [filteredByLens, scope, selectedYear, selectedMonth]);
+  const heatmapRef = useMemo(() => {
+    if (scope !== 'year') return today;
+    const endOfYear = new Date(selectedYear, 11, 31);
+    return endOfYear.getTime() < today.getTime() ? endOfYear : today;
+  }, [scope, selectedYear, today]);
   const heatmap = useMemo(() => buildHeatmap(
     filteredByLens.map((a) => ({ date: a.date, distance: a.distance })),
-  ), [filteredByLens]);
+    heatmapRef,
+  ), [filteredByLens, heatmapRef]);
   const streaks = useMemo(() => computeStreaks(filteredByLens), [filteredByLens]);
   const load = useMemo(() => buildLoadSeries(
     filteredByLens.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
-    new Date(),
+    today,
     hrMax,
     hrResting,
-  ), [filteredByLens, hrMax, hrResting]);
+  ), [filteredByLens, today, hrMax, hrResting]);
   const hrBased = useMemo(() => hasAnyHr(ascending.map((a) => ({ avgHr: a.avgHr }))), [ascending]);
   const monthlyKm = useMemo(() => {
-    const y = new Date().getFullYear();
     const out: number[] = Array(12).fill(0);
     for (const a of filteredByLens) {
       const d = new Date(a.date);
-      if (d.getFullYear() === y) out[d.getMonth()] += a.distance;
+      if (d.getFullYear() === selectedYear) out[d.getMonth()] += a.distance;
     }
     return out;
-  }, [filteredByLens]);
+  }, [filteredByLens, selectedYear]);
   const histogramCells = useMemo(() => distanceHistogram(filteredInScope), [filteredInScope]);
   const kmByDate = useMemo(() => {
     const out: Record<string, number> = {};
     for (const a of filteredByLens) out[a.date] = (out[a.date] ?? 0) + a.distance;
     return out;
   }, [filteredByLens]);
-  const now = useMemo(() => new Date(), []);
   const weeklyKm = useMemo(() => {
     if (scope !== 'month') return [] as number[];
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const weeks: number[] = [];
     for (let day = 1; day <= daysInMonth; day += 7) {
       let sum = 0;
       for (let i = day; i < day + 7 && i <= daysInMonth; i++) {
-        const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const key = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         sum += kmByDate[key] ?? 0;
       }
       weeks.push(sum);
     }
     return weeks;
-  }, [scope, kmByDate, now]);
+  }, [scope, kmByDate, selectedYear, selectedMonth]);
+  const longestRunKm = useMemo(() => {
+    let max = 0;
+    for (const a of filteredByLens) if (a.distance > max) max = a.distance;
+    return max;
+  }, [filteredByLens]);
+  const scopedEfforts = useMemo(() => {
+    if (scope === 'month') return [];
+    if (scope === 'year') {
+      const prefix = `${selectedYear}-`;
+      return efforts.filter((e) => e.achievedAt.startsWith(prefix));
+    }
+    return efforts;
+  }, [efforts, scope, selectedYear]);
   const cumulative = useMemo(() =>
     monthlyCumulative(filteredByLens.map((a) => ({ date: a.date, distance: a.distance })))
   , [filteredByLens]);
@@ -316,7 +383,7 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <View style={{ flex: 1 }}>
               <Eyebrow style={{ color: c.ink3 }}>
-                {scope === 'year' ? String(new Date().getFullYear()) : new Date().toLocaleDateString('en-US', { month: 'long' }).toUpperCase()}
+                {scope === 'year' ? String(selectedYear) : `${MONTH_NAMES[selectedMonth - 1].toUpperCase()} ${selectedYear}`}
               </Eyebrow>
               <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 32, color: c.ink, letterSpacing: -0.8 }}>{fmtDist(scoped.totalKm, units)}</TText>
               <TText style={{ fontSize: 10, color: c.ink3 }}>{scoped.runs} runs · {fmtTime(scoped.totalSec)}</TText>
@@ -338,7 +405,7 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
             </View>
           </View>
         </Card>
-      ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} /> : <LifetimeHero agg={all} />}
+      ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} /> : <LifetimeHero agg={all} />}
       {scope === 'year' && (
         <>
           <SectionHeader title="Activity heatmap" />
@@ -370,9 +437,9 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
       )}
       {scope === 'month' && (
         <>
-          <SectionHeader title="This month" />
+          <SectionHeader title={MONTH_NAMES[selectedMonth - 1] + ' ' + selectedYear} />
           <Card style={{ backgroundColor: c.paper2 }}>
-            <MonthCalendarDots year={now.getFullYear()} month={now.getMonth() + 1} kmByDate={kmByDate} />
+            <MonthCalendarDots year={selectedYear} month={selectedMonth} kmByDate={kmByDate} />
           </Card>
           <SectionHeader title="By week" />
           <Card style={{ backgroundColor: c.paper2 }}>
@@ -395,9 +462,10 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
           <Card style={{ backgroundColor: c.paper2 }}>
             <CumulativeChart series={cumulative} />
           </Card>
-          <SectionHeader title="Longest streak" />
+          <SectionHeader title="Lifetime records" />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <StatTile label="EVER" value={`${streaks.longest} days`} />
+            <StatTile label="LONGEST RUN" value={fmtDist(longestRunKm, units) + ' ' + distUnit(units)} />
+            <StatTile label="LONGEST STREAK" value={`${streaks.longest}d`} />
           </View>
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
@@ -410,11 +478,11 @@ function StatsView({ scope, activities, filters, comparePeriod, hrMax, hrResting
         </>
       )}
 
-      {efforts.length > 0 && (
+      {scopedEfforts.length > 0 && (
         <>
-          <SectionHeader title="Personal bests" />
+          <SectionHeader title={scope === 'all' ? 'Personal bests' : `PRs set in ${selectedYear}`} />
           <View style={{ gap: 6 }}>
-            {efforts.map((e) => <BestEffortRow key={e.label} effort={e} />)}
+            {scopedEfforts.map((e) => <BestEffortRow key={e.label} effort={e} />)}
           </View>
         </>
       )}
@@ -446,25 +514,21 @@ function BestEffortRow({ effort }: { effort: BestEffort }) {
   );
 }
 
-function filterByScope(rows: Activity[], scope: Scope): Activity[] {
+function filterByScope(rows: Activity[], scope: Scope, year: number, month: number): Activity[] {
   if (scope === 'all') return rows;
-  const now = new Date();
   if (scope === 'year') {
-    const y = now.getFullYear();
-    return rows.filter((a) => new Date(a.date).getFullYear() === y);
+    return rows.filter((a) => new Date(a.date).getFullYear() === year);
   }
-  // month
-  const y = now.getFullYear(), m = now.getMonth();
   return rows.filter((a) => {
     const d = new Date(a.date);
-    return d.getFullYear() === y && d.getMonth() === m;
+    return d.getFullYear() === year && d.getMonth() === month - 1;
   });
 }
 
-function ScopedHero({ scope, agg }: { scope: Scope; agg: Aggregate }) {
+function ScopedHero({ scope, agg, year, month }: { scope: Scope; agg: Aggregate; year: number; month: number }) {
   const c = useColors();
   const { units } = useAppState();
-  const label = scope === 'year' ? `${new Date().getFullYear()}` : new Date().toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+  const label = scope === 'year' ? String(year) : `${MONTH_NAMES[month - 1].toUpperCase()} ${year}`;
   return (
     <Card style={{ backgroundColor: c.paper2 }}>
       <Eyebrow>{label}</Eyebrow>
@@ -555,11 +619,12 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function defaultComparePeriod(scope: Scope): Period {
-  const now = new Date();
-  if (scope === 'year') return { kind: 'year', year: now.getFullYear() - 1 };
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return { kind: 'month', year: prev.getFullYear(), month: prev.getMonth() + 1 };
+function defaultComparePeriod(scope: Scope, year: number, month: number): Period {
+  if (scope === 'year') return { kind: 'year', year: year - 1 };
+  let m = month - 1;
+  let y = year;
+  if (m < 1) { m = 12; y -= 1; }
+  return { kind: 'month', year: y, month: m };
 }
 
 function stepComparePeriod(p: Period, dir: 1 | -1): Period {
