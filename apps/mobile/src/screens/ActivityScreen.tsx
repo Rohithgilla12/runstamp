@@ -147,6 +147,11 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
             <Eyebrow>PACE</Eyebrow>
             <TText variant="monoMedium" style={{ fontSize: 22, color: c.ink }}>{fmtPace(run.pace, units)}</TText>
             <TText style={{ fontSize: 10, color: c.ink3 }}>{paceUnit(units)}</TText>
+            {run.gapPace && Math.abs(run.gapPace - run.pace) >= 3 ? (
+              <TText variant="mono" style={{ fontSize: 10, color: c.accent, marginTop: 2 }}>
+                GAP {fmtPace(run.gapPace, units)}
+              </TText>
+            ) : null}
           </View>
           <View style={{ flex: 1.1 }}>
             <Eyebrow>TIME</Eyebrow>

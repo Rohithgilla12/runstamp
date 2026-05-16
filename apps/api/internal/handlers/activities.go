@@ -49,6 +49,7 @@ type activityResponse struct {
 	CadenceSPM     *float64 `json:"cadenceSpm,omitempty"`
 	RunningPowerW  *float64 `json:"runningPowerW,omitempty"`
 	VO2maxMlKgMin  *float64 `json:"vo2maxMlKgMin,omitempty"`
+	GapSecPerKm    *float64 `json:"gapSecPerKm,omitempty"`
 	StartLat       *float64 `json:"startLat,omitempty"`
 	StartLon       *float64 `json:"startLon,omitempty"`
 }
@@ -180,6 +181,7 @@ func toActivityResponse(a *activities.Activity) activityResponse {
 		CadenceSPM:    a.CadenceSPM,
 		RunningPowerW: a.RunningPowerW,
 		VO2maxMlKgMin: a.VO2maxMlKgMin,
+		GapSecPerKm:   a.GAPSecPerKm,
 		StartLat:      a.StartLat,
 		StartLon:      a.StartLon,
 	}

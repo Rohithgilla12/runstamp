@@ -70,6 +70,7 @@ function mapApiToActivity(a: ApiActivity): Activity {
     seconds: a.elapsedSec,
     elev: Math.round(a.elevationM ?? 0),
     pace: Math.round(pace),
+    gapPace: a.gapSecPerKm && a.gapSecPerKm > 0 ? Math.round(a.gapSecPerKm) : undefined,
     avgHr: a.avgHr ?? 0,
     maxHr: a.maxHr ?? 0,
     cal: a.calories ?? 0,

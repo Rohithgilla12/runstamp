@@ -97,6 +97,8 @@ export interface Activity {
   seconds: number;
   elev: number;
   pace: number;
+  /** Grade-Adjusted Pace (sec/km) per Minetti polynomial; absent on indoor/unimported runs. */
+  gapPace?: number;
   avgHr: number;
   maxHr: number;
   cal: number;

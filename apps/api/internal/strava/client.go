@@ -401,7 +401,7 @@ func (c *Client) FetchActivity(ctx context.Context, accessToken string, id int64
 }
 
 // defaultStreamTypes are the keys we request when the caller passes nil.
-var defaultStreamTypes = []string{"heartrate", "latlng", "altitude", "velocity_smooth"}
+var defaultStreamTypes = []string{"heartrate", "latlng", "altitude", "velocity_smooth", "time", "distance"}
 
 // FetchActivityStreams fetches GET /activities/{id}/streams?key_by_type=true.
 // If types is nil, defaultStreamTypes is used. Returns ErrTokenExpired on 401.

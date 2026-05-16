@@ -37,6 +37,8 @@ import { StrideLengthCard } from '../design/charts/StrideLengthCard';
 import { FormChartCard } from '../design/charts/FormChartCard';
 import { mafHr, mafImprovementSec, mafPaceSeries } from '../analytics/maf';
 import { MafPaceCard } from '../design/charts/MafPaceCard';
+import { gapTaxSeries, lifetimeAvgTax } from '../analytics/gap';
+import { ClimbingTaxCard } from '../design/charts/ClimbingTaxCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -439,6 +441,16 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const needsBirthYear = !birthYear;
   const showMaf = (scope === 'year' || scope === 'all') && (mafTrend.length > 0 || needsBirthYear);
 
+  // Climbing tax — monthly raw-vs-GAP pace gap. Reads from a.gapPace which
+  // is populated server-side from altitude streams (Strava). Hidden when
+  // no activities have GAP yet (empty for non-Strava sources).
+  const gapTrend = useMemo(
+    () => gapTaxSeries(filteredByLens.map((a) => ({ date: a.date, pace: a.pace, gapPace: a.gapPace, distance: a.distance }))),
+    [filteredByLens],
+  );
+  const gapLifetimeAvg = useMemo(() => lifetimeAvgTax(gapTrend), [gapTrend]);
+  const showGap = (scope === 'year' || scope === 'all') && gapTrend.length > 0;
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -554,6 +566,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               />
             </View>
           )}
+          {showGap && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingTaxCard series={gapTrend} lifetimeAvgSec={gapLifetimeAvg} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <FormChartCard
               series={load}
@@ -631,6 +648,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               />
             </View>
           )}
+          {showGap && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingTaxCard series={gapTrend} lifetimeAvgSec={gapLifetimeAvg} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <FormChartCard
               series={load}
@@ -688,6 +710,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
                 needsBirthYear={needsBirthYear}
                 onTapProfile={onTapProfile}
               />
+            </View>
+          )}
+          {showGap && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingTaxCard series={gapTrend} lifetimeAvgSec={gapLifetimeAvg} />
             </View>
           )}
           <View style={{ marginTop: 12 }}>
@@ -750,6 +777,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
                 needsBirthYear={needsBirthYear}
                 onTapProfile={onTapProfile}
               />
+            </View>
+          )}
+          {showGap && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingTaxCard series={gapTrend} lifetimeAvgSec={gapLifetimeAvg} />
             </View>
           )}
           <View style={{ marginTop: 12 }}>

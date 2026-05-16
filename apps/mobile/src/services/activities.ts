@@ -21,6 +21,7 @@ export interface ApiActivity {
   cadenceSpm?: number;
   runningPowerW?: number;
   vo2maxMlKgMin?: number;
+  gapSecPerKm?: number;
   startLat?: number;
   startLon?: number;
 }

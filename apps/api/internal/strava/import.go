@@ -461,8 +461,37 @@ func (im *Importer) enrichOne(ctx context.Context, userID string, act *activitie
 		}
 	}
 
-	// Persist streams (velocity_smooth → "velocity").
+	// Compute GAP from in-memory altitude + distance + time streams before
+	// persisting. Strava returns these aligned point-by-point. Distance and
+	// time fall back to derived values when missing (older Strava activities
+	// or 1Hz Smart Recording).
+	if alt := floatStream(streams, "altitude"); len(alt) >= 2 {
+		t := floatStream(streams, "time")
+		if len(t) != len(alt) {
+			t = activities.DeriveTimeUniform(len(alt))
+		}
+		d := floatStream(streams, "distance")
+		if len(d) != len(alt) {
+			v := floatStream(streams, "velocity_smooth")
+			d = activities.DeriveDistanceFromVelocity(v, t)
+		}
+		if len(d) == len(alt) {
+			gap := activities.ComputeGAPSecPerKm(alt, d, t)
+			if gap > 0 {
+				if err := im.activitiesRepo.UpdateGAP(ctx, act.ID, gap); err != nil {
+					im.log.Warn("strava importer: update gap", "activity_id", act.ID, "err", err)
+				}
+			}
+		}
+	}
+
+	// Persist streams (velocity_smooth → "velocity"). Skip time/distance —
+	// they're transient inputs for GAP and aren't in the activity_streams
+	// CHECK constraint.
 	for streamType, stream := range streams {
+		if streamType == "time" || streamType == "distance" {
+			continue
+		}
 		storeType := streamType
 		if storeType == "velocity_smooth" {
 			storeType = "velocity"
@@ -698,6 +727,15 @@ func summaryToActivity(userID string, s *SummaryActivity) *activities.Activity {
 
 // detailedToDetailFields maps the rich fields from a DetailedActivity into a
 // DetailFields struct for UpdateDetail.
+// floatStream returns the named stream's data slice, or nil when absent.
+func floatStream(streams map[string]Stream, key string) []float64 {
+	s, ok := streams[key]
+	if !ok || len(s.Data) == 0 {
+		return nil
+	}
+	return s.Data
+}
+
 func detailedToDetailFields(a *DetailedActivity) *activities.DetailFields {
 	raw, _ := json.Marshal(a)
 	rawMsg := json.RawMessage(raw)

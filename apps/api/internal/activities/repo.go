@@ -27,6 +27,7 @@ const selectColumns = `id, user_id, source, external_id, sport, started_at,
   raw, dupe_of, ingested_at,
   cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
   stride_length_m, vo2max_ml_kg_min, avg_speed_m_s, splits,
+  gap_seconds_per_km,
   has_detail, has_streams`
 
 // Activity is an in-memory view of one activities row.
@@ -62,6 +63,7 @@ type Activity struct {
 	VO2maxMlKgMin   *float64
 	AvgSpeedMS      *float64
 	Splits          *json.RawMessage
+	GAPSecPerKm     *float64
 	HasDetail       bool
 	HasStreams       bool
 }
@@ -410,6 +412,7 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 		&raw, &a.DupeOf, &a.IngestedAt,
 		&a.CadenceSPM, &a.RunningPowerW, &a.VerticalOscCm, &a.GroundContactMs,
 		&a.StrideLengthM, &a.VO2maxMlKgMin, &a.AvgSpeedMS, &splits,
+		&a.GAPSecPerKm,
 		&a.HasDetail, &a.HasStreams,
 	); err != nil {
 		return nil, err
@@ -432,6 +435,22 @@ func (r *Repository) MarkDetailFetched(ctx context.Context, activityID string) e
 		activityID)
 	if err != nil {
 		return fmt.Errorf("activities: mark detail fetched: %w", err)
+	}
+	return nil
+}
+
+// UpdateGAP writes the grade-adjusted pace (sec/km) for the given activity.
+// A zero or negative value clears the column.
+func (r *Repository) UpdateGAP(ctx context.Context, activityID string, gapSecPerKm float64) error {
+	var v *float64
+	if gapSecPerKm > 0 {
+		v = &gapSecPerKm
+	}
+	_, err := r.pool.Exec(ctx,
+		`UPDATE activities SET gap_seconds_per_km = $2 WHERE id = $1`,
+		activityID, v)
+	if err != nil {
+		return fmt.Errorf("activities: update gap: %w", err)
 	}
 	return nil
 }
