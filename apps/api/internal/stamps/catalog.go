@@ -210,7 +210,7 @@ var Catalog = []Definition{
 		Description: "Finished the Tata Mumbai Marathon.",
 		Tier:        "rare",
 		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":42000,"distance_m_lte":43000,"title_patterns":["mumbai marathon","tata mumbai","standard chartered mumbai"," tmm "," scmm "],"country_iso":"IN"}`),
+		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["mumbai marathon","tata mumbai","standard chartered mumbai","tmm 20","tmm20","scmm"],"country_iso":"IN"}`),
 		SortOrder:   220,
 	},
 	{
@@ -219,7 +219,7 @@ var Catalog = []Definition{
 		Description: "Finished the Vedanta Delhi Half Marathon (formerly ADHM).",
 		Tier:        "rare",
 		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":21000,"distance_m_lte":21500,"title_patterns":["delhi half","vedanta delhi","airtel delhi half","adhm"],"country_iso":"IN"}`),
+		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":20500,"distance_m_lte":22500,"title_patterns":["delhi half","vedanta delhi","airtel delhi half","adhm"],"country_iso":"IN"}`),
 		SortOrder:   230,
 	},
 	{
@@ -228,7 +228,7 @@ var Catalog = []Definition{
 		Description: "Finished the Bengaluru Marathon.",
 		Tier:        "rare",
 		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":42000,"distance_m_lte":43000,"title_patterns":["bengaluru marathon","bangalore marathon"],"country_iso":"IN"}`),
+		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["bengaluru marathon","bangalore marathon"],"country_iso":"IN"}`),
 		SortOrder:   240,
 	},
 	{
@@ -237,7 +237,7 @@ var Catalog = []Definition{
 		Description: "Finished the NMDC Hyderabad Marathon.",
 		Tier:        "rare",
 		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":42000,"distance_m_lte":43000,"title_patterns":["hyderabad marathon","nmdc hyderabad"],"country_iso":"IN"}`),
+		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["hyderabad marathon","nmdc hyderabad"],"country_iso":"IN"}`),
 		SortOrder:   250,
 	},
 	{
@@ -246,7 +246,7 @@ var Catalog = []Definition{
 		Description: "Finished the Ladakh Marathon at ~3,500m altitude.",
 		Tier:        "mythic",
 		Category:    "event",
-		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":42000,"distance_m_lte":43000,"title_patterns":["ladakh marathon","ladakh"],"country_iso":"IN"}`),
+		Criteria:    j(`{"kind":"named_event","sport":"run","distance_m_gte":40000,"distance_m_lte":46000,"title_patterns":["ladakh marathon"],"country_iso":"IN"}`),
 		SortOrder:   260,
 	},
 }

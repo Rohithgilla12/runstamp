@@ -228,7 +228,9 @@ WHERE user_id = $1
 	}
 	if r.CountryISO != "" {
 		if name, ok := countryNameByISO[r.CountryISO]; ok {
-			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			// Allow NULL/empty country — old activities may not be geocoded yet,
+			// and the title pattern is strong enough on its own for named events.
+			q += fmt.Sprintf(" AND (location_country = $%d OR location_country IS NULL OR location_country = '')", len(args)+1)
 			args = append(args, name)
 		}
 	}
@@ -273,7 +275,7 @@ WHERE user_id = $1
 	args := []any{userID}
 	if r.CountryISO != "" {
 		if name, ok := countryNameByISO[r.CountryISO]; ok {
-			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			q += fmt.Sprintf(" AND (location_country = $%d OR location_country IS NULL OR location_country = '')", len(args)+1)
 			args = append(args, name)
 		}
 	}
@@ -312,7 +314,7 @@ WHERE user_id = $1
 	}
 	if r.CountryISO != "" {
 		if name, ok := countryNameByISO[r.CountryISO]; ok {
-			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			q += fmt.Sprintf(" AND (location_country = $%d OR location_country IS NULL OR location_country = '')", len(args)+1)
 			args = append(args, name)
 		}
 	}
