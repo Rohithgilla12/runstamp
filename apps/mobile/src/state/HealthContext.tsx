@@ -25,6 +25,7 @@ import React, {
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import {
+  getRunstampReadAuthorizationStatus,
   isHealthKitAvailable,
   requestRunstampHealthPermissions,
 } from '../services/healthkit';
@@ -128,6 +129,29 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     },
     [status, lastSyncAt, runSync],
   );
+
+  // Restore "granted" on cold launch. Apple won't tell us per-type read
+  // grants, but `getRequestStatusForAuthorization` returning `unnecessary`
+  // means the user has already responded to the prompt — same signal we'd
+  // get from re-tapping connect. Without this the connectors UI shows
+  // "Not connected" on every fresh launch even after the user has connected.
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    let cancelled = false;
+    (async () => {
+      const next = await getRunstampReadAuthorizationStatus();
+      if (cancelled) return;
+      setStatus((current) => {
+        if (current !== 'unknown') return current;
+        if (next === 'unnecessary') return 'granted';
+        if (next === 'unavailable') return 'unavailable';
+        return current;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Auto-resync on app foreground. iOS HKObserverQuery + background delivery
   // is the proper PRD §6.8 fix and lands in a later milestone (needs native

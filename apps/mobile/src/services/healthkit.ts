@@ -7,6 +7,7 @@
  *
  * Exports:
  *   requestRunstampHealthPermissions — ask for the full running read scopes
+ *   getRunstampReadAuthorizationStatus — has the user already been asked?
  *   getRunningWorkoutsSince          — lightweight list, newest-first
  *   getRunningWorkoutDetail          — rich detail object with streams + splits
  *   isHealthKitAvailable             — availability check (iOS-only gate)
@@ -14,6 +15,8 @@
 
 import { Platform } from 'react-native';
 import {
+  AuthorizationRequestStatus,
+  getRequestStatusForAuthorization,
   isHealthDataAvailable,
   queryQuantitySamples,
   queryStatisticsForQuantity,
@@ -110,6 +113,35 @@ export async function requestRunstampHealthPermissions(): Promise<boolean> {
     return await requestAuthorization({ toRead: READ_TYPES, toShare: [] });
   } catch {
     return false;
+  }
+}
+
+/**
+ * Asks HealthKit whether the auth prompt still needs to be shown for the
+ * Runstamp read scopes. Apple deliberately hides per-type read grants for
+ * privacy, but `unnecessary` is the strongest signal we get that the user
+ * has already responded to the prompt — so we treat it as "previously
+ * connected" and skip showing the disconnected UI on cold launch.
+ */
+export type RunstampHealthAuthState =
+  | 'shouldRequest'
+  | 'unnecessary'
+  | 'unavailable'
+  | 'unknown';
+
+export async function getRunstampReadAuthorizationStatus(): Promise<RunstampHealthAuthState> {
+  if (Platform.OS !== 'ios') return 'unavailable';
+  if (!isHealthDataAvailable()) return 'unavailable';
+  try {
+    const status = await getRequestStatusForAuthorization({
+      toRead: READ_TYPES,
+      toShare: [],
+    });
+    if (status === AuthorizationRequestStatus.unnecessary) return 'unnecessary';
+    if (status === AuthorizationRequestStatus.shouldRequest) return 'shouldRequest';
+    return 'unknown';
+  } catch {
+    return 'unknown';
   }
 }
 
