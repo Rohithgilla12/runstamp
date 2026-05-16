@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -141,6 +142,9 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
           <RisoStat label="TIME" value={fmtTime(run.seconds)} pink={PINK} blue={BLUE} />
           <RisoStat label="ELEV" value={`${run.elev}m`} pink={PINK} blue={BLUE} />
           {run.city ? <RisoStat label="CITY" value={run.city.toUpperCase()} pink={PINK} blue={BLUE} /> : null}
+        </View>
+        <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
+          <RunstampMark tone="ink" opacity={0.5} />
         </View>
       </View>
     </View>

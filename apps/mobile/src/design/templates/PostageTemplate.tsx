@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, TONE, formatMonthDay, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -161,6 +162,11 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
           >
             {run.title}
           </TText>
+        </View>
+
+        {/* via RUNSTAMP attribution, sits just above the air-mail stripe. */}
+        <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, alignItems: 'center' }}>
+          <RunstampMark tone="paper" opacity={0.4} />
         </View>
 
         {/* Air-mail accent stripes at the bottom edge. */}

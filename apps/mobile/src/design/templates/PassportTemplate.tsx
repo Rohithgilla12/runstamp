@@ -9,6 +9,7 @@ import { RouteMap } from '../RouteMap';
 import { PostmarkMark } from '../SunMark';
 import { EYEBROW_SIZE, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -206,6 +207,11 @@ export function PassportTemplate({ run, width, height, background, units = 'km',
 
       {/* MRZ zone — bottom strip */}
       <MRZZone lines={mrzLines} width={width} inkTone={inkTone} />
+
+      {/* via Runstamp — tucked just above the MRZ. */}
+      <View style={{ position: 'absolute', bottom: 54, left: 14 }}>
+        <RunstampMark tone="ink" opacity={0.45} />
+      </View>
     </View>
   );
 }

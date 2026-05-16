@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -231,9 +232,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
 
       {/* Barcode strip at the very bottom */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: barcodeH, backgroundColor: '#f0e9d8', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Eyebrow style={{ color: c.ink3, fontSize: 7, writingDirection: 'ltr' }}>
-          {run.id.toUpperCase()}
-        </Eyebrow>
+        <RunstampMark tone="ink" opacity={0.45} />
         <View style={{ flex: 1 }}>
           <Barcode width={0} height={28} seed={seedFromId(run.id)} inkColor={c.ink} />
         </View>

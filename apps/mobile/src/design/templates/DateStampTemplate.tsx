@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, MONTHS_3, TONE, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -133,6 +134,9 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
           <Foot label="TIME" value={fmtTime(run.seconds)} ink={inkTone} />
           <Foot label="ELEV" value={`${run.elev}m`} ink={inkTone} />
           {run.country ? <Foot label="REGION" value={run.country.toUpperCase()} ink={inkTone} /> : null}
+        </View>
+        <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
+          <RunstampMark tone="ink" opacity={0.4} />
         </View>
       </View>
     </View>

@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatMonthDay, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -96,11 +97,14 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
         />
       </View>
 
-      {/* Run title + airmail stripe — bottom */}
+      {/* Run title + airmail stripe + mark — bottom */}
       <View style={{ position: 'absolute', bottom: PAD.lg, left: PAD.lg, right: PAD.lg }}>
-        <TText variant="serifItalic" style={{ fontSize: 15, color: 'rgba(243,237,226,0.78)', lineHeight: 18 }} numberOfLines={1}>
-          {run.title}
-        </TText>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+          <TText variant="serifItalic" style={{ flex: 1, fontSize: 15, color: 'rgba(243,237,226,0.78)', lineHeight: 18 }} numberOfLines={1}>
+            {run.title}
+          </TText>
+          <RunstampMark tone="paper" opacity={0.5} />
+        </View>
         <View style={{ flexDirection: 'row', marginTop: 12, height: 3 }}>
           {Array.from({ length: 16 }).map((_, i) => (
             <View key={i} style={{ flex: 1, backgroundColor: i % 2 === 0 ? c.accent : '#f3ede2', opacity: 0.7 }} />

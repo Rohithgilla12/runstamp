@@ -15,6 +15,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -139,10 +140,8 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
             <View key={i} style={{ flex: 1, backgroundColor: i % 2 === 0 ? c.accent : 'rgba(243,237,226,0.7)' }} />
           ))}
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-          <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.45)', letterSpacing: 1.5 }}>
-            RUNSTAMP
-          </TText>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+          <RunstampMark tone="paper" opacity={0.5} />
           <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.45)', letterSpacing: 1 }}>
             {formatWaxDate(run.date)}
           </TText>

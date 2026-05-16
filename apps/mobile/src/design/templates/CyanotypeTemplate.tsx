@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -132,6 +133,9 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
           <Plate label="TIME" value={fmtTime(run.seconds)} cream={CREAM} />
           <Plate label="ELEV" value={`${run.elev}m`} cream={CREAM} />
           {run.avgHr > 0 ? <Plate label="HR" value={`${run.avgHr}`} cream={CREAM} /> : null}
+        </View>
+        <View style={{ marginTop: PAD.md }}>
+          <RunstampMark tone="paper" opacity={0.55} />
         </View>
       </View>
     </View>

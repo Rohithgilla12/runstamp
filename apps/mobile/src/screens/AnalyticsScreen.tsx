@@ -19,6 +19,7 @@ import { computeStreaks } from '../analytics/streaks';
 import { buildLoadSeries, hasAnyHr } from '../analytics/trainingLoad';
 import { distanceHistogram } from '../analytics/histogram';
 import { HeatmapCalendar } from '../design/charts/HeatmapCalendar';
+import { ShareableChartCard } from '../design/ShareableChartCard';
 import { MonthlyBars } from '../design/charts/MonthlyBars';
 import { DistanceHistogram } from '../design/charts/DistanceHistogram';
 import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
@@ -408,18 +409,30 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
       ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} /> : <LifetimeHero agg={all} />}
       {scope === 'year' && (
         <>
-          <SectionHeader title="Activity heatmap" />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <HeatmapCalendar grid={heatmap} ghost={comparePeriod ? (heatmapB ?? undefined) : undefined} />
-          </Card>
-          <SectionHeader title="By month" />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <MonthlyBars values={monthlyKm} compare={comparePeriod ? monthlyKmB : undefined} />
-          </Card>
-          <SectionHeader title="By distance" />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <DistanceHistogram cells={histogramCells} />
-          </Card>
+          <View style={{ marginTop: 24 }}>
+            <ShareableChartCard
+              title="Activity heatmap"
+              subtitle={`${selectedYear} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+            >
+              <HeatmapCalendar grid={heatmap} ghost={comparePeriod ? (heatmapB ?? undefined) : undefined} />
+            </ShareableChartCard>
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <ShareableChartCard
+              title="By month"
+              subtitle={`${selectedYear} · monthly distance`}
+            >
+              <MonthlyBars values={monthlyKm} compare={comparePeriod ? monthlyKmB : undefined} />
+            </ShareableChartCard>
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <ShareableChartCard
+              title="By distance"
+              subtitle={`${selectedYear} · distance buckets`}
+            >
+              <DistanceHistogram cells={histogramCells} />
+            </ShareableChartCard>
+          </View>
           <SectionHeader title="Streaks" />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <StatTile label="CURRENT" value={`${streaks.current}d`} />
@@ -437,14 +450,22 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
       )}
       {scope === 'month' && (
         <>
-          <SectionHeader title={MONTH_NAMES[selectedMonth - 1] + ' ' + selectedYear} />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <MonthCalendarDots year={selectedYear} month={selectedMonth} kmByDate={kmByDate} />
-          </Card>
-          <SectionHeader title="By week" />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
-          </Card>
+          <View style={{ marginTop: 24 }}>
+            <ShareableChartCard
+              title={MONTH_NAMES[selectedMonth - 1] + ' ' + selectedYear}
+              subtitle={`${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+            >
+              <MonthCalendarDots year={selectedYear} month={selectedMonth} kmByDate={kmByDate} />
+            </ShareableChartCard>
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <ShareableChartCard
+              title="By week"
+              subtitle={`${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+            >
+              <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
+            </ShareableChartCard>
+          </View>
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -458,10 +479,14 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
 
       {scope === 'all' && (
         <>
-          <SectionHeader title="Cumulative distance" />
-          <Card style={{ backgroundColor: c.paper2 }}>
-            <CumulativeChart series={cumulative} />
-          </Card>
+          <View style={{ marginTop: 24 }}>
+            <ShareableChartCard
+              title="Cumulative distance"
+              subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} across ${all.runs} runs`}
+            >
+              <CumulativeChart series={cumulative} />
+            </ShareableChartCard>
+          </View>
           <SectionHeader title="Lifetime records" />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <StatTile label="LONGEST RUN" value={fmtDist(longestRunKm, units) + ' ' + distUnit(units)} />

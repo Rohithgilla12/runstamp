@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { RunstampMark } from '../RunstampMark';
 
 interface Props {
   run: Activity;
@@ -180,6 +181,11 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
 
           {/* PB checkbox */}
           <PBCheckbox checked={isPB} inkTone={inkTone} accentColor={c.accent} />
+        </View>
+
+        {/* via Runstamp footer */}
+        <View style={{ marginTop: 10, alignItems: 'flex-end' }}>
+          <RunstampMark tone="ink" opacity={0.4} />
         </View>
       </View>
     </View>
