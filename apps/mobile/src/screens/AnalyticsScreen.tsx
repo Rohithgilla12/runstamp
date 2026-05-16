@@ -299,15 +299,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
     });
   }, [ascending, filters]);
   const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope, selectedYear, selectedMonth, selectedWeek), [filteredByLens, scope, selectedYear, selectedMonth, selectedWeek]);
-  const heatmapRef = useMemo(() => {
-    if (scope !== 'year') return today;
-    const endOfYear = new Date(selectedYear, 11, 31);
-    return endOfYear.getTime() < today.getTime() ? endOfYear : today;
-  }, [scope, selectedYear, today]);
   const heatmap = useMemo(() => buildHeatmap(
     filteredByLens.map((a) => ({ date: a.date, distance: a.distance })),
-    heatmapRef,
-  ), [filteredByLens, heatmapRef]);
+    selectedYear,
+    today,
+  ), [filteredByLens, selectedYear, today]);
   const streaks = useMemo(() => computeStreaks(filteredByLens), [filteredByLens]);
   const load = useMemo(() => buildLoadSeries(
     filteredByLens.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
@@ -385,12 +381,14 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const aggB = useMemo(() => periodB ? aggregate(periodB) : null, [periodB]);
 
   const heatmapB = useMemo(() => {
-    if (!periodB || !comparePeriod) return null;
-    const refForB = comparePeriod.kind === 'year'
-      ? new Date(comparePeriod.year, 11, 31)
-      : new Date(comparePeriod.year, comparePeriod.month, 0);
-    return buildHeatmap(periodB.map((a) => ({ date: a.date, distance: a.distance })), refForB);
-  }, [periodB, comparePeriod]);
+    // Heatmap card only renders for year scope, so month compares need no ghost.
+    if (!periodB || !comparePeriod || comparePeriod.kind !== 'year') return null;
+    return buildHeatmap(
+      periodB.map((a) => ({ date: a.date, distance: a.distance })),
+      comparePeriod.year,
+      today,
+    );
+  }, [periodB, comparePeriod, today]);
 
   const monthlyKmB = useMemo(() => {
     if (!periodB || !comparePeriod || comparePeriod.kind !== 'year') return undefined;

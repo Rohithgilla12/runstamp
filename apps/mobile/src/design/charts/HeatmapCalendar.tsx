@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Pressable, View, type GestureResponderEvent } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Pressable, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 import Svg, { Rect, G, Text as SvgText } from 'react-native-svg';
 import type { HeatmapGrid, HeatmapDay } from '../../analytics/heatmap';
 import { useColors } from '../theme';
@@ -11,16 +11,22 @@ interface Props {
   onSelectDay?: (day: HeatmapDay) => void;
 }
 
-const CELL = 11;
-const GAP = 2;
-const LEFT = 22;
+const LEFT = 14;
 const TOP = 14;
+const GAP = 1.5;
+const FALLBACK_W = 320;
 const WEEKDAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
 
 export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
   const c = useColors();
-  const W = LEFT + grid.weeks.length * (CELL + GAP);
-  const H = TOP + 7 * (CELL + GAP);
+  const [layoutW, setLayoutW] = useState(0);
+
+  const numWeeks = grid.weeks.length;
+  const containerW = layoutW > 0 ? layoutW : FALLBACK_W;
+  const cell = Math.max(2, (containerW - LEFT) / numWeeks - GAP);
+  const step = cell + GAP;
+  const W = LEFT + numWeeks * step;
+  const H = TOP + 7 * step;
 
   const monthTicks = useMemo(() => {
     const ticks: { x: number; label: string }[] = [];
@@ -30,12 +36,12 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
       if (!first) continue;
       const month = Number(first.date.slice(5, 7));
       if (month !== lastMonth) {
-        ticks.push({ x: LEFT + i * (CELL + GAP), label: monthAbbr(month) });
+        ticks.push({ x: LEFT + i * step, label: monthAbbr(month) });
         lastMonth = month;
       }
     }
     return ticks;
-  }, [grid]);
+  }, [grid, step]);
 
   const fillFor = (bucket: HeatmapDay['bucket']) => {
     if (bucket === 0) return c.paper2;
@@ -48,11 +54,13 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
   const handlePress = (evt: GestureResponderEvent) => {
     if (!onSelectDay) return;
     const { locationX, locationY } = evt.nativeEvent;
-    const wi = Math.floor((locationX - LEFT) / (CELL + GAP));
-    const di = Math.floor((locationY - TOP) / (CELL + GAP));
+    const wi = Math.floor((locationX - LEFT) / step);
+    const di = Math.floor((locationY - TOP) / step);
     const day = grid.weeks[wi]?.[di];
     if (day && !day.inFuture) onSelectDay(day);
   };
+
+  const onLayout = (e: LayoutChangeEvent) => setLayoutW(e.nativeEvent.layout.width);
 
   const svg = (
     <Svg width={W} height={H}>
@@ -63,7 +71,7 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
       ))}
       {WEEKDAY_LABELS.map((l, i) =>
         l ? (
-          <SvgText key={i} x={0} y={TOP + i * (CELL + GAP) + 9} fontSize={8} fill={c.ink3} fontFamily="JetBrainsMono-Regular">
+          <SvgText key={i} x={0} y={TOP + i * step + cell * 0.8} fontSize={7} fill={c.ink3} fontFamily="JetBrainsMono-Regular">
             {l}
           </SvgText>
         ) : null
@@ -73,11 +81,11 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
           {week.map((day, di) => (
             <Rect
               key={di}
-              x={LEFT + wi * (CELL + GAP)}
-              y={TOP + di * (CELL + GAP)}
-              width={CELL}
-              height={CELL}
-              rx={2}
+              x={LEFT + wi * step}
+              y={TOP + di * step}
+              width={cell}
+              height={cell}
+              rx={Math.min(2, cell * 0.25)}
               fill={day.inFuture ? 'transparent' : fillFor(day.bucket)}
               stroke={day.inFuture ? c.line2 : 'transparent'}
               strokeDasharray={day.inFuture ? '1 1' : undefined}
@@ -91,11 +99,11 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
             day.bucket > 0 ? (
               <Rect
                 key={di}
-                x={LEFT + wi * (CELL + GAP)}
-                y={TOP + di * (CELL + GAP)}
-                width={CELL}
-                height={CELL}
-                rx={2}
+                x={LEFT + wi * step}
+                y={TOP + di * step}
+                width={cell}
+                height={cell}
+                rx={Math.min(2, cell * 0.25)}
                 fill="none"
                 stroke={c.ink2}
                 strokeWidth={1}
@@ -108,7 +116,7 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
   );
 
   return (
-    <View>
+    <View onLayout={onLayout}>
       {onSelectDay ? <Pressable onPress={handlePress}>{svg}</Pressable> : svg}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 6, marginTop: 6 }}>
         <TText variant="mono" style={{ fontSize: 9, color: c.ink3 }}>Less</TText>
