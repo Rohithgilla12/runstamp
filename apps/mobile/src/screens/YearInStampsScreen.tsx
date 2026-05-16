@@ -152,7 +152,7 @@ function YearCard({ content, width }: { content: PageContent; width: number }) {
       </View>
       {content.bigNumber ? (
         <View style={{ marginTop: 28, flexDirection: 'row', alignItems: 'baseline' }}>
-          <TText variant="monoMedium" style={{ fontSize: 96, lineHeight: 100, letterSpacing: -3.2, color: c.paper }}>
+          <TText variant="monoMedium" style={{ fontSize: 96, lineHeight: 112, letterSpacing: -3.2, color: c.paper }}>
             {content.bigNumber}
           </TText>
           {content.bigUnit ? (

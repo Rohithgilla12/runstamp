@@ -36,7 +36,7 @@ export function TrainingLoadCard({ series, isHrBased, needsHrProfile, onTapProfi
       <Eyebrow>{isHrBased ? 'TRAINING LOAD' : 'LOAD (DISTANCE-BASED)'}</Eyebrow>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 }}>
         <View>
-          <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 36, letterSpacing: -1, color: c.ink }}>
+          <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
             {Math.round(last.ctl)}
           </TText>
           <Eyebrow style={{ color: c.ink3 }}>FITNESS · CTL</Eyebrow>

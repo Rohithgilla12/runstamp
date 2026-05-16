@@ -137,7 +137,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
           <View style={{ flex: 1.2 }}>
             <Eyebrow>DISTANCE</Eyebrow>
             <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-              <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 42, letterSpacing: -1.2, color: c.ink }}>
+              <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 50, letterSpacing: -1.2, color: c.ink }}>
                 {fmtDist(run.distance, units)}
               </TText>
               <TText style={{ fontSize: 13, color: c.ink3, marginLeft: 4 }}>{distUnit(units)}</TText>

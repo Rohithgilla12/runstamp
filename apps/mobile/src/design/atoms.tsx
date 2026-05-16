@@ -65,7 +65,7 @@ export function Stat({
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
         <TText
           variant="monoMedium"
-          style={{ fontSize: z.v, letterSpacing: -0.8, color: mainColor, lineHeight: z.v }}
+          style={{ fontSize: z.v, letterSpacing: -0.8, color: mainColor, lineHeight: Math.round(z.v * 1.17) }}
         >
           {value}
         </TText>

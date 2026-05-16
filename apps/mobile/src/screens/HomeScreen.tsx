@@ -470,7 +470,7 @@ function WeekSummary({ stats }: { stats: WeekStats }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 42, letterSpacing: -0.8, color: c.ink }}>
+            <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 50, letterSpacing: -0.8, color: c.ink }}>
               {fmtDist(stats.totalKm, units)}
             </TText>
             <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>{distUnit(units)}</TText>

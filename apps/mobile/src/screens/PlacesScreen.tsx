@@ -122,15 +122,15 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
                 <View style={{ flexDirection: 'row', gap: 14 }}>
                   <View style={{ flex: 1 }}>
                     <Eyebrow style={{ color: c.ink3 }}>STAMPS</Eyebrow>
-                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{cities}</TText>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 34, letterSpacing: -0.8, color: c.ink }}>{cities}</TText>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Eyebrow style={{ color: c.ink3 }}>COUNTRIES</Eyebrow>
-                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{countries}</TText>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 34, letterSpacing: -0.8, color: c.ink }}>{countries}</TText>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Eyebrow style={{ color: c.ink3 }}>CONTINENTS</Eyebrow>
-                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{continents}</TText>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 34, letterSpacing: -0.8, color: c.ink }}>{continents}</TText>
                   </View>
                 </View>
                 <Pressable
