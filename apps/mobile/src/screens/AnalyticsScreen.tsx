@@ -12,6 +12,16 @@ import { Card } from '../design/atoms';
 import { SunMark } from '../design/SunMark';
 import { SectionHeader } from './HomeScreen';
 import type { TabProps } from '../nav/types';
+import { sortByDateAsc } from '../analytics/sortByDate';
+import { buildHeatmap } from '../analytics/heatmap';
+import { computeStreaks } from '../analytics/streaks';
+import { buildLoadSeries, hasAnyHr } from '../analytics/trainingLoad';
+import { distanceHistogram } from '../analytics/histogram';
+import { HeatmapCalendar } from '../design/charts/HeatmapCalendar';
+import { MonthlyBars } from '../design/charts/MonthlyBars';
+import { DistanceHistogram } from '../design/charts/DistanceHistogram';
+import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
+import { DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
 
 type Scope = 'year' | 'month' | 'all';
 
@@ -102,14 +112,68 @@ function aggregate(rows: Activity[]): Aggregate {
 }
 
 function StatsView({ scope, activities }: { scope: Scope; activities: Activity[] }) {
+  const c = useColors();
   const filtered = useMemo(() => filterByScope(activities, scope), [activities, scope]);
   const all = useMemo(() => aggregate(activities), [activities]);
   const scoped = useMemo(() => aggregate(filtered), [filtered]);
   const { efforts } = useBestEfforts();
 
+  const ascending = useMemo(() => sortByDateAsc(activities), [activities]);
+  const hrMax = DEFAULT_HR_MAX;
+  const hrResting = DEFAULT_HR_RESTING;
+  const heatmap = useMemo(() => buildHeatmap(
+    ascending.map((a) => ({ date: a.date, distance: a.distance })),
+  ), [ascending]);
+  const streaks = useMemo(() => computeStreaks(ascending), [ascending]);
+  const load = useMemo(() => buildLoadSeries(
+    ascending.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
+    new Date(),
+    hrMax,
+    hrResting,
+  ), [ascending, hrMax, hrResting]);
+  const hrBased = useMemo(() => hasAnyHr(ascending.map((a) => ({ avgHr: a.avgHr }))), [ascending]);
+  const monthlyKm = useMemo(() => {
+    const y = new Date().getFullYear();
+    const out: number[] = Array(12).fill(0);
+    for (const a of ascending) {
+      const d = new Date(a.date);
+      if (d.getFullYear() === y) out[d.getMonth()] += a.distance;
+    }
+    return out;
+  }, [ascending]);
+  const histogramCells = useMemo(() => distanceHistogram(filtered), [filtered]);
+
   return (
     <View>
       {scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} /> : <LifetimeHero agg={all} />}
+      {scope === 'year' && (
+        <>
+          <SectionHeader title="Activity heatmap" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <HeatmapCalendar grid={heatmap} />
+          </Card>
+          <SectionHeader title="By month" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <MonthlyBars values={monthlyKm} />
+          </Card>
+          <SectionHeader title="By distance" />
+          <Card style={{ backgroundColor: c.paper2 }}>
+            <DistanceHistogram cells={histogramCells} />
+          </Card>
+          <SectionHeader title="Streaks" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <StatTile label="CURRENT" value={`${streaks.current}d`} />
+            <StatTile label="LONGEST" value={`${streaks.longest}d`} />
+          </View>
+          <View style={{ marginTop: 12 }}>
+            <TrainingLoadCard
+              series={load}
+              isHrBased={hrBased}
+              needsHrProfile={hrBased && hrMax === DEFAULT_HR_MAX && hrResting === DEFAULT_HR_RESTING}
+            />
+          </View>
+        </>
+      )}
       {efforts.length > 0 && (
         <>
           <SectionHeader title="Personal bests" />
@@ -241,6 +305,16 @@ function NoneInScope({ scope }: { scope: Scope }) {
   return (
     <View style={{ paddingVertical: 18, alignItems: 'center' }}>
       <TText style={{ fontSize: 12, color: c.ink3 }}>No runs in this {scope}.</TText>
+    </View>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  const c = useColors();
+  return (
+    <View style={{ flex: 1, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 10, padding: 12 }}>
+      <Eyebrow style={{ color: c.ink3 }}>{label}</Eyebrow>
+      <TText variant="monoMedium" style={{ fontSize: 22, color: c.ink, marginTop: 4 }}>{value}</TText>
     </View>
   );
 }
