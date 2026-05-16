@@ -24,6 +24,10 @@ import { MonthlyBars } from '../design/charts/MonthlyBars';
 import { DistanceHistogram } from '../design/charts/DistanceHistogram';
 import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
 import { classifyAvgHr, DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
+import { dailyKmForWeek, filterByWeek, labelWeek, stepWeek, weekKeyFor, type WeekKey } from '../analytics/week';
+import { currentVo2, deltaVo2, vo2Series } from '../analytics/vo2max';
+import { Vo2MaxCard } from '../design/charts/Vo2MaxCard';
+import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../design/charts/MonthCalendarDots';
@@ -32,7 +36,7 @@ import { AnalyticsFilters, DEFAULT_FILTERS, filtersAreActive, type Filters } fro
 import { useAccount } from '../state/useAccount';
 import { useNavigation } from '@react-navigation/native';
 
-type Scope = 'year' | 'month' | 'all';
+type Scope = 'week' | 'month' | 'year' | 'all';
 
 export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const c = useColors();
@@ -41,6 +45,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const [scope, setScope] = useState<Scope>('year');
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
+  const [selectedWeek, setSelectedWeek] = useState<WeekKey>(() => weekKeyFor(today));
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareOn, setCompareOn] = useState(false);
@@ -55,12 +60,19 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   }, [refresh]);
 
   useEffect(() => {
-    if (scope === 'all') { setCompareOn(false); setComparePeriod(null); }
+    // Compare-mode only makes sense for year + month — week windows are too
+    // narrow to anchor a meaningful comparison, all-time has no second period.
+    if (scope === 'all' || scope === 'week') { setCompareOn(false); setComparePeriod(null); }
   }, [scope]);
 
+  const todayWeek = useMemo(() => weekKeyFor(today), [today]);
   const isToday = scope === 'year'
     ? selectedYear === today.getFullYear()
-    : selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1;
+    : scope === 'month'
+      ? selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1
+      : scope === 'week'
+        ? selectedWeek.isoYear === todayWeek.isoYear && selectedWeek.isoWeek === todayWeek.isoWeek
+        : true;
 
   const stepPrimary = (dir: 1 | -1) => {
     if (scope === 'year') {
@@ -72,6 +84,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
       else if (m > 12) { m = 1; y += 1; }
       setSelectedYear(y);
       setSelectedMonth(m);
+    } else if (scope === 'week') {
+      setSelectedWeek((w) => stepWeek(w, dir));
     }
     setComparePeriod(null);
     setCompareOn(false);
@@ -79,10 +93,15 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const jumpToToday = () => {
     setSelectedYear(today.getFullYear());
     setSelectedMonth(today.getMonth() + 1);
+    setSelectedWeek(todayWeek);
   };
   const primaryLabel = scope === 'year'
     ? String(selectedYear)
-    : `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+    : scope === 'month'
+      ? `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`
+      : scope === 'week'
+        ? labelWeek(selectedWeek)
+        : '';
 
   return (
     <ScrollView
@@ -101,24 +120,24 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
       </View>
 
       <View style={{ paddingHorizontal: 14, paddingTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.paper2, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: c.line }}>
-          {(['year', 'month', 'all'] as const).map((id) => (
+        <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.paper2, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: c.line }}>
+          {(['week', 'month', 'year', 'all'] as const).map((id) => (
             <Pressable
               key={id}
               onPress={() => setScope(id)}
               hitSlop={4}
               style={{
-                flex: 1, paddingVertical: 12, borderRadius: 9,
+                flex: 1, paddingVertical: 11, borderRadius: 9,
                 backgroundColor: scope === id ? c.ink : 'transparent', alignItems: 'center',
               }}
             >
-              <TText style={{ fontSize: 13, fontWeight: '500', color: scope === id ? c.paper : c.ink2 }}>
-                {id === 'year' ? 'Year' : id === 'month' ? 'Month' : 'All-time'}
+              <TText style={{ fontSize: 12, fontWeight: '500', color: scope === id ? c.paper : c.ink2 }}>
+                {id === 'week' ? 'Week' : id === 'month' ? 'Month' : id === 'year' ? 'Year' : 'All-time'}
               </TText>
             </Pressable>
           ))}
         </View>
-        {scope !== 'all' && (
+        {(scope === 'year' || scope === 'month') && (
           <Pressable
             onPress={() => {
               const next = !compareOn;
@@ -135,7 +154,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
           </Pressable>
         )}
       </View>
-      {scope !== 'all' && (
+      {(scope === 'year' || scope === 'month' || scope === 'week') && (
         <View style={{ paddingHorizontal: 14, paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <StepperButton onPress={() => stepPrimary(-1)} label="‹" accessibilityLabel="Previous period" />
           <View style={{ minWidth: 128, paddingHorizontal: 8, alignItems: 'center' }}>
@@ -155,7 +174,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
           )}
         </View>
       )}
-      {compareOn && comparePeriod && scope !== 'all' && (
+      {compareOn && comparePeriod && (scope === 'year' || scope === 'month') && (
         <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <TText style={{ fontSize: 12, color: c.ink3, marginRight: 4 }}>vs</TText>
           <StepperButton onPress={() => setComparePeriod(stepComparePeriod(comparePeriod, -1))} label="‹" accessibilityLabel="Previous compare period" />
@@ -200,6 +219,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
             filters={filters}
             selectedYear={selectedYear}
             selectedMonth={selectedMonth}
+            selectedWeek={selectedWeek}
             comparePeriod={compareOn ? comparePeriod : null}
             hrMax={me?.hrMax ?? DEFAULT_HR_MAX}
             hrResting={me?.hrResting ?? DEFAULT_HR_RESTING}
@@ -245,12 +265,13 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities, filters, selectedYear, selectedMonth, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
+function StatsView({ scope, activities, filters, selectedYear, selectedMonth, selectedWeek, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
   scope: Scope;
   activities: Activity[];
   filters: Filters;
   selectedYear: number;
   selectedMonth: number;
+  selectedWeek: WeekKey;
   comparePeriod: Period | null;
   hrMax: number;
   hrResting: number;
@@ -259,7 +280,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
 }) {
   const c = useColors();
   const { units } = useAppState();
-  const filtered = useMemo(() => filterByScope(activities, scope, selectedYear, selectedMonth), [activities, scope, selectedYear, selectedMonth]);
+  const filtered = useMemo(() => filterByScope(activities, scope, selectedYear, selectedMonth, selectedWeek), [activities, scope, selectedYear, selectedMonth, selectedWeek]);
   const all = useMemo(() => aggregate(activities), [activities]);
   const scoped = useMemo(() => aggregate(filtered), [filtered]);
   const { efforts } = useBestEfforts();
@@ -277,7 +298,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
       return true;
     });
   }, [ascending, filters]);
-  const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope, selectedYear, selectedMonth), [filteredByLens, scope, selectedYear, selectedMonth]);
+  const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope, selectedYear, selectedMonth, selectedWeek), [filteredByLens, scope, selectedYear, selectedMonth, selectedWeek]);
   const heatmapRef = useMemo(() => {
     if (scope !== 'year') return today;
     const endOfYear = new Date(selectedYear, 11, 31);
@@ -339,6 +360,22 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
   const cumulative = useMemo(() =>
     monthlyCumulative(filteredByLens.map((a) => ({ date: a.date, distance: a.distance })))
   , [filteredByLens]);
+
+  // Week scope: 7-day km buckets for the selected week.
+  const dailyKmThisWeek = useMemo(
+    () => dailyKmForWeek(filteredByLens.map((a) => ({ date: a.date, distance: a.distance })), selectedWeek),
+    [filteredByLens, selectedWeek],
+  );
+
+  // VO₂ max trend — computed against full history (filtered by lens), not
+  // scope-windowed. The card hides itself when no measurements exist.
+  const vo2Trend = useMemo(
+    () => vo2Series(filteredByLens.map((a) => ({ date: a.date, vo2max: a.vo2max }))),
+    [filteredByLens],
+  );
+  const vo2Now = useMemo(() => currentVo2(vo2Trend), [vo2Trend]);
+  const vo2Delta = useMemo(() => deltaVo2(vo2Trend), [vo2Trend]);
+  const hasVo2 = vo2Trend.length > 0;
 
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
@@ -411,7 +448,32 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
             </View>
           </View>
         </Card>
-      ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} /> : <LifetimeHero agg={all} />}
+      ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} week={selectedWeek} /> : <LifetimeHero agg={all} />}
+      {scope === 'week' && (
+        <>
+          <View style={{ marginTop: 24 }}>
+            <ShareableChartCard
+              title="By day"
+              subtitle={`${labelWeek(selectedWeek)} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+            >
+              <DailyBars values={dailyKmThisWeek} />
+            </ShareableChartCard>
+          </View>
+          {hasVo2 && (
+            <View style={{ marginTop: 12 }}>
+              <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
+          <View style={{ marginTop: 12 }}>
+            <TrainingLoadCard
+              series={load}
+              isHrBased={hrBased}
+              needsHrProfile={hrBased && needsHrProfile}
+              onTapProfile={onTapProfile}
+            />
+          </View>
+        </>
+      )}
       {scope === 'year' && (
         <>
           <View style={{ marginTop: 24 }}>
@@ -443,6 +505,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
             <StatTile label="CURRENT" value={`${streaks.current}d`} />
             <StatTile label="LONGEST" value={`${streaks.longest}d`} />
           </View>
+          {hasVo2 && (
+            <View style={{ marginTop: 12 }}>
+              <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -497,6 +564,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, co
             <StatTile label="LONGEST RUN" value={fmtDist(longestRunKm, units) + ' ' + distUnit(units)} />
             <StatTile label="LONGEST STREAK" value={`${streaks.longest}d`} />
           </View>
+          {hasVo2 && (
+            <View style={{ marginTop: 12 }}>
+              <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -544,21 +616,29 @@ function BestEffortRow({ effort }: { effort: BestEffort }) {
   );
 }
 
-function filterByScope(rows: Activity[], scope: Scope, year: number, month: number): Activity[] {
+function filterByScope(rows: Activity[], scope: Scope, year: number, month: number, week: WeekKey): Activity[] {
   if (scope === 'all') return rows;
   if (scope === 'year') {
     return rows.filter((a) => new Date(a.date).getFullYear() === year);
   }
-  return rows.filter((a) => {
-    const d = new Date(a.date);
-    return d.getFullYear() === year && d.getMonth() === month - 1;
-  });
+  if (scope === 'month') {
+    return rows.filter((a) => {
+      const d = new Date(a.date);
+      return d.getFullYear() === year && d.getMonth() === month - 1;
+    });
+  }
+  // week
+  return filterByWeek(rows, week);
 }
 
-function ScopedHero({ scope, agg, year, month }: { scope: Scope; agg: Aggregate; year: number; month: number }) {
+function ScopedHero({ scope, agg, year, month, week }: { scope: Scope; agg: Aggregate; year: number; month: number; week: WeekKey }) {
   const c = useColors();
   const { units } = useAppState();
-  const label = scope === 'year' ? String(year) : `${MONTH_NAMES[month - 1].toUpperCase()} ${year}`;
+  const label = scope === 'year'
+    ? String(year)
+    : scope === 'month'
+      ? `${MONTH_NAMES[month - 1].toUpperCase()} ${year}`
+      : labelWeek(week).toUpperCase();
   return (
     <Card style={{ backgroundColor: c.paper2 }}>
       <Eyebrow>{label}</Eyebrow>
