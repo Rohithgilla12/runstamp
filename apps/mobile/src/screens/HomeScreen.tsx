@@ -141,6 +141,8 @@ function ConnectedHome({
         <WeekSummary stats={weekStats} />
       </View>
 
+      <RecapCard activities={activities} earned={earned} />
+
       {earned.length > 0 && <RecentlyEarned earned={earned} onOpenStamps={onOpenStamps} />}
 
       <SectionHeader title="Recent runs" />
@@ -169,6 +171,130 @@ function ConnectedHome({
       </View>
     </>
   );
+}
+
+// PRD §6.2 — a rotating recap card. Pick one of several candidate facts
+// based on the day, so it stays stable through a session and rotates day
+// to day. Surfaces what's most interesting from real data — silently hides
+// when no fact is meaningful enough to show.
+function RecapCard({ activities, earned }: { activities: Activity[]; earned: CatalogStamp[] }) {
+  const c = useColors();
+  const { units } = useAppState();
+  const fact = pickRecapFact(activities, earned, units);
+  if (!fact) return null;
+  return (
+    <>
+      <SectionHeader title="Recap" />
+      <View style={{ paddingHorizontal: 20 }}>
+        <View
+          style={{
+            backgroundColor: c.paper2,
+            borderWidth: 1,
+            borderColor: c.line,
+            borderRadius: 14,
+            padding: 16,
+          }}
+        >
+          <Eyebrow style={{ color: c.ink3 }}>{fact.eyebrow}</Eyebrow>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4, flexWrap: 'wrap' }}>
+            <TText variant="serif" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.lead}</TText>
+            {fact.italic ? (
+              <TText variant="serifItalic" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.italic}</TText>
+            ) : null}
+            {fact.tail ? (
+              <TText variant="serif" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.tail}</TText>
+            ) : null}
+          </View>
+          {fact.detail ? (
+            <TText style={{ fontSize: 12, color: c.ink3, marginTop: 8 }}>{fact.detail}</TText>
+          ) : null}
+        </View>
+      </View>
+    </>
+  );
+}
+
+interface RecapFact { eyebrow: string; lead: string; italic?: string; tail?: string; detail?: string }
+
+function pickRecapFact(activities: Activity[], earned: CatalogStamp[], units: 'km' | 'mi'): RecapFact | null {
+  const candidates: RecapFact[] = [];
+
+  // Cities this month
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+  const monthRuns = activities.filter((a) => a.date.startsWith(monthPrefix));
+  const monthCities = new Set(monthRuns.map((a) => a.city?.trim()).filter(Boolean));
+  if (monthCities.size >= 2) {
+    candidates.push({
+      eyebrow: 'THIS MONTH',
+      lead: 'You ran in ',
+      italic: `${monthCities.size}`,
+      tail: ` cities.`,
+      detail: [...monthCities].slice(0, 4).join(' · '),
+    });
+  }
+
+  // Lifetime distance milestone proximity (next round number)
+  const lifetimeKm = activities.reduce((a, r) => a + r.distance, 0);
+  const milestones = [100, 250, 500, 1000, 2500, 5000, 10000];
+  const nextMs = milestones.find((m) => m > lifetimeKm);
+  if (nextMs && nextMs - lifetimeKm < 250) {
+    candidates.push({
+      eyebrow: 'NEXT MILESTONE',
+      lead: 'You’re ',
+      italic: `${Math.round(nextMs - lifetimeKm)}`,
+      tail: ` ${units === 'mi' ? 'mi' : 'km'} from ${nextMs.toLocaleString()}.`,
+      detail: `Lifetime: ${Math.round(lifetimeKm).toLocaleString()} ${units === 'mi' ? 'mi' : 'km'}.`,
+    });
+  }
+
+  // Recently-earned stamp
+  const lastEarned = [...earned].sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))[0];
+  if (lastEarned?.earnedAt) {
+    const days = daysAgo(lastEarned.earnedAt);
+    if (days <= 7) {
+      candidates.push({
+        eyebrow: 'STAMPED',
+        lead: 'Earned ',
+        italic: `${lastEarned.name}`,
+        tail: days === 0 ? ' today.' : days === 1 ? ' yesterday.' : ` ${days} days ago.`,
+        detail: lastEarned.description,
+      });
+    }
+  }
+
+  // Country count
+  const countries = new Set(activities.map((a) => a.country?.trim()).filter(Boolean));
+  if (countries.size >= 2) {
+    candidates.push({
+      eyebrow: 'PASSPORT',
+      lead: 'You’ve run in ',
+      italic: `${countries.size}`,
+      tail: ` countries.`,
+    });
+  }
+
+  // Number of stamps total
+  if (earned.length >= 3) {
+    candidates.push({
+      eyebrow: 'COLLECTION',
+      lead: '',
+      italic: `${earned.length}`,
+      tail: ` stamps earned. Keep going.`,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  // Stable rotation: hash today's date into the candidate index.
+  const idx = (now.getFullYear() * 372 + now.getMonth() * 31 + now.getDate()) % candidates.length;
+  return candidates[idx];
+}
+
+function daysAgo(iso: string): number {
+  const earned = new Date(iso);
+  const today = new Date();
+  const days = Math.floor((today.getTime() - earned.getTime()) / 86_400_000);
+  return Math.max(0, days);
 }
 
 function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOpenStamps: () => void }) {
