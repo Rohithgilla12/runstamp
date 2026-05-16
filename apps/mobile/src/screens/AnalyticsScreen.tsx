@@ -538,6 +538,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
             </ShareableChartCard>
           </View>
+          {hasVo2 && (
+            <View style={{ marginTop: 12 }}>
+              <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}

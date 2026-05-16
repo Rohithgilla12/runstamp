@@ -17,6 +17,18 @@ import (
 // ErrNotFound is returned by repo reads when no row matches.
 var ErrNotFound = errors.New("activities: not found")
 
+// selectColumns is the canonical column list every read query SELECTs.
+// scanActivity expects this exact ordering. Keep them in sync.
+const selectColumns = `id, user_id, source, external_id, sport, started_at,
+  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
+  avg_hr, max_hr, avg_pace_s_per_km, calories,
+  title, notes,
+  location_city, location_country,
+  raw, dupe_of, ingested_at,
+  cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
+  stride_length_m, vo2max_ml_kg_min, avg_speed_m_s, splits,
+  has_detail, has_streams`
+
 // Activity is an in-memory view of one activities row.
 type Activity struct {
 	ID              string
@@ -284,14 +296,8 @@ func (r *Repository) findDuplicateTx(ctx context.Context, tx pgx.Tx, userID, sou
 }
 
 func (r *Repository) findDuplicateQ(ctx context.Context, q rowQuerier, userID, source string, startedAt time.Time, distanceM float64) (*Activity, error) {
-	const sql = `
-SELECT
-  id, user_id, source, external_id, sport, started_at,
-  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
-  avg_hr, max_hr, avg_pace_s_per_km, calories,
-  title, notes,
-  location_city, location_country,
-  raw, dupe_of, ingested_at
+	sql := `
+SELECT ` + selectColumns + `
 FROM activities
 WHERE user_id = $1
   AND dupe_of IS NULL
@@ -326,14 +332,8 @@ func (r *Repository) flipDupeOfTx(ctx context.Context, tx pgx.Tx, existingID, ca
 // most-recent first, up to limit rows. The future Home screen ingest API
 // will call this.
 func (r *Repository) ListForUser(ctx context.Context, userID string, limit int) ([]Activity, error) {
-	const sql = `
-SELECT
-  id, user_id, source, external_id, sport, started_at,
-  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
-  avg_hr, max_hr, avg_pace_s_per_km, calories,
-  title, notes,
-  location_city, location_country,
-  raw, dupe_of, ingested_at
+	sql := `
+SELECT ` + selectColumns + `
 FROM activities
 WHERE user_id = $1
   AND dupe_of IS NULL
@@ -362,14 +362,8 @@ func (r *Repository) Pool() *pgxpool.Pool { return r.pool }
 
 // findBySourceExternalQ re-selects a row by its unique key after a conflict.
 func (r *Repository) findBySourceExternalQ(ctx context.Context, q rowQuerier, userID, source, externalID string) (*Activity, error) {
-	const sql = `
-SELECT
-  id, user_id, source, external_id, sport, started_at,
-  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
-  avg_hr, max_hr, avg_pace_s_per_km, calories,
-  title, notes,
-  location_city, location_country,
-  raw, dupe_of, ingested_at
+	sql := `
+SELECT ` + selectColumns + `
 FROM activities
 WHERE user_id = $1 AND source = $2 AND external_id = $3`
 
@@ -406,6 +400,7 @@ func (q txRowQuerier) QueryRow(ctx context.Context, sql string, args ...interfac
 func scanActivity(row pgx.Row) (*Activity, error) {
 	var a Activity
 	var raw []byte
+	var splits []byte
 	if err := row.Scan(
 		&a.ID, &a.UserID, &a.Source, &a.ExternalID, &a.Sport, &a.StartedAt,
 		&a.ElapsedSeconds, &a.MovingSeconds, &a.DistanceM, &a.ElevationGainM,
@@ -413,12 +408,19 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 		&a.Title, &a.Notes,
 		&a.LocationCity, &a.LocationCountry,
 		&raw, &a.DupeOf, &a.IngestedAt,
+		&a.CadenceSPM, &a.RunningPowerW, &a.VerticalOscCm, &a.GroundContactMs,
+		&a.StrideLengthM, &a.VO2maxMlKgMin, &a.AvgSpeedMS, &splits,
+		&a.HasDetail, &a.HasStreams,
 	); err != nil {
 		return nil, err
 	}
 	if raw != nil {
 		msg := json.RawMessage(raw)
 		a.Raw = &msg
+	}
+	if splits != nil {
+		msg := json.RawMessage(splits)
+		a.Splits = &msg
 	}
 	return &a, nil
 }
@@ -503,14 +505,8 @@ WHERE id = $1`,
 // this user that still has has_detail=false. Returns (nil, nil) when all
 // activities are enriched.
 func (r *Repository) NextPendingDetail(ctx context.Context, userID string) (*Activity, error) {
-	const sql = `
-SELECT
-  id, user_id, source, external_id, sport, started_at,
-  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
-  avg_hr, max_hr, avg_pace_s_per_km, calories,
-  title, notes,
-  location_city, location_country,
-  raw, dupe_of, ingested_at
+	sql := `
+SELECT ` + selectColumns + `
 FROM activities
 WHERE user_id = $1
   AND source = 'strava'
