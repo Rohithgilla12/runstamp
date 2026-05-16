@@ -35,6 +35,8 @@ import { DecouplingCard } from '../design/charts/DecouplingCard';
 import { currentStride, deltaStride, strideSeries } from '../analytics/strideLength';
 import { StrideLengthCard } from '../design/charts/StrideLengthCard';
 import { FormChartCard } from '../design/charts/FormChartCard';
+import { mafHr, mafImprovementSec, mafPaceSeries } from '../analytics/maf';
+import { MafPaceCard } from '../design/charts/MafPaceCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -231,6 +233,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
             comparePeriod={compareOn ? comparePeriod : null}
             hrMax={me?.hrMax ?? DEFAULT_HR_MAX}
             hrResting={me?.hrResting ?? DEFAULT_HR_RESTING}
+            birthYear={me?.birthYear}
             needsHrProfile={!me?.hrMax && !me?.hrResting}
             onTapProfile={() => nav.navigate('Profile' as never)}
           />
@@ -273,7 +276,7 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities, filters, selectedYear, selectedMonth, selectedWeek, comparePeriod, hrMax, hrResting, needsHrProfile, onTapProfile }: {
+function StatsView({ scope, activities, filters, selectedYear, selectedMonth, selectedWeek, comparePeriod, hrMax, hrResting, birthYear, needsHrProfile, onTapProfile }: {
   scope: Scope;
   activities: Activity[];
   filters: Filters;
@@ -283,6 +286,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   comparePeriod: Period | null;
   hrMax: number;
   hrResting: number;
+  birthYear?: number;
   needsHrProfile: boolean;
   onTapProfile: () => void;
 }) {
@@ -420,6 +424,21 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const strideDelta = useMemo(() => deltaStride(strideTrend), [strideTrend]);
   const hasStride = strideTrend.length > 0;
 
+  // MAF aerobic-test trend — monthly average pace of all sub-MAF-HR runs.
+  // Needs birth year to compute MAF HR; empty state prompts the user
+  // to add it. Adjustment defaults to 0 (assumes consistent training).
+  const mafHrCap = useMemo(() => birthYear ? mafHr(birthYear, 0, today) : null, [birthYear, today]);
+  const mafTrend = useMemo(() => {
+    if (!mafHrCap) return [];
+    return mafPaceSeries(
+      filteredByLens.map((a) => ({ date: a.date, pace: a.pace, avgHr: a.avgHr || undefined, distance: a.distance })),
+      mafHrCap,
+    );
+  }, [filteredByLens, mafHrCap]);
+  const mafImprovement = useMemo(() => mafImprovementSec(mafTrend), [mafTrend]);
+  const needsBirthYear = !birthYear;
+  const showMaf = (scope === 'year' || scope === 'all') && (mafTrend.length > 0 || needsBirthYear);
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -524,6 +543,17 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
             </View>
           )}
+          {showMaf && (
+            <View style={{ marginTop: 12 }}>
+              <MafPaceCard
+                series={mafTrend}
+                mafHrThreshold={mafHrCap ?? 0}
+                improvementSec={mafImprovement}
+                needsBirthYear={needsBirthYear}
+                onTapProfile={onTapProfile}
+              />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <FormChartCard
               series={load}
@@ -590,6 +620,17 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
             </View>
           )}
+          {showMaf && (
+            <View style={{ marginTop: 12 }}>
+              <MafPaceCard
+                series={mafTrend}
+                mafHrThreshold={mafHrCap ?? 0}
+                improvementSec={mafImprovement}
+                needsBirthYear={needsBirthYear}
+                onTapProfile={onTapProfile}
+              />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <FormChartCard
               series={load}
@@ -636,6 +677,17 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasDecoupling && (
             <View style={{ marginTop: 12 }}>
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
+            </View>
+          )}
+          {showMaf && (
+            <View style={{ marginTop: 12 }}>
+              <MafPaceCard
+                series={mafTrend}
+                mafHrThreshold={mafHrCap ?? 0}
+                improvementSec={mafImprovement}
+                needsBirthYear={needsBirthYear}
+                onTapProfile={onTapProfile}
+              />
             </View>
           )}
           <View style={{ marginTop: 12 }}>
@@ -687,6 +739,17 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasDecoupling && (
             <View style={{ marginTop: 12 }}>
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
+            </View>
+          )}
+          {showMaf && (
+            <View style={{ marginTop: 12 }}>
+              <MafPaceCard
+                series={mafTrend}
+                mafHrThreshold={mafHrCap ?? 0}
+                improvementSec={mafImprovement}
+                needsBirthYear={needsBirthYear}
+                onTapProfile={onTapProfile}
+              />
             </View>
           )}
           <View style={{ marginTop: 12 }}>

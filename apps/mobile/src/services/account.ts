@@ -9,6 +9,7 @@ export interface MeResponse {
   units: string;
   hrMax?: number;
   hrResting?: number;
+  birthYear?: number;
   hasStrava: boolean;
 }
 
@@ -18,6 +19,7 @@ export interface ProfilePatch {
   units?: 'metric' | 'imperial';
   hrMax?: number | null;
   hrResting?: number | null;
+  birthYear?: number | null;
 }
 
 export function getMe(idToken: string | null): Promise<MeResponse> {

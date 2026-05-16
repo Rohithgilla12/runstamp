@@ -28,6 +28,7 @@ type User struct {
 	Units       string
 	HRMax       *int
 	HRResting   *int
+	BirthYear   *int
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -52,9 +53,9 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 		ON CONFLICT (firebase_uid) DO UPDATE SET
 			email      = EXCLUDED.email,
 			updated_at = now()
-		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, created_at, updated_at
 	`, firebaseUID, email).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("users: upsert by firebase uid: %w", err)
@@ -67,11 +68,11 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 func (r *Repo) FindByFirebaseUID(ctx context.Context, firebaseUID string) (*User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
+		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, created_at, updated_at
 		FROM users
 		WHERE firebase_uid = $1
 	`, firebaseUID).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -112,6 +113,7 @@ type ProfilePatch struct {
 	Units       *string
 	HRMax       *int
 	HRResting   *int
+	BirthYear   *int
 }
 
 // UpdateProfile applies a partial update and returns the refreshed row.
@@ -138,15 +140,19 @@ func (r *Repo) UpdateProfile(ctx context.Context, userID string, p ProfilePatch)
 		args = append(args, *p.HRResting)
 		sets = append(sets, fmt.Sprintf("hr_resting = $%d", len(args)))
 	}
+	if p.BirthYear != nil {
+		args = append(args, *p.BirthYear)
+		sets = append(sets, fmt.Sprintf("birth_year = $%d", len(args)))
+	}
 	q := fmt.Sprintf(`
 		UPDATE users SET %s
 		WHERE id = $1
-		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, created_at, updated_at
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, created_at, updated_at
 	`, strings.Join(sets, ", "))
 	var u User
 	err := r.pool.QueryRow(ctx, q, args...).Scan(
 		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units,
-		&u.HRMax, &u.HRResting, &u.CreatedAt, &u.UpdatedAt,
+		&u.HRMax, &u.HRResting, &u.BirthYear, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("users: update profile: %w", err)

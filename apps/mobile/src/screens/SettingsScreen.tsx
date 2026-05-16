@@ -39,10 +39,12 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
   const [sub, setSub] = useState<Sub>('main');
   const [hrMax, setHrMax] = useState<string>('');
   const [hrResting, setHrResting] = useState<string>('');
+  const [birthYear, setBirthYear] = useState<string>('');
   useEffect(() => {
     if (me) {
       setHrMax(me.hrMax ? String(me.hrMax) : '');
       setHrResting(me.hrResting ? String(me.hrResting) : '');
+      setBirthYear(me.birthYear ? String(me.birthYear) : '');
     }
   }, [me]);
   const saveHr = useCallback(async () => {
@@ -53,6 +55,15 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
     try { await saveAccount({ hrMax: hr, hrResting: re }); }
     catch (e) { Alert.alert('Could not save', e instanceof Error ? e.message : String(e)); }
   }, [hrMax, hrResting, saveAccount]);
+  const saveBirthYear = useCallback(async () => {
+    const by = birthYear === '' ? null : Number(birthYear);
+    const thisYear = new Date().getFullYear();
+    if (by !== null && (Number.isNaN(by) || by < thisYear - 100 || by > thisYear - 10)) {
+      Alert.alert(`Birth year must be between ${thisYear - 100} and ${thisYear - 10}`); return;
+    }
+    try { await saveAccount({ birthYear: by }); }
+    catch (e) { Alert.alert('Could not save', e instanceof Error ? e.message : String(e)); }
+  }, [birthYear, saveAccount]);
   const totalKm = activities.reduce((a, x) => a + x.distance, 0);
   const totalRuns = activities.length;
   const streak = computeStreak(activities.map((a) => a.date));
@@ -163,8 +174,17 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
             onChangeText={setHrResting}
             onBlur={saveHr}
           />
+          <LabeledInput
+            label="BIRTH YEAR"
+            placeholder="1990"
+            value={birthYear}
+            keyboardType="number-pad"
+            onChangeText={setBirthYear}
+            onBlur={saveBirthYear}
+          />
           <TText style={{ fontSize: 11, color: c.ink3 }}>
-            Used to compute training load. Defaults to 190 / 60 if unset.
+            HR drives training load · birth year drives MAF aerobic ceiling. Defaults
+            to 190 / 60 if HR unset.
           </TText>
         </Card>
       </View>

@@ -18,6 +18,7 @@ type meResponse struct {
 	Units       string  `json:"units"`
 	HRMax       *int    `json:"hrMax,omitempty"`
 	HRResting   *int    `json:"hrResting,omitempty"`
+	BirthYear   *int    `json:"birthYear,omitempty"`
 	HasStrava   bool    `json:"hasStrava"`
 }
 
@@ -39,6 +40,7 @@ func toMeResponse(u *users.User, hasStrava bool) meResponse {
 		Units:       u.Units,
 		HRMax:       u.HRMax,
 		HRResting:   u.HRResting,
+		BirthYear:   u.BirthYear,
 		HasStrava:   hasStrava,
 	}
 }
@@ -80,6 +82,17 @@ type patchMeRequest struct {
 	Units       *string `json:"units"`
 	HRMax       *int    `json:"hrMax"`
 	HRResting   *int    `json:"hrResting"`
+	BirthYear   *int    `json:"birthYear"`
+}
+
+func validateBirthYear(by *int) error {
+	if by == nil {
+		return nil
+	}
+	if *by < 1900 || *by > 2100 {
+		return errors.New("birth_year must be a plausible 4-digit year")
+	}
+	return nil
 }
 
 var errInvalidUnits = errors.New("units must be 'metric' or 'imperial'")
@@ -123,6 +136,10 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		if err := validateBirthYear(req.BirthYear); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		user, err := repo.FindByFirebaseUID(r.Context(), vt.UID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to load user")
@@ -138,6 +155,7 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			Units:       req.Units,
 			HRMax:       req.HRMax,
 			HRResting:   req.HRResting,
+			BirthYear:   req.BirthYear,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to update profile")
