@@ -22,7 +22,6 @@ import { HeatmapCalendar } from '../design/charts/HeatmapCalendar';
 import { ShareableChartCard } from '../design/ShareableChartCard';
 import { MonthlyBars } from '../design/charts/MonthlyBars';
 import { DistanceHistogram } from '../design/charts/DistanceHistogram';
-import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
 import { classifyAvgHr, DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
 import { dailyKmForWeek, filterByWeek, labelWeek, stepWeek, weekKeyFor, type WeekKey } from '../analytics/week';
 import { currentVo2, deltaVo2, vo2Series } from '../analytics/vo2max';
@@ -35,6 +34,7 @@ import { decouplingSeries, recentAvg } from '../analytics/decoupling';
 import { DecouplingCard } from '../design/charts/DecouplingCard';
 import { currentStride, deltaStride, strideSeries } from '../analytics/strideLength';
 import { StrideLengthCard } from '../design/charts/StrideLengthCard';
+import { FormChartCard } from '../design/charts/FormChartCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -525,7 +525,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             </View>
           )}
           <View style={{ marginTop: 12 }}>
-            <TrainingLoadCard
+            <FormChartCard
               series={load}
               isHrBased={hrBased}
               needsHrProfile={hrBased && needsHrProfile}
@@ -591,7 +591,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             </View>
           )}
           <View style={{ marginTop: 12 }}>
-            <TrainingLoadCard
+            <FormChartCard
               series={load}
               isHrBased={hrBased}
               needsHrProfile={hrBased && needsHrProfile}
@@ -639,7 +639,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             </View>
           )}
           <View style={{ marginTop: 12 }}>
-            <TrainingLoadCard
+            <FormChartCard
               series={load}
               isHrBased={hrBased}
               needsHrProfile={hrBased && needsHrProfile}
@@ -690,7 +690,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             </View>
           )}
           <View style={{ marginTop: 12 }}>
-            <TrainingLoadCard
+            <FormChartCard
               series={load}
               isHrBased={hrBased}
               needsHrProfile={hrBased && needsHrProfile}
