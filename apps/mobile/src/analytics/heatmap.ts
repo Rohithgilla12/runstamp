@@ -37,10 +37,19 @@ export function kmBucket(km: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-export function buildHeatmap<T extends DistRow>(rows: readonly T[], ref: Date = new Date()): HeatmapGrid {
-  const todayLocal = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
-  const endWeek = startOfWeekSunday(todayLocal);
-  const startWeek = new Date(endWeek.getTime() - 52 * 7 * MS_PER_DAY);
+// Sun-to-Sat grid covering the calendar `year`; days after `today` are inFuture.
+export function buildHeatmap<T extends DistRow>(
+  rows: readonly T[],
+  year: number,
+  today: Date = new Date(),
+): HeatmapGrid {
+  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startWeek = startOfWeekSunday(new Date(year, 0, 1));
+  const yearEnd = new Date(year, 11, 31);
+  const endSat = new Date(yearEnd.getFullYear(), yearEnd.getMonth(), yearEnd.getDate());
+  endSat.setDate(endSat.getDate() + (6 - endSat.getDay()));
+  const totalDays = Math.round((endSat.getTime() - startWeek.getTime()) / MS_PER_DAY) + 1;
+  const numWeeks = totalDays / 7;
 
   const byDate = new Map<string, number>();
   for (const r of rows) {
@@ -48,7 +57,7 @@ export function buildHeatmap<T extends DistRow>(rows: readonly T[], ref: Date = 
   }
 
   const weeks: HeatmapDay[][] = [];
-  for (let w = 0; w < 53; w++) {
+  for (let w = 0; w < numWeeks; w++) {
     const week: HeatmapDay[] = [];
     for (let d = 0; d < 7; d++) {
       const cell = new Date(startWeek.getTime() + (w * 7 + d) * MS_PER_DAY);
@@ -63,5 +72,5 @@ export function buildHeatmap<T extends DistRow>(rows: readonly T[], ref: Date = 
     }
     weeks.push(week);
   }
-  return { weeks, start: isoDate(startWeek), end: isoDate(new Date(endWeek.getTime() + 6 * MS_PER_DAY)) };
+  return { weeks, start: isoDate(startWeek), end: isoDate(endSat) };
 }
