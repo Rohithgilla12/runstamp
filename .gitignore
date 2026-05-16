@@ -2,8 +2,11 @@ node_modules
 .pnpm-store
 .turbo
 .expo
+.astro
 dist
 build
+out
+.playwright-mcp
 *.log
 .DS_Store
 .env
