@@ -27,6 +27,8 @@ import { classifyAvgHr, DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/
 import { dailyKmForWeek, filterByWeek, labelWeek, stepWeek, weekKeyFor, type WeekKey } from '../analytics/week';
 import { currentVo2, deltaVo2, vo2Series } from '../analytics/vo2max';
 import { Vo2MaxCard } from '../design/charts/Vo2MaxCard';
+import { cadenceSeries, currentCadence, deltaCadence } from '../analytics/cadence';
+import { CadenceCard } from '../design/charts/CadenceCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -373,6 +375,16 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const vo2Delta = useMemo(() => deltaVo2(vo2Trend), [vo2Trend]);
   const hasVo2 = vo2Trend.length > 0;
 
+  // Cadence trend — same lens-filtered, full-history shape as VO₂. Hides
+  // itself when no readings exist.
+  const cadenceTrend = useMemo(
+    () => cadenceSeries(filteredByLens.map((a) => ({ date: a.date, cadence: a.cadence }))),
+    [filteredByLens],
+  );
+  const cadenceNow = useMemo(() => currentCadence(cadenceTrend), [cadenceTrend]);
+  const cadenceDeltaV = useMemo(() => deltaCadence(cadenceTrend), [cadenceTrend]);
+  const hasCadence = cadenceTrend.length > 0;
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -462,6 +474,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
             </View>
           )}
+          {hasCadence && (
+            <View style={{ marginTop: 12 }}>
+              <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -508,6 +525,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
             </View>
           )}
+          {hasCadence && (
+            <View style={{ marginTop: 12 }}>
+              <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -541,6 +563,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
             </View>
           )}
+          {hasCadence && (
+            <View style={{ marginTop: 12 }}>
+              <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}
@@ -570,6 +597,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasVo2 && (
             <View style={{ marginTop: 12 }}>
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
+          {hasCadence && (
+            <View style={{ marginTop: 12 }}>
+              <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
             </View>
           )}
           <View style={{ marginTop: 12 }}>
