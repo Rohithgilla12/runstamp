@@ -120,7 +120,10 @@ export async function requestRunstampHealthPermissions(): Promise<boolean> {
  */
 export async function getRunningWorkoutsSince(
   since: Date,
-  limit = 200,
+  // -1 = unbounded, matching the other quantity-sample queries below. We need
+  // this for first-connect (which uses `since = new Date(0)` to pull every
+  // run a user has ever logged — Apple Watch lifetime can be 10k+ workouts).
+  limit = -1,
 ): Promise<HKRunWorkout[]> {
   if (Platform.OS !== 'ios') return [];
   try {

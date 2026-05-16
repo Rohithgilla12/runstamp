@@ -90,20 +90,33 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
 
     setStatus('granted');
 
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const res = await runSync(ninetyDaysAgo);
+    // First connect — full backfill. HKAnchoredObjectQuery + the dedup
+    // contract in activities.Service ensure re-syncs don't double-write.
+    // Apple Watch records can go back many years; we want everything so
+    // lifetime stats + place stamps + cumulative-distance stamps work
+    // from day one. The detail fetch batches at concurrency 8 + uploads
+    // in chunks of 50 so even ~10k workouts are tractable.
+    const allTime = new Date(0);
+    const res = await runSync(allTime);
     return res ?? null;
   }, [runSync]);
 
   const resync = useCallback(
     async (since?: Date) => {
       if (status !== 'granted') return;
-      const syncFrom = since ?? lastSyncAt ?? (() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 90);
-        return d;
-      })();
+      // Manual re-sync: incremental from lastSyncAt with a 7-day overlap to
+      // catch any workouts that landed slightly out of order. Fall back to
+      // all-time when we have no anchor (first launch after granted).
+      const syncFrom =
+        since ??
+        (() => {
+          if (lastSyncAt) {
+            const overlap = new Date(lastSyncAt);
+            overlap.setDate(overlap.getDate() - 7);
+            return overlap;
+          }
+          return new Date(0);
+        })();
       await runSync(syncFrom);
     },
     [status, lastSyncAt, runSync],
