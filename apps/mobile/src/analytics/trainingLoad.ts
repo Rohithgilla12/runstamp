@@ -55,33 +55,26 @@ export function buildLoadSeries(
 ): LoadPoint[] {
   const byDay = new Map<string, number>();
   let minTs = Number.POSITIVE_INFINITY;
-  let maxTs = Number.NEGATIVE_INFINITY;
   for (const r of rows) {
     const t = computeTRIMP(r, hrMax, hrResting);
     byDay.set(r.date, (byDay.get(r.date) ?? 0) + t);
     const ts = toMidnight(r.date);
     if (ts < minTs) minTs = ts;
-    if (ts > maxTs) maxTs = ts;
   }
 
   const todayLocal = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
   const todayTs = todayLocal.getTime();
   if (!isFinite(minTs)) minTs = todayTs;
-  if (!isFinite(maxTs)) maxTs = todayTs;
 
   const out: LoadPoint[] = [];
   let atl = 0;
   let ctl = 0;
-  const endTs = Math.min(maxTs, todayTs);
-  for (let ts = minTs; ts <= endTs; ts += MS_PER_DAY) {
+  for (let ts = minTs; ts <= todayTs; ts += MS_PER_DAY) {
     const date = isoLocal(new Date(ts));
     const load = byDay.get(date) ?? 0;
     atl += (load - atl) / TAU_ATL;
     ctl += (load - ctl) / TAU_CTL;
     out.push({ date, load, atl, ctl, tsb: ctl - atl });
-  }
-  if (out.length === 0 || out[out.length - 1].date !== isoLocal(todayLocal)) {
-    out.push({ date: isoLocal(todayLocal), load: 0, atl, ctl, tsb: ctl - atl });
   }
   return out;
 }

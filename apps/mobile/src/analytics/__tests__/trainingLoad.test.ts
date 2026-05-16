@@ -32,8 +32,8 @@ describe('buildLoadSeries', () => {
 
   it('converges to load on steady-state input', () => {
     const rows = [];
-    for (let i = 0; i < 180; i++) {
-      const d = new Date(ref.getTime() - (180 - i) * 86_400_000);
+    for (let i = 0; i <= 180; i++) {
+      const d = new Date(ref.getTime() - i * 86_400_000);
       const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       rows.push({ date: iso, distance: 10, seconds: 3600, avgHr: 0 });
     }
@@ -44,6 +44,22 @@ describe('buildLoadSeries', () => {
     expect(last.ctl).toBeGreaterThan(55);
     expect(last.ctl).toBeLessThan(65);
     expect(Math.abs(last.tsb)).toBeLessThan(2);
+  });
+
+  it('decays load when there are no recent runs (detraining)', () => {
+    const rows = [];
+    for (let i = 51; i >= 22; i--) {
+      const d = new Date(ref.getTime() - i * 86_400_000);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      rows.push({ date: iso, distance: 12, seconds: 4200, avgHr: 0 });
+    }
+    const out = buildLoadSeries(rows, ref);
+    const last = out[out.length - 1];
+    expect(last.date).toBe('2026-05-16');
+    expect(last.load).toBe(0);
+    expect(last.atl).toBeLessThan(5);
+    expect(last.ctl).toBeGreaterThan(10);
+    expect(last.ctl).toBeLessThan(40);
   });
 
   it('produces ATL > CTL after a hard week from rest', () => {
