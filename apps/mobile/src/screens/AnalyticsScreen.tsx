@@ -21,11 +21,12 @@ import { HeatmapCalendar } from '../design/charts/HeatmapCalendar';
 import { MonthlyBars } from '../design/charts/MonthlyBars';
 import { DistanceHistogram } from '../design/charts/DistanceHistogram';
 import { TrainingLoadCard } from '../design/charts/TrainingLoadCard';
-import { DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
+import { classifyAvgHr, DEFAULT_HR_MAX, DEFAULT_HR_RESTING } from '../analytics/hrZones';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../design/charts/MonthCalendarDots';
 import { WeeklyBars } from '../design/charts/WeeklyBars';
+import { AnalyticsFilters, DEFAULT_FILTERS, filtersAreActive, type Filters } from './_AnalyticsFilters';
 
 type Scope = 'year' | 'month' | 'all';
 
@@ -33,6 +34,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [scope, setScope] = useState<Scope>('year');
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { activities, loading, refresh } = useActivities();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {

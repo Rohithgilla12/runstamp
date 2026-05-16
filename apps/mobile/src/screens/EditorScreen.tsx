@@ -15,6 +15,9 @@ import { Button, Card } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { PostmarkMark, SunMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
+import { StreamChart } from '../design/charts';
+import { useActivityStreams } from '../state/useActivityStreams';
+import type { Point } from '../data/sample';
 import { PostageTemplate } from '../design/templates/PostageTemplate';
 import { PostmarkTemplate } from '../design/templates/PostmarkTemplate';
 import { BoardingPassTemplate } from '../design/templates/BoardingPassTemplate';
@@ -90,6 +93,14 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
+  // Lifted up so every sticker that renders charts/maps shares one fetch.
+  // useActivityStreams gracefully no-ops when id is null.
+  const { route: realRoute, streams: realStreams } = useActivityStreams(run?.id ?? null);
+  const realHr = parseStream(realStreams.heartrate?.data);
+  const realVelocity = parseStream(realStreams.velocity?.data);
+  // Strava velocity is m/s; convert to seconds-per-km so the pace sparkline
+  // reads "slower=worse" like a runner expects.
+  const realPace = realVelocity ? realVelocity.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
 
   const [surface, setSurface] = useState<Surface>('9:16');
   const [bg, setBg] = useState<Background>('map');
@@ -361,6 +372,9 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 run={run}
                 canvasW={canvasW}
                 canvasH={canvasH}
+                liveHr={realHr ?? null}
+                livePace={realPace ?? null}
+                liveRoute={realRoute ?? null}
                 isSelected={selected === s.id}
                 onSelect={() => setSelected(s.id)}
                 onMove={(x, y) => updateStickerPosition(s.id, x, y)}
@@ -624,6 +638,9 @@ function DraggableSticker({
   run,
   canvasW,
   canvasH,
+  liveHr,
+  livePace,
+  liveRoute,
   isSelected,
   onSelect,
   onMove,
@@ -634,6 +651,9 @@ function DraggableSticker({
   run: Activity;
   canvasW: number;
   canvasH: number;
+  liveHr: number[] | null;
+  livePace: number[] | null;
+  liveRoute: Point[] | null;
   isSelected: boolean;
   onSelect: () => void;
   onMove: (x: number, y: number) => void;
@@ -798,6 +818,81 @@ function DraggableSticker({
       );
       width = 130;
       break;
+    case 'hrChart': {
+      const data = liveHr ?? run.streamHr ?? null;
+      width = 180;
+      body = (
+        <>
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>HEART RATE</Eyebrow>
+          {data && data.length > 1 ? (
+            <View style={{ height: 36, marginTop: 4 }}>
+              <StreamChart data={data} color="#e85d2f" />
+            </View>
+          ) : (
+            <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.55)', marginTop: 6 }}>NO HR DATA</TText>
+          )}
+        </>
+      );
+      break;
+    }
+    case 'paceChart': {
+      const data = livePace ?? run.streamPace ?? null;
+      width = 180;
+      body = (
+        <>
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>PACE</Eyebrow>
+          {data && data.length > 1 ? (
+            <View style={{ height: 36, marginTop: 4 }}>
+              <StreamChart data={data} color="#f3ede2" />
+            </View>
+          ) : (
+            <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.55)', marginTop: 6 }}>NO PACE DATA</TText>
+          )}
+        </>
+      );
+      break;
+    }
+    case 'map': {
+      // Prefer the real GPS polyline; fall back to the seeded curve so the
+      // sticker still draws something for activities without streams (e.g.
+      // treadmill runs / Apple Health workouts without GPS).
+      const pts = (liveRoute && liveRoute.length > 1) ? liveRoute : run.route;
+      width = 140;
+      body = (
+        <>
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>ROUTE</Eyebrow>
+          <View style={{ width: 120, height: 80, marginTop: 6, borderRadius: 6, overflow: 'hidden', backgroundColor: 'rgba(20,17,13,0.4)' }}>
+            <RouteMap points={pts} width={120} height={80} style="dark" accent="#e85d2f" routeStrokeWidth={2.2} flat />
+          </View>
+        </>
+      );
+      break;
+    }
+    case 'splits': {
+      const splits = run.splits ?? [];
+      width = 180;
+      body = (
+        <>
+          <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>SPLITS</Eyebrow>
+          {splits.length > 0 ? (
+            <View style={{ marginTop: 6, gap: 2 }}>
+              {splits.slice(0, 5).map((s) => (
+                <View key={s.k} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.7)' }}>K{s.k}</TText>
+                  <TText variant="mono" style={{ fontSize: 11, color: '#f3ede2' }}>{fmtPace(s.sec, units)}</TText>
+                </View>
+              ))}
+              {splits.length > 5 && (
+                <TText variant="mono" style={{ fontSize: 9, color: 'rgba(243,237,226,0.4)', marginTop: 2 }}>+{splits.length - 5} more</TText>
+              )}
+            </View>
+          ) : (
+            <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.55)', marginTop: 6 }}>NO SPLITS</TText>
+          )}
+        </>
+      );
+      break;
+    }
     default:
       body = <TText style={{ color: '#f3ede2', fontSize: 12 }}>{sticker.key}</TText>;
   }
@@ -816,4 +911,15 @@ function DraggableSticker({
       </Animated.View>
     </GestureDetector>
   );
+}
+
+// Sanity-strip a Strava stream — same as the helper in ActivityScreen.
+// Returns null when the array is empty or all-NaN.
+function parseStream(data: unknown): number[] | null {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const out: number[] = [];
+  for (const v of data) {
+    if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
+  }
+  return out.length > 1 ? out : null;
 }
