@@ -11,7 +11,7 @@ export interface HeatmapGrid {
   end: string;
 }
 
-interface DistRow { date: string; distance: number }
+type DistRow = { date: string; distance: number };
 
 const MS_PER_DAY = 86_400_000;
 
@@ -37,7 +37,7 @@ export function kmBucket(km: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-export function buildHeatmap(rows: readonly DistRow[], ref: Date = new Date()): HeatmapGrid {
+export function buildHeatmap<T extends DistRow>(rows: readonly T[], ref: Date = new Date()): HeatmapGrid {
   const todayLocal = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
   const endWeek = startOfWeekSunday(todayLocal);
   const startWeek = new Date(endWeek.getTime() - 52 * 7 * MS_PER_DAY);
