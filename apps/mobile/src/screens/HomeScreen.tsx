@@ -368,7 +368,7 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
             <View style={{ flex: 1.2 }}>
               <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>DISTANCE</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <TText variant="monoMedium" style={{ fontSize: 46, lineHeight: 46, letterSpacing: -1.4, color: c.paper }}>
+                <TText variant="monoMedium" style={{ fontSize: 46, lineHeight: 54, letterSpacing: -1.4, color: c.paper }}>
                   {fmtDist(run.distance, units)}
                 </TText>
                 <TText style={{ fontSize: 14, color: c.onInk3, marginLeft: 4 }}>{distUnit(units)}</TText>

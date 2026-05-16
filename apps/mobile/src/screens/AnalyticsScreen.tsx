@@ -103,10 +103,15 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
       <View style={{ paddingHorizontal: 14, paddingTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.paper2, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: c.line }}>
           {(['year', 'month', 'all'] as const).map((id) => (
-            <Pressable key={id} onPress={() => setScope(id)} style={{
-              flex: 1, paddingVertical: 9, borderRadius: 9,
-              backgroundColor: scope === id ? c.ink : 'transparent', alignItems: 'center'
-            }}>
+            <Pressable
+              key={id}
+              onPress={() => setScope(id)}
+              hitSlop={4}
+              style={{
+                flex: 1, paddingVertical: 12, borderRadius: 9,
+                backgroundColor: scope === id ? c.ink : 'transparent', alignItems: 'center',
+              }}
+            >
               <TText style={{ fontSize: 13, fontWeight: '500', color: scope === id ? c.paper : c.ink2 }}>
                 {id === 'year' ? 'Year' : id === 'month' ? 'Month' : 'All-time'}
               </TText>
@@ -558,7 +563,7 @@ function ScopedHero({ scope, agg, year, month }: { scope: Scope; agg: Aggregate;
     <Card style={{ backgroundColor: c.paper2 }}>
       <Eyebrow>{label}</Eyebrow>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 }}>
-        <TText variant="monoMedium" style={{ fontSize: 44, lineHeight: 44, letterSpacing: -1.4, color: c.ink }}>
+        <TText variant="monoMedium" style={{ fontSize: 44, lineHeight: 52, letterSpacing: -1.4, color: c.ink }}>
           {fmtDist(agg.totalKm, units)}
         </TText>
         <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>{distUnit(units)}</TText>
@@ -581,7 +586,7 @@ function LifetimeHero({ agg }: { agg: Aggregate }) {
         <SunMark size={180} />
       </View>
       <Eyebrow style={{ color: c.onInk3 }}>LIFETIME</Eyebrow>
-      <TText variant="monoMedium" style={{ fontSize: 60, lineHeight: 60, letterSpacing: -2.4, color: c.paper, marginTop: 6 }}>
+      <TText variant="monoMedium" style={{ fontSize: 60, lineHeight: 70, letterSpacing: -2.4, color: c.paper, marginTop: 6 }}>
         {Math.round(agg.totalKm).toLocaleString()}
       </TText>
       <Eyebrow style={{ color: c.onInk3, marginTop: 4 }}>{distUnit(units).toUpperCase()} TOTAL</Eyebrow>
@@ -649,15 +654,15 @@ function StepperButton({ onPress, label, accessibilityLabel }: { onPress: () => 
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={8}
+      hitSlop={10}
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => ({
-        width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+        width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
         backgroundColor: pressed ? c.paper3 : c.paper2,
         borderWidth: 1, borderColor: c.line,
       })}
     >
-      <TText style={{ fontSize: 18, lineHeight: 18, color: c.ink, marginTop: -2 }}>{label}</TText>
+      <TText style={{ fontSize: 20, lineHeight: 20, color: c.ink, marginTop: -2 }}>{label}</TText>
     </Pressable>
   );
 }
