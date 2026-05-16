@@ -33,6 +33,8 @@ import { buildRacePredictor } from '../analytics/racePredictor';
 import { RacePredictorCard } from '../design/charts/RacePredictorCard';
 import { decouplingSeries, recentAvg } from '../analytics/decoupling';
 import { DecouplingCard } from '../design/charts/DecouplingCard';
+import { currentStride, deltaStride, strideSeries } from '../analytics/strideLength';
+import { StrideLengthCard } from '../design/charts/StrideLengthCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -407,6 +409,17 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const decouplingRecent = useMemo(() => recentAvg(decoupling, 4), [decoupling]);
   const hasDecoupling = decoupling.length > 0;
 
+  // Stride length trend — derived from speed + cadence per activity.
+  const strideTrend = useMemo(
+    () => strideSeries(filteredByLens.map((a) => ({
+      date: a.date, distance: a.distance, seconds: a.seconds, cadence: a.cadence,
+    }))),
+    [filteredByLens],
+  );
+  const strideNow = useMemo(() => currentStride(strideTrend), [strideTrend]);
+  const strideDelta = useMemo(() => deltaStride(strideTrend), [strideTrend]);
+  const hasStride = strideTrend.length > 0;
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -501,6 +514,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
             </View>
           )}
+          {hasStride && (
+            <View style={{ marginTop: 12 }}>
+              <StrideLengthCard series={strideTrend} current={strideNow ?? 0} delta28d={strideDelta} />
+            </View>
+          )}
           {hasDecoupling && (
             <View style={{ marginTop: 12 }}>
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
@@ -562,6 +580,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
             </View>
           )}
+          {hasStride && (
+            <View style={{ marginTop: 12 }}>
+              <StrideLengthCard series={strideTrend} current={strideNow ?? 0} delta28d={strideDelta} />
+            </View>
+          )}
           {hasDecoupling && (
             <View style={{ marginTop: 12 }}>
               <DecouplingCard series={decoupling} recent={decouplingRecent} />
@@ -603,6 +626,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasCadence && (
             <View style={{ marginTop: 12 }}>
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
+          {hasStride && (
+            <View style={{ marginTop: 12 }}>
+              <StrideLengthCard series={strideTrend} current={strideNow ?? 0} delta28d={strideDelta} />
             </View>
           )}
           {hasDecoupling && (
@@ -649,6 +677,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           {hasCadence && (
             <View style={{ marginTop: 12 }}>
               <CadenceCard series={cadenceTrend} current={cadenceNow ?? 0} delta28d={cadenceDeltaV} />
+            </View>
+          )}
+          {hasStride && (
+            <View style={{ marginTop: 12 }}>
+              <StrideLengthCard series={strideTrend} current={strideNow ?? 0} delta28d={strideDelta} />
             </View>
           )}
           {hasDecoupling && (
