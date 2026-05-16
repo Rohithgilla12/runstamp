@@ -5,9 +5,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// countryNameByISO maps the ISO-2 codes used in stamp criteria to the
+// canonical country name the geocoder produces. Extend as new regional
+// flagship stamps land. If a stamp's criteria carries a country_iso we
+// don't know, the country filter is silently skipped (logged on first
+// occurrence so we notice and can add it).
+var countryNameByISO = map[string]string{
+	"IN": "India",
+	"US": "United States",
+	"GB": "United Kingdom",
+	"DE": "Germany",
+	"FR": "France",
+	"JP": "Japan",
+	"AU": "Australia",
+	"CA": "Canada",
+	"CN": "China",
+	"BR": "Brazil",
+	"ES": "Spain",
+	"IT": "Italy",
+	"SG": "Singapore",
+	"TH": "Thailand",
+	"NL": "Netherlands",
+	"CH": "Switzerland",
+	"SE": "Sweden",
+	"NO": "Norway",
+	"DK": "Denmark",
+	"IE": "Ireland",
+	"MX": "Mexico",
+	"ZA": "South Africa",
+	"KE": "Kenya",
+	"ET": "Ethiopia",
+	"NZ": "New Zealand",
+	"PT": "Portugal",
+	"PL": "Poland",
+	"BE": "Belgium",
+	"AT": "Austria",
+}
 
 // Evaluator inspects a user's data against every catalog rule and awards
 // previously-unearned stamps. It's idempotent — re-running after an award
@@ -84,6 +122,30 @@ type citiesRule struct {
 	Countries int    `json:"countries_gte"`
 }
 
+type namedEventRule struct {
+	Kind          string   `json:"kind"`
+	Sport         string   `json:"sport"`
+	DistanceMGte  *float64 `json:"distance_m_gte"`
+	DistanceMLte  *float64 `json:"distance_m_lte"`
+	TitlePatterns []string `json:"title_patterns"`
+	CountryISO    string   `json:"country_iso"`
+}
+
+type namedCitiesCountRule struct {
+	Kind       string   `json:"kind"`
+	CitySet    []string `json:"city_set"`
+	CitiesGte  int      `json:"cities_gte"`
+	CountryISO string   `json:"country_iso"`
+}
+
+type monsoonRunRule struct {
+	Kind         string   `json:"kind"`
+	Sport        string   `json:"sport"`
+	DistanceMGte *float64 `json:"distance_m_gte"`
+	Months       []int    `json:"months"`
+	CountryISO   string   `json:"country_iso"`
+}
+
 // check returns (passes, activityID-if-traceable-to-one, contextFields, err).
 func (e *Evaluator) check(ctx context.Context, userID string, def Definition) (bool, *string, map[string]any, error) {
 	// Peek the kind first.
@@ -120,8 +182,164 @@ func (e *Evaluator) check(ctx context.Context, userID string, def Definition) (b
 			return false, nil, nil, err
 		}
 		return e.checkCountriesCount(ctx, userID, r.Countries)
+
+	case "named_event":
+		var r namedEventRule
+		if err := json.Unmarshal(def.Criteria, &r); err != nil {
+			return false, nil, nil, err
+		}
+		return e.checkNamedEvent(ctx, userID, r)
+
+	case "named_cities_count":
+		var r namedCitiesCountRule
+		if err := json.Unmarshal(def.Criteria, &r); err != nil {
+			return false, nil, nil, err
+		}
+		return e.checkNamedCitiesCount(ctx, userID, r)
+
+	case "monsoon_run":
+		var r monsoonRunRule
+		if err := json.Unmarshal(def.Criteria, &r); err != nil {
+			return false, nil, nil, err
+		}
+		return e.checkMonsoonRun(ctx, userID, r)
 	}
 	return false, nil, nil, fmt.Errorf("unknown rule kind: %s", kindOnly.Kind)
+}
+
+func (e *Evaluator) checkNamedEvent(ctx context.Context, userID string, r namedEventRule) (bool, *string, map[string]any, error) {
+	q := `
+SELECT id, distance_m, elapsed_seconds, COALESCE(title, '') AS t
+FROM activities
+WHERE user_id = $1
+  AND dupe_of IS NULL`
+	args := []any{userID}
+	if r.Sport != "" {
+		q += fmt.Sprintf(" AND sport = $%d", len(args)+1)
+		args = append(args, r.Sport)
+	}
+	if r.DistanceMGte != nil {
+		q += fmt.Sprintf(" AND distance_m >= $%d", len(args)+1)
+		args = append(args, *r.DistanceMGte)
+	}
+	if r.DistanceMLte != nil {
+		q += fmt.Sprintf(" AND distance_m <= $%d", len(args)+1)
+		args = append(args, *r.DistanceMLte)
+	}
+	if r.CountryISO != "" {
+		if name, ok := countryNameByISO[r.CountryISO]; ok {
+			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			args = append(args, name)
+		}
+	}
+	if len(r.TitlePatterns) == 0 {
+		return false, nil, nil, fmt.Errorf("named_event rule has empty title_patterns")
+	}
+	clauses := make([]string, 0, len(r.TitlePatterns))
+	for _, p := range r.TitlePatterns {
+		clauses = append(clauses, fmt.Sprintf("LOWER(COALESCE(title, '')) LIKE $%d", len(args)+1))
+		args = append(args, "%"+strings.ToLower(p)+"%")
+	}
+	q += " AND (" + strings.Join(clauses, " OR ") + ")"
+	q += " ORDER BY started_at ASC LIMIT 1"
+
+	var (
+		id       string
+		distance float64
+		elapsed  int
+		title    string
+	)
+	if err := e.pool.QueryRow(ctx, q, args...).Scan(&id, &distance, &elapsed, &title); err != nil {
+		if isNoRows(err) {
+			return false, nil, nil, nil
+		}
+		return false, nil, nil, err
+	}
+	return true, &id, map[string]any{
+		"actual_distance_m":   distance,
+		"actual_time_seconds": elapsed,
+		"matched_title":       title,
+	}, nil
+}
+
+func (e *Evaluator) checkNamedCitiesCount(ctx context.Context, userID string, r namedCitiesCountRule) (bool, *string, map[string]any, error) {
+	q := `
+SELECT COUNT(DISTINCT location_city)
+FROM activities
+WHERE user_id = $1
+  AND dupe_of IS NULL
+  AND location_city IS NOT NULL
+  AND location_city <> ''`
+	args := []any{userID}
+	if r.CountryISO != "" {
+		if name, ok := countryNameByISO[r.CountryISO]; ok {
+			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			args = append(args, name)
+		}
+	}
+	if len(r.CitySet) > 0 {
+		placeholders := make([]string, 0, len(r.CitySet))
+		for _, city := range r.CitySet {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+1))
+			args = append(args, city)
+		}
+		q += " AND location_city IN (" + strings.Join(placeholders, ", ") + ")"
+	}
+	var n int
+	if err := e.pool.QueryRow(ctx, q, args...).Scan(&n); err != nil {
+		return false, nil, nil, err
+	}
+	if n < r.CitiesGte {
+		return false, nil, nil, nil
+	}
+	return true, nil, map[string]any{"actual_cities": n}, nil
+}
+
+func (e *Evaluator) checkMonsoonRun(ctx context.Context, userID string, r monsoonRunRule) (bool, *string, map[string]any, error) {
+	q := `
+SELECT id, distance_m, started_at
+FROM activities
+WHERE user_id = $1
+  AND dupe_of IS NULL`
+	args := []any{userID}
+	if r.Sport != "" {
+		q += fmt.Sprintf(" AND sport = $%d", len(args)+1)
+		args = append(args, r.Sport)
+	}
+	if r.DistanceMGte != nil {
+		q += fmt.Sprintf(" AND distance_m >= $%d", len(args)+1)
+		args = append(args, *r.DistanceMGte)
+	}
+	if r.CountryISO != "" {
+		if name, ok := countryNameByISO[r.CountryISO]; ok {
+			q += fmt.Sprintf(" AND location_country = $%d", len(args)+1)
+			args = append(args, name)
+		}
+	}
+	if len(r.Months) > 0 {
+		placeholders := make([]string, 0, len(r.Months))
+		for _, m := range r.Months {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+1))
+			args = append(args, m)
+		}
+		q += " AND date_part('month', started_at)::int IN (" + strings.Join(placeholders, ", ") + ")"
+	}
+	q += " ORDER BY started_at ASC LIMIT 1"
+
+	var (
+		id       string
+		distance float64
+	)
+	var startedAt any
+	if err := e.pool.QueryRow(ctx, q, args...).Scan(&id, &distance, &startedAt); err != nil {
+		if isNoRows(err) {
+			return false, nil, nil, nil
+		}
+		return false, nil, nil, err
+	}
+	return true, &id, map[string]any{
+		"actual_distance_m": distance,
+	}, nil
 }
 
 func (e *Evaluator) checkSingleActivity(ctx context.Context, userID string, r singleActivityRule) (bool, *string, map[string]any, error) {
