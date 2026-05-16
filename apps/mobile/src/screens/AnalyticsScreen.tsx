@@ -580,12 +580,12 @@ function LifetimeHero({ agg }: { agg: Aggregate }) {
       <View style={{ position: 'absolute', right: -40, top: -40, opacity: 0.07 }}>
         <SunMark size={180} />
       </View>
-      <Eyebrow style={{ color: 'rgba(243,237,226,0.5)' }}>LIFETIME</Eyebrow>
+      <Eyebrow style={{ color: c.onInk3 }}>LIFETIME</Eyebrow>
       <TText variant="monoMedium" style={{ fontSize: 60, lineHeight: 60, letterSpacing: -2.4, color: c.paper, marginTop: 6 }}>
         {Math.round(agg.totalKm).toLocaleString()}
       </TText>
-      <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', marginTop: 4 }}>{distUnit(units).toUpperCase()} TOTAL</Eyebrow>
-      <View style={{ flexDirection: 'row', gap: 14, marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(243,237,226,0.12)' }}>
+      <Eyebrow style={{ color: c.onInk3, marginTop: 4 }}>{distUnit(units).toUpperCase()} TOTAL</Eyebrow>
+      <View style={{ flexDirection: 'row', gap: 14, marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.onInkDivider }}>
         <Stat dark label="RUNS" value={String(agg.runs)} />
         <Stat dark label="TIME" value={fmtTime(agg.totalSec)} />
         <Stat dark label="ELEV" value={`${Math.round(agg.elevM).toLocaleString()} m`} />
@@ -598,7 +598,7 @@ function Stat({ label, value, dark }: { label: string; value: string; dark?: boo
   const c = useColors();
   return (
     <View style={{ flex: 1 }}>
-      <Eyebrow style={{ color: dark ? 'rgba(243,237,226,0.5)' : c.ink3 }}>{label}</Eyebrow>
+      <Eyebrow style={{ color: dark ? c.onInk3 : c.ink3 }}>{label}</Eyebrow>
       <TText variant="monoMedium" style={{ fontSize: 18, color: dark ? c.paper : c.ink }}>{value}</TText>
     </View>
   );

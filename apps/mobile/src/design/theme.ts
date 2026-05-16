@@ -30,6 +30,12 @@ export interface Palette {
   moss: string;
   warn: string;
   sky: string;
+  // Tokens for text/dividers that sit ON `ink` surfaces (polarity-flipped hero
+  // cards). Flip with mode so paper-tinted text on dark ink in light mode
+  // becomes ink-tinted text on cream ink in dark mode.
+  onInk2: string;
+  onInk3: string;
+  onInkDivider: string;
 }
 
 export const ThemeCtx = createContext<Theme>({ dark: false, accent: 'solar', units: 'km' });
@@ -51,7 +57,10 @@ export function paletteFor(theme: Theme): Palette {
       accentDeep: a.deep,
       moss: '#7a9a6a',
       warn: '#d4a667',
-      sky: '#6da6c4'
+      sky: '#6da6c4',
+      onInk2: 'rgba(20,17,13,0.70)',
+      onInk3: 'rgba(20,17,13,0.50)',
+      onInkDivider: 'rgba(20,17,13,0.12)'
     };
   }
   return {
@@ -67,7 +76,10 @@ export function paletteFor(theme: Theme): Palette {
     accentDeep: a.deep,
     moss: '#4a6b3a',
     warn: '#c0833a',
-    sky: '#3c6e8c'
+    sky: '#3c6e8c',
+    onInk2: 'rgba(243,237,226,0.70)',
+    onInk3: 'rgba(243,237,226,0.50)',
+    onInkDivider: 'rgba(243,237,226,0.12)'
   };
 }
 

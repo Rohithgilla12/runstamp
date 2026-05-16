@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Stamp, type StampTier } from '../data/sample';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
+import { StampShareModal } from './StampShareModal';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Button, Card } from '../design/atoms';
@@ -20,6 +21,7 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
   const [filter, setFilter] = useState<Filter>('all');
   const { stamps, loading, refresh } = useStamps();
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState<CatalogStamp | null>(null);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try { await refresh(); } finally { setRefreshing(false); }
@@ -102,10 +104,12 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
       <View style={{ paddingHorizontal: 16, paddingTop: 18, flexDirection: 'row', flexWrap: 'wrap' }}>
         {earnedFirst.map((s) => (
           <View key={s.id} style={{ width: '50%', padding: 4 }}>
-            <StampRow stamp={s} />
+            <StampRow stamp={s} onPress={s.earnedAt ? () => setSharing(s) : undefined} />
           </View>
         ))}
       </View>
+
+      <StampShareModal stamp={sharing} onClose={() => setSharing(null)} />
 
       <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
         <Card style={{ backgroundColor: c.ink, borderColor: 'transparent', overflow: 'hidden' }}>
@@ -127,26 +131,34 @@ export function StampsScreen({ navigation }: RootStackProps<'Stamps'>) {
   );
 }
 
-function StampRow({ stamp }: { stamp: Stamp | CatalogStamp }) {
+function StampRow({ stamp, onPress }: { stamp: Stamp | CatalogStamp; onPress?: () => void }) {
   const c = useColors();
   const earned = !!stamp.earnedAt;
-  return (
+  const body = (
     <View style={{
       borderRadius: 16, padding: 12,
       backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
-      alignItems: 'center'
+      alignItems: 'center',
     }}>
       <StampBadge id={stamp.id} name={stamp.name} tier={stamp.tier} earned={earned} size={92} />
       <TText style={{ fontSize: 13, fontWeight: '500', color: c.ink, marginTop: 8, textAlign: 'center' }}>{stamp.name}</TText>
       {earned ? (
         <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
-          {stamp.earnedAt}
+          {stamp.earnedAt?.slice(0, 10)} · tap to share
         </TText>
       ) : (
         <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>LOCKED</TText>
       )}
     </View>
   );
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}>
+        {body}
+      </Pressable>
+    );
+  }
+  return body;
 }
 
 function tierColor(t: StampTier, c: { accent: string; ink: string; moss: string }): string {

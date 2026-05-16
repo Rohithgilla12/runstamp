@@ -11,6 +11,7 @@ import { useActivities } from '../state/useActivities';
 import { useActivityStreams } from '../state/useActivityStreams';
 import { useHealth } from '../state/HealthContext';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
+import { StampShareModal } from './StampShareModal';
 import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
@@ -172,6 +173,7 @@ function ConnectedHome({
 
 function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOpenStamps: () => void }) {
   const c = useColors();
+  const [sharing, setSharing] = useState<CatalogStamp | null>(null);
   const recent = [...earned]
     .sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))
     .slice(0, 6);
@@ -193,7 +195,7 @@ function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOp
         {recent.map((s) => (
           <Pressable
             key={s.id}
-            onPress={onOpenStamps}
+            onPress={() => setSharing(s)}
             style={({ pressed }) => [{
               alignItems: 'center', width: 110,
               backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 14,
@@ -208,6 +210,7 @@ function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOp
           </Pressable>
         ))}
       </ScrollView>
+      <StampShareModal stamp={sharing} onClose={() => setSharing(null)} />
     </>
   );
 }
@@ -353,7 +356,7 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
               {!!run.place && run.place !== '—' && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   <Icon.pin size={12} color="rgba(243,237,226,0.6)" />
-                  <TText style={{ fontSize: 12, color: 'rgba(243,237,226,0.6)' }}>{run.place}</TText>
+                  <TText style={{ fontSize: 12, color: c.onInk3 }}>{run.place}</TText>
                 </View>
               )}
             </View>
@@ -363,23 +366,23 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 14 }}>
             <View style={{ flex: 1.2 }}>
-              <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: 9 }}>DISTANCE</Eyebrow>
+              <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>DISTANCE</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                 <TText variant="monoMedium" style={{ fontSize: 46, lineHeight: 46, letterSpacing: -1.4, color: c.paper }}>
                   {fmtDist(run.distance, units)}
                 </TText>
-                <TText style={{ fontSize: 14, color: 'rgba(243,237,226,0.6)', marginLeft: 4 }}>{distUnit(units)}</TText>
+                <TText style={{ fontSize: 14, color: c.onInk3, marginLeft: 4 }}>{distUnit(units)}</TText>
               </View>
             </View>
             <View style={{ flex: 0.9 }}>
-              <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: 9 }}>PACE</Eyebrow>
+              <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>PACE</Eyebrow>
               <TText variant="monoMedium" style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtPace(run.pace, units)}</TText>
-              <TText style={{ fontSize: 10, color: 'rgba(243,237,226,0.5)' }}>/{distUnit(units)}</TText>
+              <TText style={{ fontSize: 10, color: c.onInk3 }}>/{distUnit(units)}</TText>
             </View>
             <View style={{ flex: 1.1 }}>
-              <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: 9 }}>TIME</Eyebrow>
+              <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>TIME</Eyebrow>
               <TText variant="monoMedium" style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtTime(run.seconds)}</TText>
-              <TText style={{ fontSize: 10, color: 'rgba(243,237,226,0.5)' }}>h:m:s</TText>
+              <TText style={{ fontSize: 10, color: c.onInk3 }}>h:m:s</TText>
             </View>
           </View>
 
