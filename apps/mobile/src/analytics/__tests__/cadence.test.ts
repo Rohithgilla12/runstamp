@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cadenceSeries, currentCadence, deltaCadence } from '../cadence';
 
 describe('cadenceSeries', () => {
-  it('returns only rows with positive cadence, sorted by date', () => {
+  it('returns only rows with plausible cadence, sorted by date', () => {
     const rows = [
       { date: '2026-05-15', cadence: 178 },
       { date: '2026-05-01', cadence: 172 },
@@ -13,6 +13,21 @@ describe('cadenceSeries', () => {
     const series = cadenceSeries(rows);
     expect(series.map((p) => p.date)).toEqual(['2026-05-01', '2026-05-15', '2026-05-20']);
     expect(series.map((p) => p.value)).toEqual([172, 178, 180]);
+  });
+
+  it('drops impossibly-low and runaway cadence values', () => {
+    const rows = [
+      { date: '2026-04-01', cadence: 80 },       // too low (under 100)
+      { date: '2026-04-02', cadence: 99.9 },     // just under floor
+      { date: '2026-04-03', cadence: 100 },      // at floor — kept
+      { date: '2026-04-04', cadence: 170 },      // typical run
+      { date: '2026-04-05', cadence: 240 },      // at ceiling — kept
+      { date: '2026-04-06', cadence: 240.1 },    // just over ceiling
+      { date: '2026-04-07', cadence: 608 },      // bogus avg
+      { date: '2026-04-08', cadence: 3117 },     // HealthKit runaway
+    ];
+    const series = cadenceSeries(rows);
+    expect(series.map((p) => p.value)).toEqual([100, 170, 240]);
   });
 });
 

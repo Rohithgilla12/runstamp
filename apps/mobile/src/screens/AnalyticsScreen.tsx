@@ -531,6 +531,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="By day"
               subtitle={`${labelWeek(selectedWeek)} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+              explanation="Kilometres logged each day of the selected ISO week (Monday → Sunday)."
             >
               <DailyBars values={dailyKmThisWeek} />
             </ShareableChartCard>
@@ -587,6 +588,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="Activity heatmap"
               subtitle={`${selectedYear} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+              explanation="One cell per day. Colour intensity scales with distance run that day. Reads like GitHub's contribution graph, except the streak that matters runs through your shoes."
             >
               <HeatmapCalendar grid={heatmap} ghost={comparePeriod ? (heatmapB ?? undefined) : undefined} />
             </ShareableChartCard>
@@ -595,6 +597,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="By month"
               subtitle={`${selectedYear} · monthly distance`}
+              explanation="Total kilometres run in each calendar month of the selected year. Useful for spotting build/taper patterns."
             >
               <MonthlyBars values={monthlyKm} compare={comparePeriod ? monthlyKmB : undefined} />
             </ShareableChartCard>
@@ -603,6 +606,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="By distance"
               subtitle={`${selectedYear} · distance buckets`}
+              explanation="How your runs distribute across distance ranges (e.g. 0–5 km, 5–10 km, …). A short-and-easy diet looks very different from one with regular long runs."
             >
               <DistanceHistogram cells={histogramCells} />
             </ShareableChartCard>
@@ -669,6 +673,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title={MONTH_NAMES[selectedMonth - 1] + ' ' + selectedYear}
               subtitle={`${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+              explanation="Calendar layout of the month. Each filled dot is a run; dot size scales with distance."
             >
               <MonthCalendarDots year={selectedYear} month={selectedMonth} kmByDate={kmByDate} />
             </ShareableChartCard>
@@ -677,6 +682,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="By week"
               subtitle={`${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+              explanation="Total kilometres for each rolling 7-day window within the month."
             >
               <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
             </ShareableChartCard>
@@ -734,6 +740,7 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <ShareableChartCard
               title="Cumulative distance"
               subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} across ${all.runs} runs`}
+              explanation="Running total of every kilometre logged across your full history, month by month. The slope is your training rate; flat stretches are breaks or injuries."
             >
               <CumulativeChart series={cumulative} />
             </ShareableChartCard>

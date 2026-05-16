@@ -7,11 +7,22 @@ interface Row { date: string; cadence?: number }
 
 export interface CadencePoint { date: string; value: number }
 
+// Plausible running cadence range. World records max around 230 spm; a
+// brisk walk floors near 100. HealthKit's speed÷stride derivation has
+// produced runaway numbers (3000+) when stride samples were near zero —
+// the analytics view filters those out so the trend stays readable.
+export const CADENCE_MIN_SPM = 100;
+export const CADENCE_MAX_SPM = 240;
+
 /** Returns only the rows with a recorded cadence, sorted by date ascending. */
 export function cadenceSeries(rows: readonly Row[]): CadencePoint[] {
   const points: CadencePoint[] = [];
   for (const r of rows) {
-    if (typeof r.cadence === 'number' && r.cadence > 0) {
+    if (
+      typeof r.cadence === 'number'
+      && r.cadence >= CADENCE_MIN_SPM
+      && r.cadence <= CADENCE_MAX_SPM
+    ) {
       points.push({ date: r.date, value: r.cadence });
     }
   }

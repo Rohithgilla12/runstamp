@@ -5,11 +5,20 @@ import type { GapTaxPoint } from '../../analytics/gap';
 import { Card } from '../atoms';
 import { useColors } from '../theme';
 import { Eyebrow, TText } from '../typography';
+import { ChartShareButton, useChartShare } from './useChartShare';
+import { ChartInfoButton } from './ChartInfoButton';
+import { ChartTooltip } from './ChartTooltip';
 
 interface Props {
   series: GapTaxPoint[];
   lifetimeAvgSec: number | null;
 }
+
+const EXPLANATION =
+  'Seconds per kilometre that the hills are costing you. We compare your raw ' +
+  'pace against grade-adjusted pace (Minetti model) and average the gap per ' +
+  'month. Near zero means flat terrain; large values mean climbing is doing ' +
+  'real work. Useful for comparing a hilly month to a flat one fairly.';
 
 // Climbing tax — how much elevation is costing your pace, per month.
 // Computed as the per-km gap between raw pace and GAP, weighted by km.
@@ -17,6 +26,7 @@ interface Props {
 // move to a hillier city and watch it climb.
 export function ClimbingTaxCard({ series, lifetimeAvgSec }: Props) {
   const c = useColors();
+  const { captureRef, share, busy } = useChartShare('Climbing tax');
   if (series.length === 0) return null;
 
   const W = 300;
@@ -44,49 +54,70 @@ export function ClimbingTaxCard({ series, lifetimeAvgSec }: Props) {
   const zeroY = y(0);
 
   return (
-    <Card style={{ backgroundColor: c.paper2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <View>
-          <Eyebrow>CLIMBING TAX</Eyebrow>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
-            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
-              {lifetimeAvgSec === null ? '—' : `+${lifetimeAvgSec.toFixed(0)}`}
-            </TText>
-            <TText style={{ fontSize: 12, color: c.ink3 }}>sec/km avg</TText>
+    <View>
+      <View ref={captureRef} collapsable={false} style={{ backgroundColor: c.paper }}>
+        <Card style={{ backgroundColor: c.paper2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Eyebrow>CLIMBING TAX</Eyebrow>
+                <ChartInfoButton explanation={EXPLANATION} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
+                <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
+                  {lifetimeAvgSec === null ? '—' : `+${lifetimeAvgSec.toFixed(0)}`}
+                </TText>
+                <TText style={{ fontSize: 12, color: c.ink3 }}>sec/km avg</TText>
+              </View>
+            </View>
+            <View style={{ alignItems: 'flex-end', maxWidth: 130, marginRight: 40 }}>
+              <Eyebrow style={{ color: c.ink3, fontSize: 9 }}>LATEST MONTH</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink, marginTop: 2 }}>
+                +{last.meanTaxSecPerKm.toFixed(0)} s/km
+              </TText>
+              <TText style={{ fontSize: 10, color: c.ink3 }}>{Math.round(last.totalKm)} km · {last.runs} runs</TText>
+            </View>
           </View>
-        </View>
-        <View style={{ alignItems: 'flex-end', maxWidth: 130 }}>
-          <Eyebrow style={{ color: c.ink3, fontSize: 9 }}>LATEST MONTH</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink, marginTop: 2 }}>
-            +{last.meanTaxSecPerKm.toFixed(0)} s/km
+
+          <View style={{ marginTop: 12, alignItems: 'center' }}>
+            <View style={{ width: W, height: H }}>
+              <Svg width={W} height={H}>
+                {/* Zero line — "perfectly flat" reference */}
+                <Line x1={LEFT} y1={zeroY} x2={W - RIGHT} y2={zeroY} stroke={c.line2} strokeWidth={0.8} strokeDasharray="2 3" />
+                <SvgText x={LEFT - 4} y={zeroY + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">0</SvgText>
+                <SvgText x={LEFT - 4} y={y(yMax) + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{`+${Math.round(yMax)}`}</SvgText>
+
+                <Path d={d} fill="none" stroke={c.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                {series.map((p, i) => (
+                  <Circle key={i} cx={x(i)} cy={y(p.meanTaxSecPerKm)} r={Math.min(5, 2 + p.totalKm / 30)} fill={c.accent} opacity={0.85} />
+                ))}
+                <Circle cx={x(series.length - 1)} cy={y(last.meanTaxSecPerKm)} r={6.4} fill="none" stroke={c.accent} strokeWidth={0.6} opacity={0.5} />
+
+                <SvgText x={LEFT} y={H - 6} fontSize={9} fill={c.ink3} fontFamily="JetBrainsMono-Regular">{formatMonthShort(series[0].month)}</SvgText>
+                <SvgText x={W - RIGHT} y={H - 6} fontSize={9} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{formatMonthShort(last.month)}</SvgText>
+              </Svg>
+              <ChartTooltip
+                series={series}
+                left={LEFT}
+                right={W - RIGHT}
+                width={W}
+                height={H}
+                dotColor={c.accent}
+                pointY={(p) => y(p.meanTaxSecPerKm)}
+                formatPrimary={(p) => formatMonthShort(p.month)}
+                formatValue={(p) => `+${p.meanTaxSecPerKm.toFixed(0)} s/km · ${Math.round(p.totalKm)} km`}
+              />
+            </View>
+          </View>
+
+          <TText style={{ fontSize: 10, color: c.ink3, marginTop: 8, lineHeight: 14 }}>
+            How much hills are slowing each kilometre vs. a flat-equivalent
+            Minetti pace. Near zero = flat city. Climbing more = the cost rises.
           </TText>
-          <TText style={{ fontSize: 10, color: c.ink3 }}>{Math.round(last.totalKm)} km · {last.runs} runs</TText>
-        </View>
+        </Card>
       </View>
-
-      <View style={{ marginTop: 12, alignItems: 'center' }}>
-        <Svg width={W} height={H}>
-          {/* Zero line — "perfectly flat" reference */}
-          <Line x1={LEFT} y1={zeroY} x2={W - RIGHT} y2={zeroY} stroke={c.line2} strokeWidth={0.8} strokeDasharray="2 3" />
-          <SvgText x={LEFT - 4} y={zeroY + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">0</SvgText>
-          <SvgText x={LEFT - 4} y={y(yMax) + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{`+${Math.round(yMax)}`}</SvgText>
-
-          <Path d={d} fill="none" stroke={c.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-          {series.map((p, i) => (
-            <Circle key={i} cx={x(i)} cy={y(p.meanTaxSecPerKm)} r={Math.min(5, 2 + p.totalKm / 30)} fill={c.accent} opacity={0.85} />
-          ))}
-          <Circle cx={x(series.length - 1)} cy={y(last.meanTaxSecPerKm)} r={6.4} fill="none" stroke={c.accent} strokeWidth={0.6} opacity={0.5} />
-
-          <SvgText x={LEFT} y={H - 6} fontSize={9} fill={c.ink3} fontFamily="JetBrainsMono-Regular">{formatMonthShort(series[0].month)}</SvgText>
-          <SvgText x={W - RIGHT} y={H - 6} fontSize={9} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{formatMonthShort(last.month)}</SvgText>
-        </Svg>
-      </View>
-
-      <TText style={{ fontSize: 10, color: c.ink3, marginTop: 8, lineHeight: 14 }}>
-        How much hills are slowing each kilometre vs. a flat-equivalent
-        Minetti pace. Near zero = flat city. Climbing more = the cost rises.
-      </TText>
-    </Card>
+      <ChartShareButton onPress={share} busy={busy} />
+    </View>
   );
 }
 

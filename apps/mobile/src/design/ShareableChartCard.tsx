@@ -7,6 +7,7 @@ import { Eyebrow, TText } from './typography';
 import { Card } from './atoms';
 import { Icon } from './Icon';
 import { RunstampMark } from './RunstampMark';
+import { ChartInfoButton } from './charts/ChartInfoButton';
 
 interface Props {
   /** Headline at the top of the captured card. */
@@ -20,6 +21,11 @@ interface Props {
   children: React.ReactNode;
   /** Optional message used by the OS share sheet caption. */
   shareMessage?: string;
+  /**
+   * Optional plain-text explainer revealed by tapping the "ⓘ" next to the
+   * title. Use for charts whose meaning isn't obvious from the title alone.
+   */
+  explanation?: string;
 }
 
 // Wraps any analytics chart in a card that can be captured + shared as a
@@ -29,7 +35,7 @@ interface Props {
 // The card includes a title row at the top, a "via Runstamp" mark at the
 // bottom, and the chart in between — so when a user posts a heatmap to
 // Stories it reads as its own thing, not a screenshot of a stats screen.
-export function ShareableChartCard({ title, subtitle, children, shareMessage }: Props) {
+export function ShareableChartCard({ title, subtitle, children, shareMessage, explanation }: Props) {
   const c = useColors();
   const captureViewRef = useRef<View>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +77,10 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage }: 
         <Card style={{ backgroundColor: c.paper2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <View style={{ flex: 1 }}>
-              <Eyebrow style={{ color: c.ink3 }}>{title.toUpperCase()}</Eyebrow>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Eyebrow style={{ color: c.ink3 }}>{title.toUpperCase()}</Eyebrow>
+                {explanation && <ChartInfoButton explanation={explanation} />}
+              </View>
               {subtitle && (
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink2, marginTop: 3, letterSpacing: -0.1 }}>
                   {subtitle}
