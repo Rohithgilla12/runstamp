@@ -5,6 +5,11 @@
 // Only EXPO_PUBLIC_* env vars belong below.
 import type { ExpoConfig } from '@expo/config-types';
 
+// IMPORTANT: every `eas update` MUST be run with `--environment production`
+// (or `--environment preview`) so this var actually resolves at build time.
+// Without it the bundle falls back to localhost and every API call dies
+// silently on a real device. We keep the localhost default for `expo start`
+// so the dev workflow still works.
 const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 

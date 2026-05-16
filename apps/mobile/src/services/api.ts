@@ -19,9 +19,27 @@ interface ExtraConfig {
   apiBaseUrl?: string;
 }
 
+// Track whether we've already warned about the localhost fallback. We don't
+// throw — that'd brick the dev workflow — but we make damn sure it's loud in
+// the JS console any time a real-device install ends up here. Production
+// OTAs MUST be published with `eas update --environment production` so the
+// extra.apiBaseUrl field gets populated from EXPO_PUBLIC_API_BASE_URL.
+let warnedLocalhostFallback = false;
 function getBaseUrl(): string {
   const extra = (Constants.expoConfig?.extra ?? {}) as ExtraConfig;
-  return extra.apiBaseUrl ?? 'http://localhost:8080';
+  const url = extra.apiBaseUrl;
+  if (!url || url.startsWith('http://localhost')) {
+    if (!warnedLocalhostFallback) {
+      warnedLocalhostFallback = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[runstamp] apiBaseUrl falling back to localhost — your OTA bundle is missing EXPO_PUBLIC_API_BASE_URL. ' +
+          'Re-run `eas update --environment production` (or rebuild).',
+      );
+    }
+    return url ?? 'http://localhost:8080';
+  }
+  return url;
 }
 
 export class UnauthorizedError extends Error {
