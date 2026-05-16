@@ -74,11 +74,33 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
         </View>
       </View>
 
+      <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Pressable onPress={() => setFiltersOpen((v) => !v)} style={{
+          paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+          backgroundColor: filtersAreActive(filters) ? c.ink : c.paper2,
+          borderWidth: 1, borderColor: filtersAreActive(filters) ? c.ink : c.line,
+        }}>
+          <TText style={{ fontSize: 12, color: filtersAreActive(filters) ? c.paper : c.ink }}>
+            {filtersAreActive(filters) ? 'Filters active' : 'Filters'}
+          </TText>
+        </Pressable>
+        {filtersAreActive(filters) && (
+          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)}>
+            <TText style={{ fontSize: 12, color: c.ink3, textDecorationLine: 'underline' }}>Clear</TText>
+          </Pressable>
+        )}
+      </View>
+      {filtersOpen && (
+        <View style={{ paddingHorizontal: 14 }}>
+          <AnalyticsFilters value={filters} onChange={setFilters} />
+        </View>
+      )}
+
       <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
         {activities.length === 0 ? (
           <EmptyState loading={loading} />
         ) : (
-          <StatsView scope={scope} activities={activities} />
+          <StatsView scope={scope} activities={activities} filters={filters} />
         )}
       </View>
     </ScrollView>
@@ -118,7 +140,7 @@ function aggregate(rows: Activity[]): Aggregate {
   return { totalKm, runs, totalSec, elevM };
 }
 
-function StatsView({ scope, activities }: { scope: Scope; activities: Activity[] }) {
+function StatsView({ scope, activities, filters }: { scope: Scope; activities: Activity[]; filters: Filters }) {
   const c = useColors();
   const filtered = useMemo(() => filterByScope(activities, scope), [activities, scope]);
   const all = useMemo(() => aggregate(activities), [activities]);
@@ -126,34 +148,46 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
   const { efforts } = useBestEfforts();
 
   const ascending = useMemo(() => sortByDateAsc(activities), [activities]);
+  const filteredByLens = useMemo(() => {
+    const inRange = (km: number) => km >= filters.minKm && (filters.maxKm >= 100 ? true : km <= filters.maxKm);
+    return ascending.filter((a) => {
+      if (!inRange(a.distance)) return false;
+      if (filters.zones.size > 0) {
+        const z = classifyAvgHr(a.avgHr || undefined);
+        if (z === null || !filters.zones.has(z)) return false;
+      }
+      return true;
+    });
+  }, [ascending, filters]);
+  const filteredInScope = useMemo(() => filterByScope(filteredByLens, scope), [filteredByLens, scope]);
   const hrMax = DEFAULT_HR_MAX;
   const hrResting = DEFAULT_HR_RESTING;
   const heatmap = useMemo(() => buildHeatmap(
-    ascending.map((a) => ({ date: a.date, distance: a.distance })),
-  ), [ascending]);
-  const streaks = useMemo(() => computeStreaks(ascending), [ascending]);
+    filteredByLens.map((a) => ({ date: a.date, distance: a.distance })),
+  ), [filteredByLens]);
+  const streaks = useMemo(() => computeStreaks(filteredByLens), [filteredByLens]);
   const load = useMemo(() => buildLoadSeries(
-    ascending.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
+    filteredByLens.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
     new Date(),
     hrMax,
     hrResting,
-  ), [ascending, hrMax, hrResting]);
+  ), [filteredByLens, hrMax, hrResting]);
   const hrBased = useMemo(() => hasAnyHr(ascending.map((a) => ({ avgHr: a.avgHr }))), [ascending]);
   const monthlyKm = useMemo(() => {
     const y = new Date().getFullYear();
     const out: number[] = Array(12).fill(0);
-    for (const a of ascending) {
+    for (const a of filteredByLens) {
       const d = new Date(a.date);
       if (d.getFullYear() === y) out[d.getMonth()] += a.distance;
     }
     return out;
-  }, [ascending]);
-  const histogramCells = useMemo(() => distanceHistogram(filtered), [filtered]);
+  }, [filteredByLens]);
+  const histogramCells = useMemo(() => distanceHistogram(filteredInScope), [filteredInScope]);
   const kmByDate = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const a of ascending) out[a.date] = (out[a.date] ?? 0) + a.distance;
+    for (const a of filteredByLens) out[a.date] = (out[a.date] ?? 0) + a.distance;
     return out;
-  }, [ascending]);
+  }, [filteredByLens]);
   const now = useMemo(() => new Date(), []);
   const weeklyKm = useMemo(() => {
     if (scope !== 'month') return [] as number[];
@@ -172,8 +206,8 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
     return weeks;
   }, [scope, kmByDate, now]);
   const cumulative = useMemo(() =>
-    monthlyCumulative(ascending.map((a) => ({ date: a.date, distance: a.distance })))
-  , [ascending]);
+    monthlyCumulative(filteredByLens.map((a) => ({ date: a.date, distance: a.distance })))
+  , [filteredByLens]);
 
   return (
     <View>
@@ -256,8 +290,8 @@ function StatsView({ scope, activities }: { scope: Scope; activities: Activity[]
       )}
       <SectionHeader title="Recent activity" />
       <View style={{ gap: 6 }}>
-        {filtered.slice(0, 10).map((a) => <Row key={a.id} a={a} />)}
-        {filtered.length === 0 && <NoneInScope scope={scope} />}
+        {filteredInScope.slice(0, 10).map((a) => <Row key={a.id} a={a} />)}
+        {filteredInScope.length === 0 && <NoneInScope scope={scope} />}
       </View>
     </View>
   );
