@@ -428,12 +428,12 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <Eyebrow style={{ color: c.ink3 }}>
                 {scope === 'year' ? String(selectedYear) : `${MONTH_NAMES[selectedMonth - 1].toUpperCase()} ${selectedYear}`}
               </Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 32, color: c.ink, letterSpacing: -0.8 }}>{fmtDist(scoped.totalKm, units)}</TText>
+              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 36, color: c.ink, letterSpacing: -0.8 }}>{fmtDist(scoped.totalKm, units)}</TText>
               <TText style={{ fontSize: 10, color: c.ink3 }}>{scoped.runs} runs · {fmtTime(scoped.totalSec)}</TText>
             </View>
             <View style={{ flex: 1 }}>
               <Eyebrow style={{ color: c.ink3 }}>{labelPeriod(comparePeriod).toUpperCase()}</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 32, color: c.ink2, letterSpacing: -0.8 }}>{fmtDist(aggB.totalKm, units)}</TText>
+              <TText variant="monoMedium" style={{ fontSize: 30, lineHeight: 36, color: c.ink2, letterSpacing: -0.8 }}>{fmtDist(aggB.totalKm, units)}</TText>
               <TText style={{ fontSize: 10, color: c.ink3 }}>{aggB.runs} runs · {fmtTime(aggB.totalSec)}</TText>
               {(() => {
                 const d = delta(scoped.totalKm, aggB.totalKm);
@@ -538,6 +538,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <WeeklyBars values={weeklyKm} compare={comparePeriod ? weeklyKmB : undefined} />
             </ShareableChartCard>
           </View>
+          {hasVo2 && (
+            <View style={{ marginTop: 12 }}>
+              <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
+            </View>
+          )}
           <View style={{ marginTop: 12 }}>
             <TrainingLoadCard
               series={load}

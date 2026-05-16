@@ -49,7 +49,7 @@ export function Vo2MaxCard({ series, current, delta28d }: Props) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 }}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1, color: c.ink }}>
+            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
               {current.toFixed(1)}
             </TText>
             <TText style={{ fontSize: 12, color: c.ink3 }}>ml/kg/min</TText>

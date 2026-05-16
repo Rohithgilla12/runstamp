@@ -90,7 +90,7 @@ export function StampsScreen({ navigation, route }: RootStackProps<'Stamps'>) {
         <View style={{ flex: 1 }}>
           <Eyebrow>EARNED</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 36, letterSpacing: -1, color: c.ink }}>{totalEarned}</TText>
+            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>{totalEarned}</TText>
             <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>/ {stamps.length}</TText>
           </View>
         </View>
