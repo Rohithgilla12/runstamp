@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // CyanotypeTemplate (PRD §6.3 — "Cyanotype")
@@ -25,7 +27,7 @@ interface Props {
 //
 // Bypasses the live theme accent intentionally — cyanotype is monochromatic
 // per the medium it imitates. The solar accent doesn't appear here.
-export function CyanotypeTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function CyanotypeTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
   // Mute the live theme; cyanotype is its own colour space.
   void c;
@@ -55,14 +57,22 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 18 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 32 - 50, left: -20, width: width + 40,
-              height: 12, backgroundColor: 'rgba(240,230,205,0.05)', transform: [{ rotate: '-10deg' }],
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.45}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 18 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 32 - 50, left: -20, width: width + 40,
+                  height: 12, backgroundColor: 'rgba(240,230,205,0.05)', transform: [{ rotate: '-10deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: PRUSSIAN }} />

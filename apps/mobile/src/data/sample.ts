@@ -81,8 +81,11 @@ export type ActivityKind = 'easy' | 'long' | 'workout' | 'travel' | 'race';
 export interface Split { k: number; sec: number; hr: number }
 export interface Weather { t: number; w: string; icon: 'sun' | 'cloud' | 'rain' | 'fog' | 'clear' }
 
+export type ActivitySource = 'strava' | 'apple_health' | 'manual';
+
 export interface Activity {
   id: string;
+  source?: ActivitySource;
   date: string;
   day: string;
   time: string;

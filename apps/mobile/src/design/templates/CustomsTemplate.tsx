@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // CustomsTemplate
@@ -24,7 +26,7 @@ interface Props {
 // "DECLARATION OF RUN" as the italic Instrument Serif title at the top.
 // Personal Best checkbox in the lower right.
 // Signature line at the very bottom.
-export function CustomsTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function CustomsTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   const paperTone = '#f5eedf';
@@ -57,14 +59,22 @@ export function CustomsTemplate({ run, width, height, background, units = 'km' }
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 16 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 32 - 50, left: -20, width: width + 40,
-              height: 12, backgroundColor: 'rgba(28,24,18,0.025)', transform: [{ rotate: '-6deg' }]
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.5}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 16 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 32 - 50, left: -20, width: width + 40,
+                  height: 12, backgroundColor: 'rgba(28,24,18,0.025)', transform: [{ rotate: '-6deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent, opacity: 0.06 }} />

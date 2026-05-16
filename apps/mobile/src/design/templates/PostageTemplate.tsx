@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, TONE, formatMonthDay, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // PostageTemplate
@@ -28,7 +30,7 @@ interface Props {
 //  - Postmark circle actually renders date + pace inside (was empty rings).
 //  - "DENOMINATION" eyebrow dropped in favour of plain DISTANCE — less jargon.
 //  - Padding uses the shared scale so spacing matches the rest of the family.
-export function PostageTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function PostageTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
   // Stamp inset — perforations sit just inside the outer rect so the paper
   // backdrop bleeds through the notches.
@@ -53,15 +55,22 @@ export function PostageTemplate({ run, width, height, background, units = 'km' }
           <RouteMap points={run.route} width={cardW} height={cardH} style="dark" accent={c.accent} routeStrokeWidth={4} flat />
         )}
         {background === 'photo' && (
-          <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714', alignItems: 'center', justifyContent: 'center' }}>
-            {Array.from({ length: 16 }).map((_, i) => (
-              <View key={i} style={{
-                position: 'absolute', top: i * 32 - 60, left: -20, width: cardW + 40,
-                height: 14, backgroundColor: 'rgba(243,237,226,0.04)', transform: [{ rotate: '-12deg' }],
-              }} />
-            ))}
-            <TText variant="mono" style={{ fontSize: 10, color: 'rgba(243,237,226,0.55)' }}>UPLOAD PHOTO</TText>
-          </View>
+          <PhotoBackground
+            uri={photoUri}
+            width={cardW}
+            height={cardH}
+            fallback={
+              <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714', alignItems: 'center', justifyContent: 'center' }}>
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <View key={i} style={{
+                    position: 'absolute', top: i * 32 - 60, left: -20, width: cardW + 40,
+                    height: 14, backgroundColor: 'rgba(243,237,226,0.04)', transform: [{ rotate: '-12deg' }],
+                  }} />
+                ))}
+                <TText variant="mono" style={{ fontSize: 10, color: 'rgba(243,237,226,0.55)' }}>UPLOAD PHOTO</TText>
+              </View>
+            }
+          />
         )}
         {background === 'solid' && (
           <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent }} />

@@ -8,6 +8,7 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { PostmarkMark } from '../SunMark';
 import { EYEBROW_SIZE, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -15,6 +16,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // PassportTemplate
@@ -25,7 +27,7 @@ interface Props {
 // the left, distance + pace stacked on the right, faint horizontal guide
 // rules across the mid section like a real biometric page.
 // Bottom-right stamp zone uses PostmarkMark from SunMark.
-export function PassportTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function PassportTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   // Warm paper tones — passport pages are off-white / ecru
@@ -49,14 +51,22 @@ export function PassportTemplate({ run, width, height, background, units = 'km' 
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 18 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 30 - 60, left: -20, width: width + 40,
-              height: 10, backgroundColor: 'rgba(28,24,18,0.03)', transform: [{ rotate: '-8deg' }]
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.55}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 18 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 30 - 60, left: -20, width: width + 40,
+                  height: 10, backgroundColor: 'rgba(28,24,18,0.03)', transform: [{ rotate: '-8deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent, opacity: 0.07 }} />

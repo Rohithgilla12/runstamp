@@ -17,6 +17,9 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  /** Engraved is intentionally monochrome — accepts the prop for editor
+   *  call-site consistency but ignores it. */
+  photoUri?: string | null;
 }
 
 // EngravedTemplate

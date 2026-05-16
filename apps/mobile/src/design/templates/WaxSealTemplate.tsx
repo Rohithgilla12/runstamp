@@ -14,6 +14,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -21,6 +22,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // Seeded LCG — Mulberry32-inspired, deterministic.
@@ -52,7 +54,7 @@ function seedFromId(id: string): number {
 // Around the rim, curved TextPath reads: "PERSONAL BEST · <dist> KM · <city> · <date>"
 // In the centre: time in big mono, run title in italic underneath.
 // The background bleeds through the gaps between ribbons.
-export function WaxSealTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function WaxSealTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   const sealSize = Math.min(width, height) * 0.72;
@@ -75,14 +77,22 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km' }
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714' }}>
-          {Array.from({ length: 18 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 28 - 60, left: -20, width: width + 40,
-              height: 10, backgroundColor: 'rgba(243,237,226,0.03)', transform: [{ rotate: '-10deg' }]
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.55}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714' }}>
+              {Array.from({ length: 18 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 28 - 60, left: -20, width: width + 40,
+                  height: 10, backgroundColor: 'rgba(243,237,226,0.03)', transform: [{ rotate: '-10deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.ink, opacity: 0.92 }} />

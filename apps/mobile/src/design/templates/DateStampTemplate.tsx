@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, MONTHS_3, TONE, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // DateStampTemplate (PRD §6.3)
@@ -25,7 +27,7 @@ interface Props {
 //
 // The card sits on warm paper; the stamp itself is the only saturated thing.
 // Pace + time + elevation read along a thin baseline rule below.
-export function DateStampTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function DateStampTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   const inkTone = TONE.inkDark;
@@ -47,14 +49,22 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 14 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 36 - 50, left: -20, width: width + 40,
-              height: 12, backgroundColor: 'rgba(28,24,18,0.03)', transform: [{ rotate: '-8deg' }],
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.5}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 14 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 36 - 50, left: -20, width: width + 40,
+                  height: 12, backgroundColor: 'rgba(28,24,18,0.03)', transform: [{ rotate: '-8deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent, opacity: 0.05 }} />

@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // RisoTemplate (PRD §6.3 — "Riso")
@@ -26,7 +28,7 @@ interface Props {
 //
 // Like CyanotypeTemplate this bypasses the live theme accent — riso's
 // charm is the strict 2-spot-colour palette.
-export function RisoTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function RisoTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
   void c;
 
@@ -58,14 +60,22 @@ export function RisoTemplate({ run, width, height, background, units = 'km' }: P
       )}
 
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 14 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 38 - 50, left: -20, width: width + 40,
-              height: 14, backgroundColor: 'rgba(255,91,138,0.10)', transform: [{ rotate: '-8deg' }],
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.6}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 14 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 38 - 50, left: -20, width: width + 40,
+                  height: 14, backgroundColor: 'rgba(255,91,138,0.10)', transform: [{ rotate: '-8deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
 
       {background === 'solid' && (

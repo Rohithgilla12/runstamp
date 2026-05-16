@@ -206,20 +206,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
 
         <View style={{ paddingTop: 20 }}>
           <Eyebrow style={{ marginBottom: 8 }}>SOURCE</Eyebrow>
-          <View style={{
-            paddingHorizontal: 12, paddingVertical: 10,
-            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
-            borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 10
-          }}>
-            <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: '#fc4c02', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon.strava size={18} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <TText style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>Strava</TText>
-              <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>id 11498376521 · synced 4m ago</TText>
-            </View>
-            <Eyebrow style={{ color: c.ink3 }}>CANONICAL</Eyebrow>
-          </View>
+          <SourceCard source={run.source} />
         </View>
 
         <View style={{ paddingTop: 20 }}>
@@ -282,6 +269,36 @@ function SplitsTable({ run }: { run: Activity }) {
 function Empty({ text }: { text: string }) {
   const c = useColors();
   return <TText style={{ fontSize: 13, color: c.ink3, textAlign: 'center', padding: 20 }}>{text}</TText>;
+}
+
+// Source card — reads run.source so a HealthKit-imported run doesn't
+// silently masquerade as Strava (previous bug). Falls back to neutral
+// "Manual" rendering if source is missing on legacy rows.
+function SourceCard({ source }: { source?: 'strava' | 'apple_health' | 'manual' }) {
+  const c = useColors();
+  const cfg = source === 'strava'
+    ? { label: 'Strava', bg: '#fc4c02', Glyph: Icon.strava, fg: '#fff' as const }
+    : source === 'apple_health'
+      ? { label: 'Apple Health', bg: '#fb466c', Glyph: Icon.heart, fg: '#fff' as const }
+      : { label: 'Manual entry', bg: c.paper3, Glyph: Icon.plus, fg: c.ink2 as string };
+  return (
+    <View style={{
+      paddingHorizontal: 12, paddingVertical: 10,
+      backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+      borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    }}>
+      <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <cfg.Glyph size={18} color={cfg.fg} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <TText style={{ fontSize: 13, fontWeight: '500', color: c.ink }}>{cfg.label}</TText>
+        <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+          {source === 'apple_health' ? 'via HKWorkoutSession' : source === 'strava' ? 'via Strava API' : 'on-device'}
+        </TText>
+      </View>
+      <Eyebrow style={{ color: c.ink3 }}>CANONICAL</Eyebrow>
+    </View>
+  );
 }
 
 // Strava streams arrive as `number[]`. Sanity-check the shape and drop

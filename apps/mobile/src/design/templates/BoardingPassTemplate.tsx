@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // Seeded LCG — deterministic, no Math.random() in render paths.
@@ -38,7 +40,7 @@ function seededSequence(seed: number, count: number): number[] {
 // small circles). Left column holds ORIGIN → DESTINATION with city/country.
 // Right "stub" column shows distance, pace, time stacked. A fake barcode strip
 // sits at the bottom. Airmail red/blue diagonal stripe bands at top and bottom.
-export function BoardingPassTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function BoardingPassTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   const stripH = 18;
@@ -63,14 +65,22 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {Array.from({ length: 20 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 28 - 60, left: -20, width: width + 40,
-              height: 10, backgroundColor: 'rgba(20,17,13,0.03)', transform: [{ rotate: '-12deg' }]
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          opacity={0.55}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0 }}>
+              {Array.from({ length: 20 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 28 - 60, left: -20, width: width + 40,
+                  height: 10, backgroundColor: 'rgba(20,17,13,0.03)', transform: [{ rotate: '-12deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent, opacity: 0.08 }} />

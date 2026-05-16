@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
+import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
   run: Activity;
@@ -14,6 +15,7 @@ interface Props {
   height: number;
   background: 'map' | 'photo' | 'solid';
   units?: Units;
+  photoUri?: string | null;
 }
 
 // HalftoneTemplate (PRD §6.3 — "Halftone")
@@ -24,7 +26,7 @@ interface Props {
 //
 // Inspired by the print culture branch of the reference triangle in
 // .impeccable.md — Polaroid / Field Notes / Risograph print shops.
-export function HalftoneTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function HalftoneTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
   const c = useColors();
 
   const inkTone = '#14110d';
@@ -39,14 +41,21 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km' 
         </View>
       )}
       {background === 'photo' && (
-        <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714' }}>
-          {Array.from({ length: 14 }).map((_, i) => (
-            <View key={i} style={{
-              position: 'absolute', top: i * 40 - 50, left: -20, width: width + 40,
-              height: 20, backgroundColor: 'rgba(243,237,226,0.05)', transform: [{ rotate: '-8deg' }],
-            }} />
-          ))}
-        </View>
+        <PhotoBackground
+          uri={photoUri}
+          width={width}
+          height={height}
+          fallback={
+            <View style={{ position: 'absolute', inset: 0, backgroundColor: '#1a1714' }}>
+              {Array.from({ length: 14 }).map((_, i) => (
+                <View key={i} style={{
+                  position: 'absolute', top: i * 40 - 50, left: -20, width: width + 40,
+                  height: 20, backgroundColor: 'rgba(243,237,226,0.05)', transform: [{ rotate: '-8deg' }],
+                }} />
+              ))}
+            </View>
+          }
+        />
       )}
       {background === 'solid' && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent, opacity: 0.85 }} />

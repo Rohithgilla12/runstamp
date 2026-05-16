@@ -244,11 +244,25 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           ))}
           <View style={{ flex: 1 }} />
           {(['map', 'photo', 'solid'] as const).map((b) => (
-            <Pressable key={b} onPress={() => setBg(b)} style={{
-              paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
-              backgroundColor: bg === b ? c.paper3 : 'transparent',
-              borderWidth: 1, borderColor: c.line
-            }}>
+            <Pressable
+              key={b}
+              onPress={() => {
+                // When the user picks "photo" and we don't have one yet,
+                // jump straight into the picker instead of showing an
+                // ambiguous empty stripe pattern. Setting bg='photo' first
+                // is harmless — pickPhoto re-sets it on success.
+                if (b === 'photo' && !photoUri) {
+                  pickPhoto();
+                  return;
+                }
+                setBg(b);
+              }}
+              style={{
+                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+                backgroundColor: bg === b ? c.paper3 : 'transparent',
+                borderWidth: 1, borderColor: c.line,
+              }}
+            >
               <TText style={{ fontSize: 11, color: c.ink2, fontWeight: '500' }}>{b}</TText>
             </Pressable>
           ))}
@@ -259,51 +273,51 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'postmark' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'boarding' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'passport' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'customs' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'engraved' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'wax' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'minimal' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <MinimalTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <MinimalTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'datestamp' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <DateStampTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <DateStampTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'halftone' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <HalftoneTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <HalftoneTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'cyanotype' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CyanotypeTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <CyanotypeTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'riso' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <RisoTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} />
+              <RisoTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
