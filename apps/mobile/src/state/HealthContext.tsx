@@ -17,10 +17,12 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import { Platform } from 'react-native';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import {
   isHealthKitAvailable,
@@ -126,6 +128,35 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     },
     [status, lastSyncAt, runSync],
   );
+
+  // Auto-resync on app foreground. iOS HKObserverQuery + background delivery
+  // is the proper PRD §6.8 fix and lands in a later milestone (needs native
+  // wiring). Until then, every time the user brings the app back to the
+  // foreground and we haven't synced in the last 5 minutes, fire an
+  // incremental resync in the background. Cheap when no new workouts exist
+  // (HKAnchoredObjectQuery + dedup contract make repeat calls idempotent).
+  const FOREGROUND_RESYNC_MIN_AGE_MS = 5 * 60 * 1000;
+  const lastForegroundSyncRef = useRef<number>(0);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    if (status !== 'granted') return;
+    const onChange = (next: AppStateStatus) => {
+      const prev = appStateRef.current;
+      appStateRef.current = next;
+      if (!(prev.match(/inactive|background/) && next === 'active')) return;
+      if (syncing) return;
+      const now = Date.now();
+      if (now - lastForegroundSyncRef.current < FOREGROUND_RESYNC_MIN_AGE_MS) return;
+      lastForegroundSyncRef.current = now;
+      // Fire and forget; errors are swallowed here because there's no UI
+      // surface for a silent background sync. The next manual resync (or
+      // the next foreground bounce) will retry.
+      resync().catch(() => undefined);
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [status, syncing, resync]);
 
   const value = useMemo<HealthContextValue>(
     () => ({ status, syncing, lastSyncAt, progress, connect, resync }),
