@@ -69,8 +69,11 @@ func (g *Geocoder) Lookup(ctx context.Context, lat, lon float64) (Result, error)
 	lonCell := int(math.Floor(lon * 100))
 
 	var cached Result
+	// COALESCE so NULL columns scan into empty strings instead of erroring out.
+	// A legitimate "no city" cache hit (e.g. open ocean) should not poison
+	// every subsequent lookup at that cell.
 	err := g.pool.QueryRow(ctx, `
-SELECT city, country, country_code
+SELECT COALESCE(city, ''), COALESCE(country, ''), COALESCE(country_code, '')
 FROM geocode_cache
 WHERE lat_cell = $1 AND lon_cell = $2`, latCell, lonCell).Scan(&cached.City, &cached.Country, &cached.CountryCode)
 	if err == nil {
@@ -108,15 +111,17 @@ func nullable(s string) any {
 
 type nominatimResponse struct {
 	Address struct {
-		City        string `json:"city"`
-		Town        string `json:"town"`
-		Village     string `json:"village"`
-		Municipality string `json:"municipality"`
-		Suburb      string `json:"suburb"`
-		County      string `json:"county"`
-		State       string `json:"state"`
-		Country     string `json:"country"`
-		CountryCode string `json:"country_code"`
+		City          string `json:"city"`
+		Town          string `json:"town"`
+		Village       string `json:"village"`
+		Municipality  string `json:"municipality"`
+		CityDistrict  string `json:"city_district"`
+		Suburb        string `json:"suburb"`
+		County        string `json:"county"`
+		StateDistrict string `json:"state_district"`
+		State         string `json:"state"`
+		Country       string `json:"country"`
+		CountryCode   string `json:"country_code"`
 	} `json:"address"`
 }
 
@@ -170,9 +175,25 @@ func (g *Geocoder) fetch(ctx context.Context, lat, lon float64) (Result, error) 
 }
 
 // pickCity picks the best available locality from Nominatim's response.
-// city > town > village > municipality > suburb > county.
+// city > town > village > municipality > city_district > suburb > county >
+// state_district.
+//
+// state_district is the last-resort fallback because OSM models some major
+// cities (notably Mumbai, "Mumbai City District") as an administrative
+// state_district rather than a place=city — at zoom=10 the only locality
+// field populated is state_district. CityAliases collapses those admin
+// names back to the canonical city.
 func pickCity(p nominatimResponse) string {
-	for _, candidate := range []string{p.Address.City, p.Address.Town, p.Address.Village, p.Address.Municipality, p.Address.Suburb, p.Address.County} {
+	for _, candidate := range []string{
+		p.Address.City,
+		p.Address.Town,
+		p.Address.Village,
+		p.Address.Municipality,
+		p.Address.CityDistrict,
+		p.Address.Suburb,
+		p.Address.County,
+		p.Address.StateDistrict,
+	} {
 		if candidate != "" {
 			return candidate
 		}
@@ -188,6 +209,15 @@ func pickCity(p nominatimResponse) string {
 var CityAliases = map[string]string{
 	"Mumbai Suburban":          "Mumbai",
 	"Mumbai Suburban District": "Mumbai",
+	"Mumbai City District":     "Mumbai",
+	"Mumbai City":              "Mumbai",
+	"Mumbai Zone 1":            "Mumbai",
+	"Mumbai Zone 2":            "Mumbai",
+	"Mumbai Zone 3":            "Mumbai",
+	"Mumbai Zone 4":            "Mumbai",
+	"Mumbai Zone 5":            "Mumbai",
+	"Mumbai Zone 6":            "Mumbai",
+	"Mumbai Zone 7":            "Mumbai",
 	"Bombay":                   "Mumbai",
 	"Bombay Suburban":          "Mumbai",
 	"Greater Bombay":           "Mumbai",
