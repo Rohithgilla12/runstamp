@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"time"
 
@@ -41,27 +43,46 @@ type incomingStreams struct {
 	Latlng             [][2]float64         `json:"latlng,omitempty"`
 }
 
+// All numeric fields that semantically end up as ints in the DB are accepted
+// as float64 over the wire so HealthKit's fractional seconds / float HR
+// numbers don't blow up the JSON decode. We round to int below.
 type incomingWorkout struct {
-	UUID                  string           `json:"uuid"`
-	StartedAt             string           `json:"startedAt"`
-	ElapsedSeconds        int              `json:"elapsedSeconds"`
-	MovingSeconds         *int             `json:"movingSeconds,omitempty"`
-	DistanceMeters        float64          `json:"distanceMeters"`
-	ActiveEnergyKcal      *float64         `json:"activeEnergyKcal,omitempty"`
-	ElevationGainMeters   *float64         `json:"elevationGainMeters,omitempty"`
-	AvgHeartRate          *int             `json:"avgHeartRate,omitempty"`
-	MaxHeartRate          *int             `json:"maxHeartRate,omitempty"`
-	AvgRunningPower       *float64         `json:"avgRunningPower,omitempty"`
+	UUID                   string          `json:"uuid"`
+	StartedAt              string          `json:"startedAt"`
+	ElapsedSeconds         float64         `json:"elapsedSeconds"`
+	MovingSeconds          *float64        `json:"movingSeconds,omitempty"`
+	DistanceMeters         float64         `json:"distanceMeters"`
+	ActiveEnergyKcal       *float64        `json:"activeEnergyKcal,omitempty"`
+	ElevationGainMeters    *float64        `json:"elevationGainMeters,omitempty"`
+	AvgHeartRate           *float64        `json:"avgHeartRate,omitempty"`
+	MaxHeartRate           *float64        `json:"maxHeartRate,omitempty"`
+	AvgRunningPower        *float64        `json:"avgRunningPower,omitempty"`
 	AvgVerticalOscillation *float64        `json:"avgVerticalOscillation,omitempty"`
-	AvgGroundContactTime  *float64         `json:"avgGroundContactTime,omitempty"`
-	AvgStrideLength       *float64         `json:"avgStrideLength,omitempty"`
-	AvgRunningSpeed       *float64         `json:"avgRunningSpeed,omitempty"`
-	AvgCadence            *float64         `json:"avgCadence,omitempty"`
-	VO2maxMlKgMin         *float64         `json:"vo2maxMlKgMin,omitempty"`
-	StartLatitude         *float64         `json:"startLatitude,omitempty"`
-	StartLongitude        *float64         `json:"startLongitude,omitempty"`
-	Streams               *incomingStreams  `json:"streams,omitempty"`
-	Splits                json.RawMessage  `json:"splits,omitempty"`
+	AvgGroundContactTime   *float64        `json:"avgGroundContactTime,omitempty"`
+	AvgStrideLength        *float64        `json:"avgStrideLength,omitempty"`
+	AvgRunningSpeed        *float64        `json:"avgRunningSpeed,omitempty"`
+	AvgCadence             *float64        `json:"avgCadence,omitempty"`
+	VO2maxMlKgMin          *float64        `json:"vo2maxMlKgMin,omitempty"`
+	StartLatitude          *float64        `json:"startLatitude,omitempty"`
+	StartLongitude         *float64        `json:"startLongitude,omitempty"`
+	Streams                *incomingStreams `json:"streams,omitempty"`
+	Splits                 json.RawMessage `json:"splits,omitempty"`
+}
+
+func roundFloatPtr(f *float64) *int {
+	if f == nil {
+		return nil
+	}
+	v := int(math.Round(*f))
+	return &v
+}
+
+func roundDurationPtr(f *float64) *int {
+	if f == nil {
+		return nil
+	}
+	v := int(math.Round(*f))
+	return &v
 }
 
 type healthSyncRequest struct {
@@ -97,9 +118,20 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, readErr := io.ReadAll(io.LimitReader(r.Body, 16*1024*1024))
+	if readErr != nil {
+		h.Log.Error("health sync: read body", "err", readErr)
+		writeError(w, http.StatusBadRequest, "couldn't read request body")
+		return
+	}
+
 	var req healthSyncRequest
-	if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if decodeErr := json.Unmarshal(body, &req); decodeErr != nil {
+		// Log the actual decode error so we never debug a generic "invalid
+		// request body" 400 again. The mobile payload is large enough that
+		// a typed-field mismatch (e.g. float into int) is easy to miss.
+		h.Log.Warn("health sync: decode failed", "err", decodeErr, "preview", string(body[:min(256, len(body))]))
+		writeError(w, http.StatusBadRequest, "invalid request body: "+decodeErr.Error())
 		return
 	}
 
@@ -131,10 +163,15 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 			calories = &rounded
 		}
 
+		elapsed := int(math.Round(wk.ElapsedSeconds))
+		movingSeconds := roundDurationPtr(wk.MovingSeconds)
+		avgHR := roundFloatPtr(wk.AvgHeartRate)
+		maxHR := roundFloatPtr(wk.MaxHeartRate)
+
 		var avgPace *float64
-		if wk.ElapsedSeconds > 0 && wk.DistanceMeters > 0 {
+		if elapsed > 0 && wk.DistanceMeters > 0 {
 			distKm := wk.DistanceMeters / 1000.0
-			paceSecPerKm := float64(wk.ElapsedSeconds) / distKm
+			paceSecPerKm := float64(elapsed) / distKm
 			avgPace = &paceSecPerKm
 		}
 
@@ -152,12 +189,12 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 			ExternalID:      wk.UUID,
 			Sport:           "run",
 			StartedAt:       startedAt,
-			ElapsedSeconds:  wk.ElapsedSeconds,
-			MovingSeconds:   wk.MovingSeconds,
+			ElapsedSeconds:  elapsed,
+			MovingSeconds:   movingSeconds,
 			DistanceM:       wk.DistanceMeters,
 			ElevationGainM:  wk.ElevationGainMeters,
-			AvgHR:           wk.AvgHeartRate,
-			MaxHR:           wk.MaxHeartRate,
+			AvgHR:           avgHR,
+			MaxHR:           maxHR,
 			AvgPaceSPerKm:   avgPace,
 			Calories:        calories,
 			StartLat:        wk.StartLatitude,
