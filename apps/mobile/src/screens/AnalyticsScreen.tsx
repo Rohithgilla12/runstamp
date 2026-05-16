@@ -29,6 +29,8 @@ import { currentVo2, deltaVo2, vo2Series } from '../analytics/vo2max';
 import { Vo2MaxCard } from '../design/charts/Vo2MaxCard';
 import { cadenceSeries, currentCadence, deltaCadence } from '../analytics/cadence';
 import { CadenceCard } from '../design/charts/CadenceCard';
+import { buildRacePredictor } from '../analytics/racePredictor';
+import { RacePredictorCard } from '../design/charts/RacePredictorCard';
 import { DailyBars } from '../design/charts/DailyBars';
 import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
@@ -385,6 +387,15 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
   const cadenceDeltaV = useMemo(() => deltaCadence(cadenceTrend), [cadenceTrend]);
   const hasCadence = cadenceTrend.length > 0;
 
+  // Race predictor — picks highest-VDOT effort as anchor, projects equivalent
+  // times via Daniels VDOT + Riegel, adds Tanda marathon estimate from the
+  // 8-week training summary.
+  const racePredictor = useMemo(() => buildRacePredictor(
+    efforts.map((e) => ({ distanceM: e.distanceM, timeSeconds: e.timeSeconds, achievedAt: e.achievedAt })),
+    ascending.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds })),
+    today,
+  ), [efforts, ascending, today]);
+
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
     return filterByPeriod(filteredByLens, comparePeriod);
@@ -520,6 +531,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <StatTile label="CURRENT" value={`${streaks.current}d`} />
             <StatTile label="LONGEST" value={`${streaks.longest}d`} />
           </View>
+          {racePredictor && (
+            <View style={{ marginTop: 12 }}>
+              <RacePredictorCard result={racePredictor} />
+            </View>
+          )}
           {hasVo2 && (
             <View style={{ marginTop: 12 }}>
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
@@ -594,6 +610,11 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
             <StatTile label="LONGEST RUN" value={fmtDist(longestRunKm, units) + ' ' + distUnit(units)} />
             <StatTile label="LONGEST STREAK" value={`${streaks.longest}d`} />
           </View>
+          {racePredictor && (
+            <View style={{ marginTop: 12 }}>
+              <RacePredictorCard result={racePredictor} />
+            </View>
+          )}
           {hasVo2 && (
             <View style={{ marginTop: 12 }}>
               <Vo2MaxCard series={vo2Trend} current={vo2Now ?? 0} delta28d={vo2Delta} />
