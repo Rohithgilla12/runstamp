@@ -276,10 +276,20 @@ When implementing — separate commits per chunk so each is reviewable:
 
 ---
 
-## Open questions for the runner-author
+## Locked decisions
 
-- **Mumbai Marathon naming:** include `Standard Chartered Mumbai Marathon` (older sponsor) as a fallback pattern? Most users renamed their old activities by now but the pattern is cheap insurance.
-- **`vedanta_delhi_half` patterns:** include `delhi half marathon` (bare, no sponsor prefix)? Risk: false hit on community runs called "Delhi Half Marathon training." Decision needed.
-- **`monsoon_run` distance threshold:** 15K feels right (a serious "I went out in the rain" run). Lower it to 10K to be more inclusive, or raise to 21.1K to make it harder?
-- **Mythic tier for Ladakh:** confirmed. Anyone disagreeing has never tried to breathe at 4,000m.
-- **Add a `goa_river_marathon` or `auroville_marathon` to the v0 seven?** Both are well-loved community marathons with strong regional followings. Adds two more illustrations.
+- **TMM patterns include `standard chartered mumbai` and `scmm`.** Strava history runs back to 2009; Standard Chartered sponsored TMM from 2004–2017, so a real chunk of long-time runners have those titles. Cheap insurance.
+- **`vedanta_delhi_half` patterns include bare `delhi half marathon`.** The distance gate `[21000, 21500]` filters out training runs, which almost never land in that exact band. Bare match is safe.
+- **`monsoon_run` distance stays at 15K.** Lower threshold dilutes the achievement ("I did a Saturday park 10K") — the stamp celebrates the long monsoon long-run. Half-marathon is unnecessarily harsh (~5% of Indian runners cross 21K in a session).
+- **Mythic tier for Ladakh stays.** Non-negotiable; altitude is the achievement.
+- **v0 stays at seven.** Auroville Marathon (Matrimandir golden globe is a beautiful illustration subject) and Goa River Marathon go to batch 2 alongside the World Marathon Majors. Keeps the v0 launch tight and the designer scope bounded.
+
+Final pattern set for the catalog (canonical):
+
+| Stamp | `title_patterns` (lowercased substring match) |
+|---|---|
+| `tata_mumbai_marathon` | `mumbai marathon`, `tata mumbai`, `standard chartered mumbai`, ` tmm `, ` scmm ` |
+| `vedanta_delhi_half` | `delhi half`, `vedanta delhi`, `adhm`, `airtel delhi half` |
+| `bengaluru_marathon` | `bengaluru marathon`, `bangalore marathon` |
+| `hyderabad_marathon` | `hyderabad marathon`, `nmdc hyderabad` |
+| `ladakh_marathon` | `ladakh marathon`, `ladakh` |

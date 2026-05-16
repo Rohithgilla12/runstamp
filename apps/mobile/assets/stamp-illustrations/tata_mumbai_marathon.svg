@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Ground line -->
+    <line x1="14" y1="184" x2="186" y2="184"/>
+
+    <!-- Plinth -->
+    <rect x="22" y="170" width="156" height="14"/>
+
+    <!-- Façade outline (main block) -->
+    <path d="M 24 170 L 24 42 L 176 42 L 176 170"/>
+
+    <!-- Upper cornice line -->
+    <line x1="24" y1="74" x2="176" y2="74"/>
+
+    <!-- Mid cornice (above arches) -->
+    <line x1="36" y1="100" x2="164" y2="100"/>
+
+    <!-- Central arch (Apollo Bunder) -->
+    <path d="M 78 170 L 78 110 A 22 22 0 0 1 122 110 L 122 170"/>
+
+    <!-- Left side arch -->
+    <path d="M 38 170 L 38 138 A 12 12 0 0 1 62 138 L 62 170"/>
+
+    <!-- Right side arch -->
+    <path d="M 138 170 L 138 138 A 12 12 0 0 1 162 138 L 162 170"/>
+
+    <!-- Upper-floor windows (three narrow openings) -->
+    <rect x="50" y="50" width="8" height="18"/>
+    <rect x="96" y="50" width="8" height="18"/>
+    <rect x="142" y="50" width="8" height="18"/>
+
+    <!-- Decorative vertical bands between windows (hint of carved stonework) -->
+    <line x1="72" y1="50" x2="72" y2="68"/>
+    <line x1="86" y1="50" x2="86" y2="68"/>
+    <line x1="114" y1="50" x2="114" y2="68"/>
+    <line x1="128" y1="50" x2="128" y2="68"/>
+
+    <!-- Four corner turrets — chhatri with cylindrical drum + onion dome + finial -->
+    <!-- Far-left turret -->
+    <line x1="26" y1="42" x2="26" y2="26"/>
+    <line x1="42" y1="42" x2="42" y2="26"/>
+    <line x1="22" y1="26" x2="46" y2="26"/>
+    <path d="M 24 26 Q 34 6 44 26"/>
+    <line x1="34" y1="10" x2="34" y2="4"/>
+
+    <!-- Inner-left turret -->
+    <line x1="68" y1="42" x2="68" y2="26"/>
+    <line x1="84" y1="42" x2="84" y2="26"/>
+    <line x1="64" y1="26" x2="88" y2="26"/>
+    <path d="M 66 26 Q 76 6 86 26"/>
+    <line x1="76" y1="10" x2="76" y2="4"/>
+
+    <!-- Inner-right turret -->
+    <line x1="116" y1="42" x2="116" y2="26"/>
+    <line x1="132" y1="42" x2="132" y2="26"/>
+    <line x1="112" y1="26" x2="136" y2="26"/>
+    <path d="M 114 26 Q 124 6 134 26"/>
+    <line x1="124" y1="10" x2="124" y2="4"/>
+
+    <!-- Far-right turret -->
+    <line x1="158" y1="42" x2="158" y2="26"/>
+    <line x1="174" y1="42" x2="174" y2="26"/>
+    <line x1="154" y1="26" x2="178" y2="26"/>
+    <path d="M 156 26 Q 166 6 176 26"/>
+    <line x1="166" y1="10" x2="166" y2="4"/>
+  </g>
+</svg>
