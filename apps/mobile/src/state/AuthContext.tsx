@@ -45,13 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       setStatus(u ? 'signed-in' : 'signed-out');
       if (u) {
-        // Register the device for stamp-earn pushes. Lazy import keeps the
-        // FCM native module from loading on cold-start when the user isn't
-        // signed in. Best-effort — failures never block sign-in.
+        // Register the device for stamp-earn pushes. Best-effort —
+        // failures never block sign-in. Uses Expo Push (not RNFB
+        // messaging) for static-frameworks compatibility.
         try {
           const idToken = await u.getIdToken();
-          const { registerDeviceForPush } = await import('../services/push');
-          await registerDeviceForPush(idToken);
+          const { requestAndRegister } = await import('../services/push');
+          await requestAndRegister(idToken);
         } catch {
           // ignore
         }

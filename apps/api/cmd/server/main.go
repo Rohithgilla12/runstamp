@@ -102,11 +102,7 @@ func main() {
 	stampsRepo := stamps.NewRepository(pool)
 	stampsEval := stamps.NewEvaluator(pool, stampsRepo, log)
 
-	pusher, err := push.NewPusher(ctx, cfg.FirebaseProjectID, cfg.FirebaseCredentialsPath, pool, log)
-	if err != nil {
-		log.Error("push: init failed", "err", err)
-		os.Exit(1)
-	}
+	pusher := push.NewPusher(pool, log)
 
 	// Resolve catalog metadata for a stamp ID without hitting the DB —
 	// the Sync'd in-memory Catalog is the source of truth.
