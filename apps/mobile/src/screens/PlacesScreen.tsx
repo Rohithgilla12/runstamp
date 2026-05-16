@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Dimensions, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
@@ -11,6 +11,9 @@ import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { SectionHeader } from './HomeScreen';
+import { WorldMap, type MapCity } from '../design/WorldMap';
+import { countContinents } from '../design/worldGeometry';
+import { PlacesShareModal } from './PlacesShareModal';
 import type { TabProps } from '../nav/types';
 
 interface ComputedPlace {
@@ -19,6 +22,8 @@ interface ComputedPlace {
   runs: number;
   km: number;
   first: string;
+  lat?: number;
+  lon?: number;
 }
 
 export function PlacesScreen(_props: TabProps<'Places'>) {
@@ -27,6 +32,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const insets = useSafeAreaInsets();
   const { activities, loading, refresh } = useActivities();
   const [refreshing, setRefreshing] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try { await refresh(); } finally { setRefreshing(false); }
@@ -34,11 +40,21 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
 
   const places = useMemo(() => aggregatePlaces(activities), [activities]);
   const cities = places.length;
-  const countries = new Set(places.map((p) => p.country)).size;
+  const countries = new Set(places.map((p) => p.country).filter(Boolean)).size;
+  const continents = useMemo(
+    () => countContinents(places.map((p) => p.country).filter(Boolean) as string[]),
+    [places],
+  );
   const totalKm = places.reduce((a, p) => a + p.km, 0);
   const ungeocoded = useMemo(
     () => activities.filter((a) => (a.route?.length ?? 0) > 0 && !a.city?.trim()).length,
     [activities],
+  );
+  const screenW = Dimensions.get('window').width;
+  const mapW = screenW - 28;
+  const mapCities: MapCity[] = useMemo(
+    () => places.map((p) => ({ city: p.city, country: p.country, runs: p.runs, km: p.km, first: p.first, lat: p.lat, lon: p.lon })),
+    [places],
   );
 
   return (
@@ -61,19 +77,39 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
         <EmptyPlaces loading={loading} hasActivities={activities.length > 0} onAfterBackfill={refresh} />
       ) : (
         <>
-          <View style={{ paddingHorizontal: 20, paddingTop: 16, flexDirection: 'row', gap: 14 }}>
-            <View style={{ flex: 1 }}>
-              <Eyebrow>CITIES</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 36, letterSpacing: -1, color: c.ink }}>{cities}</TText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Eyebrow>COUNTRIES</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 24, lineHeight: 24, color: c.ink }}>{countries}</TText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Eyebrow>{distUnit(units).toUpperCase()}</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 24, lineHeight: 24, color: c.ink }}>{Math.round(totalKm).toLocaleString()}</TText>
-            </View>
+          <View style={{ paddingHorizontal: 14, paddingTop: 18 }}>
+            <Card padded={false} style={{ overflow: 'hidden', padding: 0 }}>
+              <WorldMap cities={mapCities} width={mapW - 2} />
+              <View style={{ padding: 14, gap: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 14 }}>
+                  <View style={{ flex: 1 }}>
+                    <Eyebrow style={{ color: c.ink3 }}>STAMPS</Eyebrow>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{cities}</TText>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Eyebrow style={{ color: c.ink3 }}>COUNTRIES</Eyebrow>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{countries}</TText>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Eyebrow style={{ color: c.ink3 }}>CONTINENTS</Eyebrow>
+                    <TText variant="monoMedium" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.8, color: c.ink }}>{continents}</TText>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => setSharing(true)}
+                  style={({ pressed }) => ({
+                    marginTop: 4, paddingVertical: 12, borderRadius: 12,
+                    backgroundColor: c.ink, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Icon.share size={14} color={c.paper} />
+                  <TText style={{ fontSize: 13, color: c.paper, fontWeight: '500' }}>
+                    Share My {new Date().getFullYear()} Runstamps
+                  </TText>
+                </Pressable>
+              </View>
+            </Card>
           </View>
 
           {ungeocoded > 0 && (
@@ -92,27 +128,56 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
           </View>
         </>
       )}
+      <PlacesShareModal
+        visible={sharing}
+        cities={mapCities}
+        stats={{ cities, countries, continents, totalKm }}
+        onClose={() => setSharing(false)}
+      />
     </ScrollView>
   );
 }
 
 function aggregatePlaces(activities: Activity[]): ComputedPlace[] {
-  const map = new Map<string, ComputedPlace>();
+  const map = new Map<string, ComputedPlace & { latSum: number; lonSum: number; coordCount: number }>();
   for (const a of activities) {
     const city = a.city?.trim();
     const country = a.country?.trim();
     if (!city) continue;
     const key = `${city}|${country ?? ''}`;
+    const hasCoords = typeof a.startLat === 'number' && typeof a.startLon === 'number';
     const existing = map.get(key);
     if (existing) {
       existing.runs += 1;
       existing.km += a.distance;
       if (a.date < existing.first) existing.first = a.date;
+      if (hasCoords) {
+        existing.latSum += a.startLat!;
+        existing.lonSum += a.startLon!;
+        existing.coordCount += 1;
+      }
     } else {
-      map.set(key, { city, country: country ?? '', runs: 1, km: a.distance, first: a.date });
+      map.set(key, {
+        city,
+        country: country ?? '',
+        runs: 1,
+        km: a.distance,
+        first: a.date,
+        latSum: hasCoords ? a.startLat! : 0,
+        lonSum: hasCoords ? a.startLon! : 0,
+        coordCount: hasCoords ? 1 : 0,
+      });
     }
   }
-  return [...map.values()];
+  return [...map.values()].map((p) => ({
+    city: p.city,
+    country: p.country,
+    runs: p.runs,
+    km: p.km,
+    first: p.first,
+    lat: p.coordCount > 0 ? p.latSum / p.coordCount : undefined,
+    lon: p.coordCount > 0 ? p.lonSum / p.coordCount : undefined,
+  }));
 }
 
 function EmptyPlaces({

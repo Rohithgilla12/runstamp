@@ -76,6 +76,8 @@ function mapApiToActivity(a: ApiActivity): Activity {
     cadence: a.cadenceSpm ? Math.round(a.cadenceSpm) : undefined,
     vo2max: a.vo2maxMlKgMin && a.vo2maxMlKgMin > 0 ? Number(a.vo2maxMlKgMin.toFixed(1)) : undefined,
     power: a.runningPowerW && a.runningPowerW > 0 ? Math.round(a.runningPowerW) : undefined,
+    startLat: typeof a.startLat === 'number' ? a.startLat : undefined,
+    startLon: typeof a.startLon === 'number' ? a.startLon : undefined,
     shoe: '',
     route: route(hashId(a.id), inferRouteKind(distanceKm, a)),
     weather: { t: 22, w: '—', icon: 'clear' },

@@ -214,6 +214,92 @@ export function LadakhMarathonIllustration({ size, colors }: Props) {
   );
 }
 
+// ── Indian Metros 3 — Gateway + Charminar + Vidhana Soudha frieze ──────────
+export function IndianMetros3Illustration({ size, colors }: Props) {
+  // Three landmarks across a horizontal frieze, each scaled down + offset.
+  // The component reuses the source 200x200 geometries by transforming each
+  // into a 60-unit-wide slot. ViewBox stays 200x200; landmarks sit on a
+  // shared baseline at y ≈ 175.
+  return (
+    <Svg width={size} height={size} viewBox="0 0 200 200">
+      {/* Frieze ground line */}
+      <G stroke={colors.ink} {...LINE_PROPS}>
+        <Line x1={6} y1={186} x2={194} y2={186} />
+        <Line x1={6} y1={188} x2={194} y2={188} strokeWidth={0.8} />
+      </G>
+
+      {/* Caption banner above the frieze */}
+      <G stroke={colors.ink} strokeWidth={1.4} fill="none" strokeLinecap="round">
+        <Line x1={20} y1={36} x2={180} y2={36} />
+        <Line x1={20} y1={42} x2={180} y2={42} strokeWidth={0.6} />
+      </G>
+
+      {/* Slot 1: Gateway of India — left, scaled to ~28% (factor 0.32, dx=-10, dy=22) */}
+      <G transform="translate(-2, 38) scale(0.32)">
+        <G stroke={colors.ink} {...LINE_PROPS}>
+          <Rect x={22} y={170} width={156} height={14} />
+          <Path d="M 24 170 L 24 42 L 176 42 L 176 170" />
+          <Line x1={24} y1={74} x2={176} y2={74} />
+          <Path d="M 78 170 L 78 110 A 22 22 0 0 1 122 110 L 122 170" />
+          <Path d="M 38 170 L 38 138 A 12 12 0 0 1 62 138 L 62 170" />
+          <Path d="M 138 170 L 138 138 A 12 12 0 0 1 162 138 L 162 170" />
+          {[26, 68, 116, 158].map((x) => (
+            <G key={x}>
+              <Line x1={x} y1={42} x2={x} y2={26} />
+              <Line x1={x + 16} y1={42} x2={x + 16} y2={26} />
+              <Path d={`M ${x - 2} 26 Q ${x + 8} 6 ${x + 18} 26`} />
+            </G>
+          ))}
+        </G>
+      </G>
+
+      {/* Slot 2: Charminar — centre */}
+      <G transform="translate(66, 38) scale(0.32)">
+        <G stroke={colors.ink} {...LINE_PROPS}>
+          <Rect x={20} y={170} width={160} height={14} />
+          <Line x1={42} y1={170} x2={42} y2={124} />
+          <Line x1={158} y1={170} x2={158} y2={124} />
+          <Path d="M 78 170 L 78 138 A 22 22 0 0 1 122 138 L 122 170" />
+          <Line x1={42} y1={124} x2={158} y2={124} />
+          <Line x1={42} y1={92} x2={158} y2={92} />
+          <Path d="M 84 92 Q 100 60 116 92" />
+          {[[30, 42], [158, 170]].map(([x1, x2], idx) => (
+            <G key={idx}>
+              <Line x1={x1} y1={170} x2={x1} y2={44} />
+              <Line x1={x2} y1={170} x2={x2} y2={44} />
+              <Line x1={x1 - 4} y1={108} x2={x2 + 4} y2={108} />
+              <Line x1={x1 - 4} y1={74} x2={x2 + 4} y2={74} />
+              <Path d={`M ${x1 - 2} 44 Q ${(x1 + x2) / 2} 22 ${x2 + 2} 44`} />
+            </G>
+          ))}
+        </G>
+      </G>
+
+      {/* Slot 3: Vidhana Soudha — right */}
+      <G transform="translate(134, 38) scale(0.32)">
+        <G stroke={colors.ink} {...LINE_PROPS}>
+          <Line x1={14} y1={180} x2={186} y2={180} />
+          <Line x1={14} y1={172} x2={186} y2={172} />
+          <Line x1={14} y1={172} x2={14} y2={116} />
+          <Line x1={186} y1={172} x2={186} y2={116} />
+          <Line x1={14} y1={116} x2={186} y2={116} />
+          <Line x1={62} y1={172} x2={62} y2={116} />
+          <Line x1={138} y1={172} x2={138} y2={116} />
+          {[72, 84, 96, 104, 116, 128].map((x) => (
+            <Line key={x} x1={x} y1={170} x2={x} y2={120} />
+          ))}
+          <Path d="M 70 80 Q 100 30 130 80" />
+          <Line x1={100} y1={78} x2={100} y2={40} />
+          <Line x1={92} y1={40} x2={108} y2={40} />
+          <Line x1={100} y1={38} x2={100} y2={22} />
+          <Path d="M 30 116 Q 42 100 54 116" />
+          <Path d="M 146 116 Q 158 100 170 116" />
+        </G>
+      </G>
+    </Svg>
+  );
+}
+
 // ── Monsoon Run — Banyan tree with rain ────────────────────────────────────
 export function MonsoonRunIllustration({ size, colors }: Props) {
   return (
@@ -263,6 +349,7 @@ const REGISTRY: Record<string, React.ComponentType<Props>> = {
   vedanta_delhi_half: VedantaDelhiHalfIllustration,
   ladakh_marathon: LadakhMarathonIllustration,
   monsoon_run: MonsoonRunIllustration,
+  indian_metros_3: IndianMetros3Illustration,
 };
 
 export function hasIllustration(stampId: string): boolean {

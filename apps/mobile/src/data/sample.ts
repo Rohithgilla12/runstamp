@@ -103,6 +103,8 @@ export interface Activity {
   cadence?: number;
   vo2max?: number;
   power?: number;
+  startLat?: number;
+  startLon?: number;
   shoe: string;
   splits?: Split[];
   streamHr?: number[];
