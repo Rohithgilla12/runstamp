@@ -61,7 +61,7 @@ function mapApiToActivity(a: ApiActivity): Activity {
     date,
     day,
     time,
-    title: a.title || 'Untitled run',
+    title: a.title?.trim() || synthesizeTitle(started, distanceKm, a.city),
     place: [a.city, a.country].filter(Boolean).join(', ') || '—',
     city: a.city ?? '',
     country: a.country ?? '',
@@ -78,6 +78,28 @@ function mapApiToActivity(a: ApiActivity): Activity {
     weather: { t: 22, w: '—', icon: 'clear' },
     kind: inferKind(a, distanceKm),
   };
+}
+
+// Apple Health workouts arrive with no title. "Untitled run" looked grim, so
+// synthesize one Strava-style: "Morning run" / "Afternoon run" / "Evening run"
+// / "Night run", with the city suffixed when we've geocoded it. Long runs get
+// a "Long" prefix so a 24 km Sunday looks meaningfully different in the list.
+// The user can still long-press the title on Activity to override.
+function synthesizeTitle(when: Date, distanceKm: number, city: string | undefined): string {
+  const hour = when.getHours();
+  const slot =
+    hour >= 4 && hour < 12 ? 'Morning' :
+    hour >= 12 && hour < 17 ? 'Afternoon' :
+    hour >= 17 && hour < 21 ? 'Evening' :
+    'Night';
+  const noun =
+    distanceKm >= 42 ? 'marathon' :
+    distanceKm >= 21 ? 'half marathon' :
+    distanceKm >= 18 ? 'long run' :
+    'run';
+  const base = `${slot} ${noun}`;
+  const trimmedCity = city?.trim();
+  return trimmedCity ? `${base} in ${trimmedCity}` : base;
 }
 
 function hashId(id: string): number {
