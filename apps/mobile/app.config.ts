@@ -133,9 +133,13 @@ const config: ExpoConfig = {
           'Runstamp does not write to Health. This permission is requested by the system but never used.'
       }
     ],
-    // Native Firebase + auth plugins (per @react-native-firebase docs).
+    // Native Firebase + auth + messaging plugins (per @react-native-firebase docs).
+    // Messaging gives us APNs token registration via the existing
+    // GoogleService-Info.plist, no extra cert config beyond what's already
+    // uploaded to Firebase Console → Cloud Messaging.
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
+    '@react-native-firebase/messaging',
     // Required for "use_frameworks: 'static'" + Firebase pods on iOS.
     [
       'expo-build-properties',

@@ -41,9 +41,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
 
   useEffect(() => {
-    return firebaseAuth.onAuthStateChanged((u) => {
+    return firebaseAuth.onAuthStateChanged(async (u) => {
       setUser(u);
       setStatus(u ? 'signed-in' : 'signed-out');
+      if (u) {
+        // Register the device for stamp-earn pushes. Lazy import keeps the
+        // FCM native module from loading on cold-start when the user isn't
+        // signed in. Best-effort — failures never block sign-in.
+        try {
+          const idToken = await u.getIdToken();
+          const { registerDeviceForPush } = await import('../services/push');
+          await registerDeviceForPush(idToken);
+        } catch {
+          // ignore
+        }
+      }
     });
   }, []);
 

@@ -28,6 +28,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/places"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/push"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
@@ -101,13 +102,42 @@ func main() {
 	stampsRepo := stamps.NewRepository(pool)
 	stampsEval := stamps.NewEvaluator(pool, stampsRepo, log)
 
+	pusher, err := push.NewPusher(ctx, cfg.FirebaseProjectID, cfg.FirebaseCredentialsPath, pool, log)
+	if err != nil {
+		log.Error("push: init failed", "err", err)
+		os.Exit(1)
+	}
+
+	// Resolve catalog metadata for a stamp ID without hitting the DB —
+	// the Sync'd in-memory Catalog is the source of truth.
+	stampMeta := func(id string) (name, tier string, ok bool) {
+		for _, def := range stamps.Catalog {
+			if def.ID == id {
+				return def.Name, def.Tier, true
+			}
+		}
+		return "", "", false
+	}
+	sendStampPushes := func(ctx context.Context, userID string, ids []string) {
+		for _, id := range ids {
+			name, tier, ok := stampMeta(id)
+			if !ok {
+				continue
+			}
+			pusher.SendStampEarned(ctx, userID, id, name, tier)
+		}
+	}
+
 	geocoder := places.NewGeocoder(pool, log)
 	geoBackfiller := places.NewBackfiller(pool, geocoder, log)
 	activitiesService.SetPostIngest(func(ctx context.Context, userID string, canonical *activities.Activity) {
 		// Stamps eval runs synchronously — handful of indexed queries, awards
 		// visible by the time the HTTP response goes out.
-		if _, err := stampsEval.EvaluateForUser(ctx, userID); err != nil {
+		fresh, err := stampsEval.EvaluateForUser(ctx, userID)
+		if err != nil {
 			log.Error("stamps: post-ingest eval failed", "user_id", userID, "err", err)
+		} else if len(fresh) > 0 {
+			go sendStampPushes(context.Background(), userID, fresh)
 		}
 		// Geocoding is async — Nominatim is 1 req/sec serialized via mutex
 		// inside the Geocoder, so a Strava import burst of N activities will
@@ -123,8 +153,13 @@ func main() {
 					log.Warn("places: post-ingest geocode failed", "activity_id", actID, "err", err)
 					return
 				}
-				if _, err := stampsEval.EvaluateForUser(bg, uid); err != nil {
+				fresh, err := stampsEval.EvaluateForUser(bg, uid)
+				if err != nil {
 					log.Warn("stamps: post-geocode eval failed", "user_id", uid, "err", err)
+					return
+				}
+				if len(fresh) > 0 {
+					sendStampPushes(context.Background(), uid, fresh)
 				}
 			}(canonical.ID, userID)
 		}
@@ -229,6 +264,11 @@ func main() {
 			Users:      usersRepo,
 			Log:        log,
 		}
+		deviceTokenHandler := &handlers.DeviceTokenHandler{
+			Pusher: pusher,
+			Users:  usersRepo,
+			Log:    log,
+		}
 		// Public — no auth required. CORS is scoped inside the handler.
 		waitlistRepo := waitlist.NewRepository(pool)
 		waitlistHandler := waitlist.NewHandler(waitlistRepo, cfg.WaitlistIPSalt, log)
@@ -239,6 +279,7 @@ func main() {
 			r.Get("/me", handlers.Me(usersRepo))
 			r.Patch("/me", handlers.PatchMe(usersRepo))
 			r.Delete("/me", accountHandler.Delete)
+			r.Post("/me/device-token", deviceTokenHandler.Register)
 			r.Get("/activities", activitiesHandler.List)
 			r.Patch("/activities/{id}", activitiesHandler.Patch)
 			r.Get("/activities/{id}/streams", streamsHandler.List)
