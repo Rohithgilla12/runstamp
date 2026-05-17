@@ -69,6 +69,45 @@ type StickerKey =
 // hardcoded "Saucony Endorphin" which looked like every other user's share
 // card. Add it back when CRUD + per-activity shoe lookup is wired.
 
+// Returns true when the sticker has meaningful data to render for this run.
+// Used both to filter the sticker library picker (no HR on this run → hide
+// the HR chip) and to hide stickers already on the canvas if their underlying
+// data is missing. The principle: never render a sticker that would show
+// "—", "0", or a fake fallback. Either show real value or don't show at all.
+function stickerHasValue(
+  key: StickerKey,
+  run: Activity,
+  liveHr: number[] | null,
+  livePace: number[] | null,
+  liveRoute: Point[] | null,
+): boolean {
+  switch (key) {
+    case 'distance': return run.distance > 0;
+    case 'pace':     return run.pace > 0;
+    case 'time':     return run.seconds > 0;
+    case 'hr':       return (run.avgHr ?? 0) > 0;
+    case 'elev':     return (run.elev ?? 0) > 0;
+    case 'cal':      return (run.cal ?? 0) > 0;
+    case 'cadence':  return typeof run.cadence === 'number' && run.cadence > 0;
+    case 'splits':   return (run.splits ?? []).length > 0;
+    case 'hrChart':
+      return (liveHr != null && liveHr.length > 1) ||
+        (Array.isArray(run.streamHr) && run.streamHr.length > 1);
+    case 'paceChart':
+      return (livePace != null && livePace.length > 1) ||
+        (Array.isArray(run.streamPace) && run.streamPace.length > 1);
+    case 'map':
+      // Only show the map sticker when we have a real GPS route. The
+      // synthetic fallback isn't honest for treadmill / GPS-less runs.
+      return liveRoute != null && liveRoute.length > 1;
+    case 'date':     return !!run.date;
+    case 'title':    return !!run.title && run.title.trim().length > 0;
+    case 'place':
+      return !!run.city && run.city.trim().length > 0 && run.city !== '—';
+    default:         return true;
+  }
+}
+
 const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
   { key: 'distance',  label: 'Distance'  },
   { key: 'pace',      label: 'Pace'      },
@@ -374,24 +413,29 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
               <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.55)', marginTop: 2, letterSpacing: 1 }}>RUNSTAMP</TText>
             </View>
 
-            {/* Stickers */}
-            {stickers.map((s) => (
-              <DraggableSticker
-                key={s.id}
-                sticker={s}
-                run={run}
-                canvasW={canvasW}
-                canvasH={canvasH}
-                liveHr={realHr ?? null}
-                livePace={realPace ?? null}
-                liveRoute={realRoute ?? null}
-                isSelected={selected === s.id}
-                onSelect={() => setSelected(s.id)}
-                onMove={(x, y) => updateStickerPosition(s.id, x, y)}
-                onScale={(scale) => updateStickerScale(s.id, scale)}
-                onRemove={() => removeSticker(s.id)}
-              />
-            ))}
+            {/* Stickers — hide any whose underlying data is missing for this
+                run. Keeps the sticker state intact in case the user navigates
+                between runs with different data shapes; only renders the ones
+                that have something honest to show. */}
+            {stickers
+              .filter((s) => stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null))
+              .map((s) => (
+                <DraggableSticker
+                  key={s.id}
+                  sticker={s}
+                  run={displayRun}
+                  canvasW={canvasW}
+                  canvasH={canvasH}
+                  liveHr={realHr ?? null}
+                  livePace={realPace ?? null}
+                  liveRoute={realRoute ?? null}
+                  isSelected={selected === s.id}
+                  onSelect={() => setSelected(s.id)}
+                  onMove={(x, y) => updateStickerPosition(s.id, x, y)}
+                  onScale={(scale) => updateStickerScale(s.id, scale)}
+                  onRemove={() => removeSticker(s.id)}
+                />
+              ))}
           </Pressable>
           )}
           </View>
@@ -484,21 +528,36 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           )}
 
           {tab === 'stats' && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {STICKER_LIBRARY.map((s) => {
-                const placed = stickers.some((p) => p.key === s.key);
-                return (
-                  <Pressable key={s.key} onPress={() => toggleSticker(s.key)} style={{
-                    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8,
-                    backgroundColor: placed ? c.ink : c.paper2,
-                    borderWidth: 1, borderColor: placed ? c.ink : c.line,
-                    flexDirection: 'row', alignItems: 'center', gap: 6
-                  }}>
-                    {placed && <Icon.check size={12} color={c.paper} />}
-                    <TText style={{ fontSize: 12, color: placed ? c.paper : c.ink2 }}>{s.label}</TText>
-                  </Pressable>
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {STICKER_LIBRARY.filter((s) =>
+                  stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null),
+                ).map((s) => {
+                  const placed = stickers.some((p) => p.key === s.key);
+                  return (
+                    <Pressable key={s.key} onPress={() => toggleSticker(s.key)} style={{
+                      paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8,
+                      backgroundColor: placed ? c.ink : c.paper2,
+                      borderWidth: 1, borderColor: placed ? c.ink : c.line,
+                      flexDirection: 'row', alignItems: 'center', gap: 6
+                    }}>
+                      {placed && <Icon.check size={12} color={c.paper} />}
+                      <TText style={{ fontSize: 12, color: placed ? c.paper : c.ink2 }}>{s.label}</TText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {(() => {
+                const hidden = STICKER_LIBRARY.filter((s) =>
+                  !stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null),
                 );
-              })}
+                if (hidden.length === 0) return null;
+                return (
+                  <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 4 }}>
+                    {hidden.length} sticker{hidden.length === 1 ? '' : 's'} hidden · no data on this run ({hidden.map((h) => h.label.toLowerCase()).join(', ')})
+                  </TText>
+                );
+              })()}
             </View>
           )}
 
@@ -918,6 +977,25 @@ function DraggableSticker({
         animatedStyle
       ]}>
         {body}
+        {/* Delete chip — appears only on the selected sticker. Double-tap
+            on the body still removes it too, but this is the discoverable
+            path. hitSlop pads the touch target up to ~44pt without growing
+            the visible ✕ glyph. */}
+        {isSelected && (
+          <Pressable
+            onPress={onRemove}
+            hitSlop={12}
+            style={{
+              position: 'absolute', top: -10, right: -10,
+              width: 24, height: 24, borderRadius: 12,
+              backgroundColor: c.accent,
+              alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+            }}
+          >
+            <TText variant="mono" style={{ fontSize: 13, lineHeight: 13, color: '#f3ede2', fontWeight: '700' }}>×</TText>
+          </Pressable>
+        )}
       </Animated.View>
     </GestureDetector>
   );
