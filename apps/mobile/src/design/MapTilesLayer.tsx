@@ -20,6 +20,7 @@ import {
   tileUrl,
   tilesForBbox,
   type BBox,
+  type TileStyle,
 } from '../services/mapTiles';
 
 interface Props {
@@ -28,9 +29,11 @@ interface Props {
   height: number;
   /** Optional opacity — lets the host darken tiles for high-contrast routes. */
   opacity?: number;
+  /** Tile basemap style. Defaults to the app-state choice in RouteMap. */
+  style?: TileStyle;
 }
 
-export function MapTilesLayer({ bbox, width, height, opacity = 1 }: Props) {
+export function MapTilesLayer({ bbox, width, height, opacity = 1, style }: Props) {
   const z = pickZoom(bbox, width, height);
   const { offsetX, offsetY } = centerOffsets(bbox, z, width, height);
   const { x0, x1, y0, y1 } = tilesForBbox(bbox, z);
@@ -38,7 +41,7 @@ export function MapTilesLayer({ bbox, width, height, opacity = 1 }: Props) {
   const tiles: Array<{ x: number; y: number; url: string }> = [];
   for (let x = x0; x <= x1; x++) {
     for (let y = y0; y <= y1; y++) {
-      tiles.push({ x, y, url: tileUrl(z, x, y) });
+      tiles.push({ x, y, url: tileUrl(z, x, y, style) });
     }
   }
 

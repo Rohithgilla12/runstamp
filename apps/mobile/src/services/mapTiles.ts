@@ -16,6 +16,29 @@ import { Image } from 'react-native';
 export const TILE_SIZE = 256;
 export const TILE_ATTRIBUTION = '© CARTO · © OpenStreetMap';
 
+// CartoCDN ships five raster styles that map cleanly to the brand vocabulary
+// here. `light_nolabels` is the default — paper-and-ink, no place names so
+// the route is the only thing the eye lands on. The labelled and dark
+// variants are there for runners who want orientation or a moody look.
+// Voyager has a touch of map colour without going full default-OSM
+// chaotic-rainbow.
+export type TileStyle =
+  | 'light_nolabels'
+  | 'light_all'
+  | 'dark_nolabels'
+  | 'dark_all'
+  | 'voyager_nolabels';
+
+export const DEFAULT_TILE_STYLE: TileStyle = 'light_nolabels';
+
+export const TILE_STYLES: ReadonlyArray<{ key: TileStyle; label: string; sub: string }> = [
+  { key: 'light_nolabels',   label: 'Paper',          sub: 'No labels · default' },
+  { key: 'light_all',        label: 'Paper · labels', sub: 'With street names' },
+  { key: 'voyager_nolabels', label: 'Voyager',        sub: 'Subtle colour' },
+  { key: 'dark_nolabels',    label: 'Ink',            sub: 'No labels' },
+  { key: 'dark_all',         label: 'Ink · labels',   sub: 'Dark with names' },
+];
+
 export interface BBox {
   minLat: number;
   maxLat: number;
@@ -54,9 +77,9 @@ export function pickZoom(bbox: BBox, canvasW: number, canvasH: number, maxZ = 17
 
 // CartoCDN has 4 fastly subdomains (a/b/c/d) for tile distribution. We pick
 // deterministically off (x + y) so consecutive tiles spread across servers.
-export function tileUrl(z: number, x: number, y: number): string {
+export function tileUrl(z: number, x: number, y: number, style: TileStyle = DEFAULT_TILE_STYLE): string {
   const sub = ['a', 'b', 'c', 'd'][Math.abs(x + y) % 4];
-  return `https://cartodb-basemaps-${sub}.global.ssl.fastly.net/light_nolabels/${z}/${x}/${y}.png`;
+  return `https://cartodb-basemaps-${sub}.global.ssl.fastly.net/${style}/${z}/${x}/${y}.png`;
 }
 
 // Computes the canvas (px) coordinates for a raw lat/lng under a given zoom
@@ -115,13 +138,13 @@ export function tilesForBbox(
 // Resolves once every tile has fetched (or failed — we don't fail the whole
 // share for a single missing tile). Bounded concurrency = 6, plenty for a
 // share-card-sized 4-6 tile grid without slamming the CDN.
-export async function prefetchTiles(bbox: BBox, canvasW: number, canvasH: number): Promise<void> {
+export async function prefetchTiles(bbox: BBox, canvasW: number, canvasH: number, style: TileStyle = DEFAULT_TILE_STYLE): Promise<void> {
   const z = pickZoom(bbox, canvasW, canvasH);
   const { x0, x1, y0, y1 } = tilesForBbox(bbox, z);
   const urls: string[] = [];
   for (let x = x0; x <= x1; x++) {
     for (let y = y0; y <= y1; y++) {
-      urls.push(tileUrl(z, x, y));
+      urls.push(tileUrl(z, x, y, style));
     }
   }
   const CONCURRENCY = 6;

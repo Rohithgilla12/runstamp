@@ -129,7 +129,7 @@ const STICKER_LIBRARY: { key: StickerKey; label: string }[] = [
 export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { units } = useAppState();
+  const { units, tileStyle } = useAppState();
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
@@ -174,7 +174,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           if (pt[1] < minLng) minLng = pt[1];
           if (pt[1] > maxLng) maxLng = pt[1];
         }
-        await prefetchTiles({ minLat, maxLat, minLng, maxLng }, canvasW, canvasH);
+        await prefetchTiles({ minLat, maxLat, minLng, maxLng }, canvasW, canvasH, tileStyle);
       }
       // Capture at 2x for retina quality. Output PNG so the transparent
       // watermark area composites cleanly.

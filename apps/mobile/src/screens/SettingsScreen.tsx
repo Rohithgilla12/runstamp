@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { TILE_STYLES, tileUrl, type TileStyle } from '../services/mapTiles';
 import type { TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,7 +34,7 @@ type Sub = 'main' | 'shoes' | 'connections' | 'privacy';
 export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { units, dark, setDark, setHasOnboarded } = useAppState();
+  const { units, dark, setDark, setHasOnboarded, tileStyle, setTileStyle } = useAppState();
   const { signOut, user } = useAuth();
   const { activities } = useActivities();
   const { me, save: saveAccount } = useAccount();
@@ -209,6 +210,22 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
         <ThemeSwatch dark={true}  active={dark}  onPress={() => setDark(true)}  label="Dark" />
       </View>
 
+      <SectionHeader title="Map style" />
+      <View style={{ paddingLeft: 20 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 20 }}>
+          {TILE_STYLES.map((s) => (
+            <TileStyleSwatch
+              key={s.key}
+              styleKey={s.key}
+              label={s.label}
+              sub={s.sub}
+              active={tileStyle === s.key}
+              onPress={() => setTileStyle(s.key)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
       <SectionHeader title="Data" />
       <View style={{ paddingHorizontal: 14 }}>
         <Card padded={false}>
@@ -300,6 +317,42 @@ function ThemeSwatch({ dark, active, onPress, label }: { dark: boolean; active: 
           <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: dark ? 'rgba(243,237,226,0.2)' : 'rgba(20,17,13,0.15)' }} />
         ))}
       </View>
+    </Pressable>
+  );
+}
+
+// TileStyleSwatch — small live preview chip. The thumbnail is a single tile
+// fetched from CartoCDN at z=11/x=605/y=771 (≈ NYC midtown) — a globally
+// recognisable mix of streets, water, parks, blocks so every style looks
+// distinct in the picker even at 72×72. Same network image cache as the
+// route maps, so picker thumbnails warm the cache for the actual map render.
+function TileStyleSwatch({
+  styleKey, label, sub, active, onPress,
+}: {
+  styleKey: TileStyle;
+  label: string;
+  sub: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  // NYC midtown at z=11 — water + grid + green = visually varied thumbnail.
+  const thumbUrl = tileUrl(11, 602, 770, styleKey);
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [{
+      width: 96, padding: 6, borderRadius: 12,
+      backgroundColor: c.paper2,
+      borderWidth: 1.5, borderColor: active ? c.accent : c.line,
+      opacity: pressed ? 0.85 : 1,
+    }]}>
+      <View style={{ width: 84, height: 84, borderRadius: 8, overflow: 'hidden', backgroundColor: c.line }}>
+        <Image source={{ uri: thumbUrl }} style={{ width: 84, height: 84 }} resizeMode="cover" />
+      </View>
+      <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {active && <Icon.check size={11} color={c.accent} />}
+        <TText style={{ fontSize: 11, fontWeight: '500', color: c.ink }} numberOfLines={1}>{label}</TText>
+      </View>
+      <TText variant="mono" style={{ fontSize: 9, color: c.ink3, marginTop: 2 }} numberOfLines={1}>{sub}</TText>
     </Pressable>
   );
 }

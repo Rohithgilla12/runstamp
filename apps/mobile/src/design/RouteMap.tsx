@@ -3,6 +3,7 @@ import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 import type { Point } from '../data/sample';
 import { useColors, useTheme } from './theme';
 import { MapTilesLayer } from './MapTilesLayer';
+import { useAppState } from '../state/AppState';
 import {
   TILE_ATTRIBUTION,
   centerOffsets,
@@ -63,6 +64,7 @@ export function RouteMap({
 }: Props) {
   const c = useColors();
   const { dark } = useTheme();
+  const { tileStyle } = useAppState();
   const resolvedStyle = style ?? (dark ? 'dark' : 'light');
   const s = STYLES[resolvedStyle];
   const a = accent ?? c.accent;
@@ -137,6 +139,7 @@ export function RouteMap({
           width={width}
           height={height}
           opacity={resolvedStyle === 'dark' ? 0.5 : 1}
+          style={tileStyle}
         />
       )}
       {/* Soft halo under the route so the polyline pops against any backdrop. */}
