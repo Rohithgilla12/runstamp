@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { getActivityStreams, type ActivityStream, type StreamType } from '../services/streams';
+import { usePrivacyZones } from './usePrivacyZones';
+import { maskRouteRaw } from '../analytics/privacyMask';
+import type { PrivacyZone } from '../services/privacyZones';
 import type { Point } from '../data/sample';
 
 interface UseActivityStreamsState {
@@ -13,6 +16,7 @@ interface UseActivityStreamsState {
 
 export function useActivityStreams(activityId: string | null): UseActivityStreamsState {
   const { user, getIdToken } = useAuth();
+  const { zones } = usePrivacyZones();
   const [streams, setStreams] = useState<Record<StreamType, ActivityStream | undefined>>(emptyStreams());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -43,7 +47,12 @@ export function useActivityStreams(activityId: string | null): UseActivityStream
     fetchOnce();
   }, [fetchOnce]);
 
-  const route = parseLatLng(streams.latlng?.data);
+  // Privacy mask + projection. Recomputed when streams OR zones change so
+  // adding a zone in Settings updates every open route map without a refetch.
+  const route = useMemo(
+    () => parseLatLng(streams.latlng?.data, zones),
+    [streams.latlng, zones],
+  );
 
   return { streams, loading, error, route, refresh: fetchOnce };
 }
@@ -74,12 +83,23 @@ function emptyStreams(): Record<StreamType, ActivityStream | undefined> {
 // cos(mean latitude) to convert to meter-equivalent units — then fit the
 // resulting meter-space bounding box to [0..1] with the SAME divisor on
 // both axes, so the rendered route preserves its real-world shape.
-function parseLatLng(data: unknown): Point[] | null {
+function parseLatLng(data: unknown, zones: PrivacyZone[]): Point[] | null {
   if (!Array.isArray(data) || data.length === 0) return null;
-  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  // Coerce to a uniform tuple shape first so the mask + projection don't
+  // re-validate per point.
+  const tuples: Array<readonly [number, number]> = [];
   for (const pt of data) {
     if (!Array.isArray(pt) || pt.length < 2) continue;
-    const [lat, lng] = pt as [number, number];
+    tuples.push([pt[0] as number, pt[1] as number] as const);
+  }
+  // Strip points inside any privacy zone. Render-time mask; raw lat/lng stays
+  // on the server. When zones.length === 0 this is a one-pass copy.
+  const masked = maskRouteRaw(tuples, zones);
+  if (masked.length === 0) return null;
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const pt of masked) {
+    const [lat, lng] = pt;
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;
     if (lng < minLng) minLng = lng;
@@ -101,9 +121,8 @@ function parseLatLng(data: unknown): Point[] | null {
   const inset = 0.05;
   const scale = 1 - inset * 2;
   const out: Point[] = [];
-  for (const pt of data) {
-    if (!Array.isArray(pt) || pt.length < 2) continue;
-    const [lat, lng] = pt as [number, number];
+  for (const pt of masked) {
+    const [lat, lng] = pt;
     const xMeters = (lng - minLng) * cosLat;
     // Flip lat: north is up, but normalized coords are y-down.
     const yMeters = maxLat - lat;

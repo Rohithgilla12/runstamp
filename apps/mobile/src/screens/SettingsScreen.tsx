@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +17,8 @@ import { reevaluateStamps } from '../services/stamps';
 import { backfillPlaces } from '../services/places';
 import { deleteAccount } from '../services/account';
 import { useAccount } from '../state/useAccount';
+import { usePrivacyZones } from '../state/usePrivacyZones';
+import type { Activity } from '../data/sample';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -775,45 +777,233 @@ function ConnCard({
 
 function PrivacyScreen({ back }: { back: () => void }) {
   const c = useColors();
-  const [zone, setZone] = useState(200);
-  const [hideHome, setHideHome] = useState(true);
-  const [hideWork, setHideWork] = useState(false);
+  const { zones, loading, remove } = usePrivacyZones();
+  const { activities } = useActivities();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handleDelete = useCallback(
+    (zoneId: string) => {
+      Alert.alert(
+        'Remove zone?',
+        'Routes that started here will start showing the full polyline again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await remove(zoneId);
+              } catch (e) {
+                Alert.alert('Could not remove', e instanceof Error ? e.message : String(e));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [remove],
+  );
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
       <SubHeader back={back} title="PRIVACY" />
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.6, color: c.ink }}>Don’t show the world where you start.</TText>
-        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 6 }}>
-          Runstamp defaults <TText style={{ color: c.ink }}>on</TText>. Strava defaults off.
+        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, lineHeight: 19 }}>
+          Add a privacy zone around a sensitive location (home, work, gym). Runstamp will trim
+          the route polyline inside that radius on every map and share card. Default radius is
+          200 m, matching Strava.
         </TText>
       </View>
 
       <View style={{ paddingHorizontal: 14, paddingTop: 18 }}>
-        <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Eyebrow>BLUR RADIUS</Eyebrow>
-            <TText variant="monoMedium" style={{ fontSize: 18, color: c.ink }}>{zone} m</TText>
+        <Eyebrow style={{ color: c.ink3, marginBottom: 8 }}>YOUR ZONES</Eyebrow>
+        {loading && zones.length === 0 && (
+          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+            <ActivityIndicator color={c.ink3} />
           </View>
-          <BlurSlider value={zone} onChange={setZone} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-            <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>OFF</TText>
-            <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>200</TText>
-            <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>500 M</TText>
+        )}
+        {!loading && zones.length === 0 && (
+          <View style={{ padding: 16, borderRadius: 12, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderStyle: 'dashed' }}>
+            <TText style={{ fontSize: 13, color: c.ink2 }}>No zones yet.</TText>
+            <TText style={{ fontSize: 11, color: c.ink3, marginTop: 4, lineHeight: 16 }}>
+              Tap “Add a zone” below and pick a recent run that started near a place you’d rather
+              not pin on a public share card.
+            </TText>
           </View>
-        </Card>
+        )}
+        {zones.map((z) => (
+          <View
+            key={z.id}
+            style={{
+              padding: 14, marginBottom: 8, borderRadius: 12,
+              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink, letterSpacing: -0.2 }}>
+                  {z.name?.trim() || `Zone ${zones.indexOf(z) + 1}`}
+                </TText>
+                <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>
+                  {z.radiusM} m
+                </TText>
+              </View>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 4 }}>
+                {z.lat.toFixed(4)}, {z.lng.toFixed(4)}
+              </TText>
+            </View>
+            <Pressable
+              onPress={() => handleDelete(z.id)}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                padding: 8, borderRadius: 8,
+                opacity: pressed ? 0.5 : 1,
+              })}
+            >
+              <Icon.trash size={16} color="#c44a1e" />
+            </Pressable>
+          </View>
+        ))}
+
+        <Pressable
+          onPress={() => setPickerOpen(true)}
+          style={({ pressed }) => [{
+            marginTop: zones.length === 0 ? 12 : 4,
+            padding: 14, borderRadius: 12,
+            backgroundColor: c.ink,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            opacity: pressed ? 0.85 : 1,
+          }]}
+        >
+          <Icon.plus size={16} color={c.paper} />
+          <TText style={{ fontSize: 13, color: c.paper, fontWeight: '500' }}>Add a zone</TText>
+        </Pressable>
+
+        <TText style={{ fontSize: 11, color: c.ink3, marginTop: 14, lineHeight: 16 }}>
+          The raw GPS data still lives on your account so you can re-render or export later. The
+          mask only affects what we draw — share cards, route maps, the route-map sticker.
+        </TText>
       </View>
 
-      <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
-        <Card padded={false}>
-          <Toggle label="Hide home start" sub="Default on" value={hideHome} onChange={setHideHome} />
-          <Toggle label="Hide office" sub="Add a second blurred location" value={hideWork} onChange={setHideWork} />
-          <Toggle label="Hide route from screenshots" sub="Strip GPS from share cards" value={true} onChange={() => undefined} isLast />
-        </Card>
-      </View>
+      <AddZoneModal
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        recentRuns={activities}
+      />
 
       <DeleteAccountSection />
     </ScrollView>
+  );
+}
+
+// AddZoneModal — minimal MVP picker. Lists recent GPS-tracked activities;
+// tapping one fetches its streams, takes the first lat/lng, and posts a new
+// zone at 200m default radius. No map preview, no current-location flow,
+// no radius slider in v1 — small, focused, ships now. Power users can tap
+// "Edit" on a zone later (future work).
+function AddZoneModal({
+  visible,
+  onClose,
+  recentRuns,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  recentRuns: Activity[];
+}) {
+  const c = useColors();
+  const { units } = useAppState();
+  const { add } = usePrivacyZones();
+  const { getIdToken } = useAuth();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  // Only show runs that actually carry a GPS start. Cap at 20 — picker, not list.
+  const candidates = useMemo(() => {
+    return recentRuns
+      .filter((r) => typeof r.startLat === 'number' && typeof r.startLon === 'number')
+      .slice(0, 20);
+  }, [recentRuns]);
+
+  const handlePick = useCallback(
+    async (run: Activity) => {
+      if (busy) return;
+      setBusy(run.id);
+      try {
+        // Use the activity's denormalised start point. It's the first GPS
+        // sample from ingest, identical to what the route renders as "start"
+        // — exactly the spot we want to mask.
+        if (typeof run.startLat !== 'number' || typeof run.startLon !== 'number') {
+          throw new Error('That run has no GPS start point.');
+        }
+        await add({ name: undefined, lat: run.startLat, lng: run.startLon, radiusM: 200 });
+        onClose();
+      } catch (e) {
+        Alert.alert('Could not add zone', e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [busy, add, onClose],
+  );
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: c.paper, borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 36, maxHeight: '85%' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <TText variant="serif" style={{ fontSize: 22, color: c.ink, letterSpacing: -0.4 }}>Pick a start point</TText>
+            <Pressable onPress={onClose} hitSlop={10} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, width: 28, height: 28, alignItems: 'center', justifyContent: 'center' })}>
+              <TText style={{ fontSize: 22, color: c.ink2, lineHeight: 22 }}>×</TText>
+            </Pressable>
+          </View>
+          <TText style={{ fontSize: 12, color: c.ink3, marginBottom: 14, lineHeight: 17 }}>
+            We’ll add a 200 m zone centred on this run’s start. Every future map will mask
+            anything inside it.
+          </TText>
+          {candidates.length === 0 ? (
+            <View style={{ padding: 16, borderRadius: 10, backgroundColor: c.paper2 }}>
+              <TText style={{ fontSize: 12, color: c.ink2 }}>
+                No GPS-tracked runs to pick from yet. Once you import a run with route data, it’ll
+                show here.
+              </TText>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              {candidates.map((run) => {
+                const isBusy = busy === run.id;
+                const distLabel = fmtDist(run.distance, units);
+                return (
+                  <Pressable
+                    key={run.id}
+                    onPress={() => handlePick(run)}
+                    disabled={!!busy}
+                    style={({ pressed }) => [{
+                      paddingVertical: 12, paddingHorizontal: 12, marginBottom: 6,
+                      borderRadius: 10, backgroundColor: c.paper2,
+                      flexDirection: 'row', alignItems: 'center', gap: 10,
+                      opacity: pressed || isBusy ? 0.65 : 1,
+                    }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                        <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>{distLabel}</TText>
+                        <TText style={{ fontSize: 11, color: c.ink3 }}>· {run.date}</TText>
+                      </View>
+                      <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 3 }}>
+                        {run.startLat?.toFixed(4)}, {run.startLon?.toFixed(4)}
+                      </TText>
+                    </View>
+                    {isBusy ? <ActivityIndicator color={c.ink3} /> : <Icon.chevR size={14} color={c.ink3} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 

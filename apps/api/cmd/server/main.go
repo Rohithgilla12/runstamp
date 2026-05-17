@@ -28,6 +28,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/places"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/privacy"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/push"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/strava"
@@ -265,6 +266,11 @@ func main() {
 			Users:  usersRepo,
 			Log:    log,
 		}
+		privacyZonesHandler := &handlers.PrivacyZonesHandler{
+			Zones: privacy.NewRepo(pool, log),
+			Users: usersRepo,
+			Log:   log,
+		}
 		// Public — no auth required. CORS is scoped inside the handler.
 		waitlistRepo := waitlist.NewRepository(pool)
 		waitlistHandler := waitlist.NewHandler(waitlistRepo, cfg.WaitlistIPSalt, log)
@@ -283,6 +289,9 @@ func main() {
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
 			r.Get("/best-efforts", bestEffortsHandler.List)
 			r.Post("/places/backfill", placesHandler.Backfill)
+			r.Get("/privacy-zones", privacyZonesHandler.List)
+			r.Post("/privacy-zones", privacyZonesHandler.Create)
+			r.Delete("/privacy-zones/{id}", privacyZonesHandler.Delete)
 		})
 	})
 

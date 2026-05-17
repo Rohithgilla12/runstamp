@@ -8,6 +8,7 @@ import { AppStateProvider, useAppState } from './state/AppState';
 import { AuthProvider, useAuth } from './state/AuthContext';
 import { AccountProvider } from './state/useAccount';
 import { HealthProvider } from './state/HealthContext';
+import { PrivacyZonesProvider } from './state/usePrivacyZones';
 import { ThemeCtx, paletteFor } from './design/theme';
 import { useAppFonts } from './design/fonts';
 import { RootNavigator } from './nav/RootNavigator';
@@ -28,9 +29,11 @@ export default function App() {
         <AppStateProvider>
           <AuthProvider>
             <AccountProvider>
-              <HealthProvider>
-                <Shell />
-              </HealthProvider>
+              <PrivacyZonesProvider>
+                <HealthProvider>
+                  <Shell />
+                </HealthProvider>
+              </PrivacyZonesProvider>
             </AccountProvider>
           </AuthProvider>
         </AppStateProvider>
