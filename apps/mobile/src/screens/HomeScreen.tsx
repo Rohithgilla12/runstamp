@@ -9,8 +9,8 @@ import {
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useActivityStreams } from '../state/useActivityStreams';
-import { useHealth } from '../state/HealthContext';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
+import { useFullRefresh } from '../state/useFullRefresh';
 import { StampShareModal } from './StampShareModal';
 import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
@@ -24,30 +24,15 @@ import type { TabProps } from '../nav/types';
 export function HomeScreen({ navigation }: TabProps<'Home'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { activities, loading, refresh: refreshActivities } = useActivities();
-  const { refresh: refreshStamps } = useStamps();
-  const { status: healthStatus, resync: resyncHealth } = useHealth();
+  const { activities, loading } = useActivities();
+  const fullRefresh = useFullRefresh({ withStamps: true });
   const latest: Activity | undefined = activities[0];
   const greeting = greetingForHour(new Date().getHours());
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      // Pull-to-refresh on Home is the explicit "fetch my latest" gesture,
-      // so it always tries HealthKit (when granted) in addition to the
-      // backend reads — the foreground listener also kicks but throttles
-      // to 5 min. Manual pull bypasses that throttle by going through resync
-      // directly. We swallow health errors here so a missing-HK or already-
-      // syncing case doesn't kill the activities/stamps refresh.
-      const tasks: Promise<unknown>[] = [refreshActivities(), refreshStamps()];
-      if (healthStatus === 'granted') {
-        tasks.push(resyncHealth().catch(() => undefined));
-      }
-      await Promise.all(tasks);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshActivities, refreshStamps, healthStatus, resyncHealth]);
+    try { await fullRefresh(); } finally { setRefreshing(false); }
+  }, [fullRefresh]);
 
   return (
     <ScrollView

@@ -5,6 +5,9 @@ import type { MafPoint } from '../../analytics/maf';
 import { Card } from '../atoms';
 import { useColors } from '../theme';
 import { Eyebrow, TText } from '../typography';
+import { ChartShareButton, useChartShare } from './useChartShare';
+import { ChartInfoButton } from './ChartInfoButton';
+import { ChartTooltip } from './ChartTooltip';
 
 interface Props {
   series: MafPoint[];
@@ -14,16 +17,26 @@ interface Props {
   onTapProfile?: () => void;
 }
 
+const EXPLANATION =
+  'Maffetone aerobic test: average pace each month across runs held under your ' +
+  'MAF heart rate (180 − age). Same effort, same ceiling — month after month. ' +
+  'A downward trend (faster) means your aerobic engine is getting more ' +
+  'efficient. A flat line at high mileage is normal; rising is the warning sign.';
+
 // MAF Test trend — one point per month, plotted as average pace of all
 // sub-MAF-HR runs that month. Improvement story: dots drift downward
 // (faster) at the same HR cap = aerobic engine getting more efficient.
 export function MafPaceCard({ series, mafHrThreshold, improvementSec, needsBirthYear, onTapProfile }: Props) {
   const c = useColors();
+  const { captureRef, share, busy } = useChartShare('MAF aerobic pace');
 
   if (needsBirthYear) {
     return (
       <Card style={{ backgroundColor: c.paper2 }}>
-        <Eyebrow>MAF AEROBIC TEST</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Eyebrow>MAF AEROBIC TEST</Eyebrow>
+          <ChartInfoButton explanation={EXPLANATION} />
+        </View>
         <TText variant="serif" style={{ fontSize: 18, lineHeight: 22, color: c.ink, marginTop: 6, letterSpacing: -0.2 }}>
           Same loop. Same HR. Watch yourself get faster.
         </TText>
@@ -76,62 +89,83 @@ export function MafPaceCard({ series, mafHrThreshold, improvementSec, needsBirth
       : `${improvementSec > 0 ? '−' : '+'}${Math.abs(improvementSec)}s vs base`;
 
   return (
-    <Card style={{ backgroundColor: c.paper2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <View>
-          <Eyebrow>MAF AEROBIC PACE</Eyebrow>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
-            <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
-              {fmtPace(last.meanPaceSecPerKm)}
-            </TText>
-            <TText style={{ fontSize: 12, color: c.ink3 }}>/km @ ≤{mafHrThreshold}</TText>
+    <View>
+      <View ref={captureRef} collapsable={false} style={{ backgroundColor: c.paper }}>
+        <Card style={{ backgroundColor: c.paper2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Eyebrow>MAF AEROBIC PACE</Eyebrow>
+                <ChartInfoButton explanation={EXPLANATION} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 }}>
+                <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
+                  {fmtPace(last.meanPaceSecPerKm)}
+                </TText>
+                <TText style={{ fontSize: 12, color: c.ink3 }}>/km @ ≤{mafHrThreshold}</TText>
+              </View>
+            </View>
+            {deltaLabel ? (
+              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: tone + '22', marginTop: 4, marginRight: 40 }}>
+                <TText variant="mono" style={{ fontSize: 11, color: tone, fontWeight: '500' }}>{deltaLabel}</TText>
+              </View>
+            ) : null}
           </View>
-        </View>
-        {deltaLabel ? (
-          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: tone + '22', marginTop: 4 }}>
-            <TText variant="mono" style={{ fontSize: 11, color: tone, fontWeight: '500' }}>{deltaLabel}</TText>
+
+          <View style={{ marginTop: 12, alignItems: 'center' }}>
+            <View style={{ width: W, height: H }}>
+              <Svg width={W} height={H}>
+                {yTicks.map((v, i) => (
+                  <React.Fragment key={i}>
+                    <Line x1={LEFT} y1={y(v)} x2={W - RIGHT} y2={y(v)} stroke={c.line2} strokeWidth={0.6} />
+                    <SvgText x={LEFT - 4} y={y(v) + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">
+                      {fmtPace(v)}
+                    </SvgText>
+                  </React.Fragment>
+                ))}
+
+                <Path d={d} fill="none" stroke={c.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+
+                {series.map((p, i) => (
+                  <Circle key={i} cx={x(i)} cy={y(p.meanPaceSecPerKm)} r={Math.min(5, 2 + p.totalKm / 20)} fill={c.accent} opacity={0.85} />
+                ))}
+                <Circle cx={x(series.length - 1)} cy={y(last.meanPaceSecPerKm)} r={6.4} fill="none" stroke={c.accent} strokeWidth={0.6} opacity={0.5} />
+
+                <SvgText x={LEFT} y={H - 6} fontSize={9} fill={c.ink3} fontFamily="JetBrainsMono-Regular">{formatMonthShort(series[0].month)}</SvgText>
+                <SvgText x={W - RIGHT} y={H - 6} fontSize={9} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{formatMonthShort(last.month)}</SvgText>
+              </Svg>
+              <ChartTooltip
+                series={series}
+                left={LEFT}
+                right={W - RIGHT}
+                width={W}
+                height={H}
+                dotColor={c.accent}
+                pointY={(p) => y(p.meanPaceSecPerKm)}
+                formatPrimary={(p) => formatMonthShort(p.month)}
+                formatValue={(p) => `${fmtPace(p.meanPaceSecPerKm)} /km · ${p.runs} runs`}
+              />
+            </View>
           </View>
-        ) : null}
+
+          <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.line, flexDirection: 'row', gap: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3 }}>BEST</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{fmtPace(Math.min(...values))}</TText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3 }}>MONTHS</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{series.length}</TText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3 }}>RUNS</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{series.reduce((s, p) => s + p.runs, 0)}</TText>
+            </View>
+          </View>
+        </Card>
       </View>
-
-      <View style={{ marginTop: 12, alignItems: 'center' }}>
-        <Svg width={W} height={H}>
-          {yTicks.map((v, i) => (
-            <React.Fragment key={i}>
-              <Line x1={LEFT} y1={y(v)} x2={W - RIGHT} y2={y(v)} stroke={c.line2} strokeWidth={0.6} />
-              <SvgText x={LEFT - 4} y={y(v) + 3} fontSize={8} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">
-                {fmtPace(v)}
-              </SvgText>
-            </React.Fragment>
-          ))}
-
-          <Path d={d} fill="none" stroke={c.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-
-          {series.map((p, i) => (
-            <Circle key={i} cx={x(i)} cy={y(p.meanPaceSecPerKm)} r={Math.min(5, 2 + p.totalKm / 20)} fill={c.accent} opacity={0.85} />
-          ))}
-          <Circle cx={x(series.length - 1)} cy={y(last.meanPaceSecPerKm)} r={6.4} fill="none" stroke={c.accent} strokeWidth={0.6} opacity={0.5} />
-
-          <SvgText x={LEFT} y={H - 6} fontSize={9} fill={c.ink3} fontFamily="JetBrainsMono-Regular">{formatMonthShort(series[0].month)}</SvgText>
-          <SvgText x={W - RIGHT} y={H - 6} fontSize={9} fill={c.ink3} textAnchor="end" fontFamily="JetBrainsMono-Regular">{formatMonthShort(last.month)}</SvgText>
-        </Svg>
-      </View>
-
-      <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.line, flexDirection: 'row', gap: 16 }}>
-        <View style={{ flex: 1 }}>
-          <Eyebrow style={{ color: c.ink3 }}>BEST</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{fmtPace(Math.min(...values))}</TText>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Eyebrow style={{ color: c.ink3 }}>MONTHS</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{series.length}</TText>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Eyebrow style={{ color: c.ink3 }}>RUNS</Eyebrow>
-          <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{series.reduce((s, p) => s + p.runs, 0)}</TText>
-        </View>
-      </View>
-    </Card>
+      <ChartShareButton onPress={share} busy={busy} />
+    </View>
   );
 }
 

@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type Stamp, type StampTier } from '../data/sample';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
+import { useFullRefresh } from '../state/useFullRefresh';
 import { StampShareModal } from './StampShareModal';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
@@ -19,7 +20,8 @@ export function StampsScreen({ navigation, route }: RootStackProps<'Stamps'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('all');
-  const { stamps, loading, refresh } = useStamps();
+  const { stamps, loading } = useStamps();
+  const fullRefresh = useFullRefresh({ withStamps: true });
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState<CatalogStamp | null>(null);
 
@@ -37,8 +39,8 @@ export function StampsScreen({ navigation, route }: RootStackProps<'Stamps'>) {
   }, [route?.params?.openStampId, stamps, navigation]);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try { await refresh(); } finally { setRefreshing(false); }
-  }, [refresh]);
+    try { await fullRefresh(); } finally { setRefreshing(false); }
+  }, [fullRefresh]);
 
   const byTier = useMemo(() => {
     const out: Record<StampTier, { earned: number; total: number; stamps: CatalogStamp[] }> = {

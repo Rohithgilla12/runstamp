@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity, type ActivitySource } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useFullRefresh } from '../state/useFullRefresh';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { FilterChip } from '../design/FilterChip';
@@ -37,7 +38,8 @@ export function ActivitiesScreen({ navigation }: RootStackProps<'Activities'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { units } = useAppState();
-  const { activities, loading, refresh } = useActivities();
+  const { activities, loading } = useActivities();
+  const fullRefresh = useFullRefresh();
 
   const [search, setSearch] = useState('');
   const [year, setYear] = useState<number | 'all'>('all');
@@ -48,8 +50,8 @@ export function ActivitiesScreen({ navigation }: RootStackProps<'Activities'>) {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try { await refresh(); } finally { setRefreshing(false); }
-  }, [refresh]);
+    try { await fullRefresh(); } finally { setRefreshing(false); }
+  }, [fullRefresh]);
 
   const years = useMemo(() => {
     const ys = new Set<number>();
