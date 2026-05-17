@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,8 @@ import { useActivities } from '../state/useActivities';
 import { useActivityStreams } from '../state/useActivityStreams';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useFullRefresh } from '../state/useFullRefresh';
+import { useHealth } from '../state/HealthContext';
+import { getRunningWorkoutsSince } from '../services/healthkit';
 import { StampShareModal } from './StampShareModal';
 import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
@@ -34,6 +36,8 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
     try { await fullRefresh(); } finally { setRefreshing(false); }
   }, [fullRefresh]);
 
+  const missingHk = useMissingHealthKitRuns(activities);
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -51,6 +55,32 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
           <SunMark size={32} />
         </View>
       </View>
+
+      {missingHk > 0 && (
+        <Pressable
+          onPress={() => navigation.navigate('HealthRuns')}
+          style={({ pressed }) => [{
+            marginHorizontal: 20, marginTop: 12, padding: 12,
+            borderRadius: 12, backgroundColor: c.paper2,
+            borderWidth: 1, borderColor: c.accent,
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            opacity: pressed ? 0.85 : 1,
+          }]}
+        >
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent }} />
+          <View style={{ flex: 1 }}>
+            <TText style={{ fontSize: 13, color: c.ink, fontWeight: '500' }}>
+              {missingHk === 1
+                ? '1 run in Apple Health isn’t imported yet'
+                : `${missingHk} runs in Apple Health aren’t imported yet`}
+            </TText>
+            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
+              TAP TO REVIEW & IMPORT
+            </TText>
+          </View>
+          <TText variant="mono" style={{ fontSize: 13, color: c.ink2 }}>→</TText>
+        </Pressable>
+      )}
 
       {latest ? (
         <ConnectedHome
@@ -590,4 +620,72 @@ function formatTodayEyebrow(d: Date): string {
   const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   return `${dow} · ${mon} ${d.getDate()} · ${d.getFullYear()}`;
+}
+
+// Counts HealthKit running workouts that aren't on the server yet, used to
+// drive the "X runs not imported" banner. Cheap by design: only queries HK
+// for workouts since the latest already-imported activity (or 30 days back
+// if there's nothing imported), then filters out anything already in the
+// activities list by HK UUID. Skips entirely when Health permission isn't
+// granted — no UI noise on signed-out / Android sessions.
+function useMissingHealthKitRuns(activities: Activity[]): number {
+  const { status } = useHealth();
+  const [count, setCount] = useState(0);
+
+  // Build the lookup set + the "fetch from" anchor outside the effect so
+  // the dependency surface is stable.
+  const importedAppleHkIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of activities) {
+      if (a.source === 'apple_health' && a.externalId) s.add(a.externalId);
+    }
+    return s;
+  }, [activities]);
+
+  const latestImportedTime = useMemo(() => {
+    let t = 0;
+    for (const a of activities) {
+      const ts = new Date(a.date).getTime();
+      if (Number.isFinite(ts) && ts > t) t = ts;
+    }
+    return t;
+  }, [activities]);
+
+  useEffect(() => {
+    if (status !== 'granted') {
+      setCount(0);
+      return;
+    }
+    // Don't probe HealthKit for a fresh-install user with no activities —
+    // they should connect via the proper flow first, not get a "missing
+    // runs" banner.
+    if (activities.length === 0) {
+      setCount(0);
+      return;
+    }
+    let cancelled = false;
+    // 24h overlap before the latest imported timestamp so we don't miss
+    // out-of-order arrivals (Apple Watch sometimes backdates workouts).
+    const since = latestImportedTime > 0
+      ? new Date(latestImportedTime - 24 * 60 * 60 * 1000)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    (async () => {
+      try {
+        const runs = await getRunningWorkoutsSince(since);
+        if (cancelled) return;
+        let missing = 0;
+        for (const w of runs) {
+          if (w.distanceMeters > 0 && !importedAppleHkIds.has(w.uuid)) missing++;
+        }
+        setCount(missing);
+      } catch {
+        // Swallow HK errors here — the connectors tile / pull-to-refresh
+        // already surface them. We just don't show the banner.
+        if (!cancelled) setCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [status, activities.length, latestImportedTime, importedAppleHkIds]);
+
+  return count;
 }

@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Editor: { id: string };
   Stamps: { openStampId?: string } | undefined;
   YearInStamps: undefined;
+  HealthRuns: undefined;
 };
 
 export type TabParamList = {
