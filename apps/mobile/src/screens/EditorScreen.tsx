@@ -216,6 +216,16 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
     removeSticker(selected);
   };
 
+  // Templates and the bg=map background pulled run.route directly, which is
+  // the seeded synthetic loop from data/sample.ts — a pretty squiggle, but
+  // nothing to do with where the user actually ran. Swap in the real GPS
+  // route from the streams endpoint when we have one. Falls back to the
+  // synthetic for activities without route data (manual entries, indoor
+  // treadmill runs).
+  const displayRun = realRoute && realRoute.length > 1
+    ? { ...run, route: realRoute }
+    : run;
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.paper }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 36 }} showsVerticalScrollIndicator={false}>
@@ -284,51 +294,51 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PostageTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'postmark' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PostmarkTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'boarding' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <BoardingPassTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'passport' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PassportTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'customs' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <CustomsTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'engraved' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <EngravedTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'wax' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <WaxSealTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'minimal' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <MinimalTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <MinimalTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'datestamp' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <DateStampTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <DateStampTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'halftone' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <HalftoneTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <HalftoneTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'cyanotype' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CyanotypeTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <CyanotypeTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : template === 'riso' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <RisoTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <RisoTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
             </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
@@ -336,7 +346,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             backgroundColor: c.ink, position: 'relative'
           }}>
             {/* Background layer */}
-            {bg === 'map' && <RouteMap points={run.route} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
+            {bg === 'map' && <RouteMap points={displayRun.route} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
             {bg === 'photo' && (
               photoUri ? (
                 <Image source={{ uri: photoUri }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" />

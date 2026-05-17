@@ -63,13 +63,19 @@ function emptyStreams(): Record<StreamType, ActivityStream | undefined> {
   };
 }
 
-// Strava streams return latlng as `[[lat, lng], [lat, lng], …]`. RouteMap
-// expects normalized 0..1 coordinates in its own space; we hand it raw
-// (lat, lng) and let it normalize. Result type is the same Point tuple
-// used by the seeded generator so the renderer signature is unchanged.
+// Strava / HealthKit streams return latlng as `[[lat, lng], [lat, lng], …]`.
+// RouteMap expects normalized 0..1 coordinates in its own space.
+//
+// The old version normalized lat and lng to [0..1] independently, which
+// throws away aspect ratio: 1° of longitude is shorter than 1° of latitude
+// (by `cos(latitude)`) once you leave the equator, so a 10 km wide × 1 km
+// tall east-west loop would render as a square squiggle instead of a long
+// thin one. We now apply a local equirectangular projection — scale lng by
+// cos(mean latitude) to convert to meter-equivalent units — then fit the
+// resulting meter-space bounding box to [0..1] with the SAME divisor on
+// both axes, so the rendered route preserves its real-world shape.
 function parseLatLng(data: unknown): Point[] | null {
   if (!Array.isArray(data) || data.length === 0) return null;
-  // Bounds for normalization
   let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
   for (const pt of data) {
     if (!Array.isArray(pt) || pt.length < 2) continue;
@@ -80,17 +86,29 @@ function parseLatLng(data: unknown): Point[] | null {
     if (lng > maxLng) maxLng = lng;
   }
   if (minLat === Infinity) return null;
-  const dLat = maxLat - minLat || 1;
-  const dLng = maxLng - minLng || 1;
-  // Add a small inset so the polyline doesn't kiss the canvas edge.
+
+  const meanLat = (minLat + maxLat) / 2;
+  const cosLat = Math.cos((meanLat * Math.PI) / 180);
+  // Meter-equivalent ranges (using the rough 1°≈111 km figure cancels out
+  // in the ratio, so we just use degrees with the cos correction on lng).
+  const lngMeters = (maxLng - minLng) * cosLat;
+  const latMeters = maxLat - minLat;
+  const span = Math.max(lngMeters, latMeters) || 1;
+  // Center the smaller axis in [0..1] so square canvases don't squash the route.
+  const xCenter = (span - lngMeters) / 2;
+  const yCenter = (span - latMeters) / 2;
+  // Inset so the polyline doesn't kiss the canvas edge.
   const inset = 0.05;
+  const scale = 1 - inset * 2;
   const out: Point[] = [];
   for (const pt of data) {
     if (!Array.isArray(pt) || pt.length < 2) continue;
     const [lat, lng] = pt as [number, number];
-    const x = inset + ((lng - minLng) / dLng) * (1 - inset * 2);
+    const xMeters = (lng - minLng) * cosLat;
     // Flip lat: north is up, but normalized coords are y-down.
-    const y = inset + (1 - (lat - minLat) / dLat) * (1 - inset * 2);
+    const yMeters = maxLat - lat;
+    const x = inset + ((xCenter + xMeters) / span) * scale;
+    const y = inset + ((yCenter + yMeters) / span) * scale;
     out.push([x, y]);
   }
   return out;
