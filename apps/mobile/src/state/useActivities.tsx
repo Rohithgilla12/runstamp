@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { listActivities, type ApiActivity } from '../services/activities';
 import { route, type Activity, type ActivityKind } from '../data/sample';
 
-interface UseActivitiesState {
+interface ActivitiesContextValue {
   activities: Activity[];
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
 }
 
-export function useActivities(): UseActivitiesState {
+const ActivitiesContext = createContext<ActivitiesContextValue | null>(null);
+
+// Shared activities state. One fetcher per session — so useFullRefresh's
+// refresh() actually updates the list the screens are rendering, not a
+// phantom local instance. Without this, pull-to-refresh would upload
+// HealthKit workouts to the backend but never re-render the screen.
+export function ActivitiesProvider({ children }: { children: React.ReactNode }) {
   const { user, getIdToken } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +45,17 @@ export function useActivities(): UseActivitiesState {
     fetchOnce();
   }, [fetchOnce]);
 
-  return { activities, loading, error, refresh: fetchOnce };
+  return (
+    <ActivitiesContext.Provider value={{ activities, loading, error, refresh: fetchOnce }}>
+      {children}
+    </ActivitiesContext.Provider>
+  );
+}
+
+export function useActivities(): ActivitiesContextValue {
+  const ctx = useContext(ActivitiesContext);
+  if (!ctx) throw new Error('useActivities must be used within <ActivitiesProvider>');
+  return ctx;
 }
 
 function mapApiToActivity(a: ApiActivity): Activity {

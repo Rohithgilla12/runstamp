@@ -7,6 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { AppStateProvider, useAppState } from './state/AppState';
 import { AuthProvider, useAuth } from './state/AuthContext';
 import { AccountProvider } from './state/useAccount';
+import { ActivitiesProvider } from './state/useActivities';
+import { StampsProvider } from './state/useStamps';
 import { HealthProvider } from './state/HealthContext';
 import { ThemeCtx, paletteFor } from './design/theme';
 import { useAppFonts } from './design/fonts';
@@ -28,9 +30,13 @@ export default function App() {
         <AppStateProvider>
           <AuthProvider>
             <AccountProvider>
-              <HealthProvider>
-                <Shell />
-              </HealthProvider>
+              <ActivitiesProvider>
+                <StampsProvider>
+                  <HealthProvider>
+                    <Shell />
+                  </HealthProvider>
+                </StampsProvider>
+              </ActivitiesProvider>
             </AccountProvider>
           </AuthProvider>
         </AppStateProvider>

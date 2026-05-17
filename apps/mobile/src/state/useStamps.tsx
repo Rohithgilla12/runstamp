@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 import {
   listStamps,
@@ -18,7 +18,7 @@ export interface CatalogStamp {
   activityId?: string;
 }
 
-interface UseStampsState {
+interface StampsContextValue {
   stamps: CatalogStamp[];
   earned: CatalogStamp[];
   loading: boolean;
@@ -27,7 +27,11 @@ interface UseStampsState {
   reevaluate: () => Promise<string[]>;
 }
 
-export function useStamps(): UseStampsState {
+const StampsContext = createContext<StampsContextValue | null>(null);
+
+// Shared stamps state. Same reason as ActivitiesProvider — useFullRefresh
+// needs to update the state the screens render, not its own local copy.
+export function StampsProvider({ children }: { children: React.ReactNode }) {
   const { user, getIdToken } = useAuth();
   const [catalog, setCatalog] = useState<StampDefinitionRaw[]>([]);
   const [earnedRaw, setEarnedRaw] = useState<EarnedStampRaw[]>([]);
@@ -83,5 +87,15 @@ export function useStamps(): UseStampsState {
 
   const earned = useMemo(() => stamps.filter((s) => !!s.earnedAt), [stamps]);
 
-  return { stamps, earned, loading, error, refresh: fetchOnce, reevaluate };
+  return (
+    <StampsContext.Provider value={{ stamps, earned, loading, error, refresh: fetchOnce, reevaluate }}>
+      {children}
+    </StampsContext.Provider>
+  );
+}
+
+export function useStamps(): StampsContextValue {
+  const ctx = useContext(StampsContext);
+  if (!ctx) throw new Error('useStamps must be used within <StampsProvider>');
+  return ctx;
 }
