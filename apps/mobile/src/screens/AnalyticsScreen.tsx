@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Share, View } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
+import { captureRef } from 'react-native-view-shot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
 import { filterByPeriod, delta, type Period } from '../analytics/compare';
@@ -45,6 +47,8 @@ import { monthlyCumulative } from '../analytics/cumulative';
 import { CumulativeChart } from '../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../design/charts/MonthCalendarDots';
 import { WeeklyBars } from '../design/charts/WeeklyBars';
+import { PeriodShareCard, type PeriodSummary } from '../design/PeriodShareCard';
+import { Icon } from '../design/Icon';
 import { AnalyticsFilters, DEFAULT_FILTERS, filtersAreActive, type Filters } from './_AnalyticsFilters';
 import { useAccount } from '../state/useAccount';
 import { useNavigation } from '@react-navigation/native';
@@ -497,6 +501,106 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
     return weeks;
   }, [periodB, comparePeriod]);
 
+  // ── Period share card ─────────────────────────────────────────────────────
+  // Builds a single PeriodSummary for whatever scope is active, used to render
+  // the off-screen share card. Each scope picks its own mini-chart shape:
+  //   week  → 7 daily bars
+  //   month → daily bars across the month
+  //   year  → 12 monthly bars
+  //   all   → up to last 24 months of monthly totals
+  const shareSummary = useMemo<PeriodSummary>(() => {
+    let label: string;
+    let miniBars: number[];
+    let miniCaption: string;
+    let streakDays: number;
+    let totals: Aggregate;
+
+    if (scope === 'week') {
+      label = labelWeek(selectedWeek);
+      miniBars = dailyKmThisWeek;
+      miniCaption = 'By day';
+      streakDays = streaks.current;
+      totals = scoped;
+    } else if (scope === 'month') {
+      label = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+      const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+      const out: number[] = [];
+      for (let day = 1; day <= daysInMonth; day++) {
+        const key = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        out.push(kmByDate[key] ?? 0);
+      }
+      miniBars = out;
+      miniCaption = 'By day';
+      streakDays = streaks.longest;
+      totals = scoped;
+    } else if (scope === 'year') {
+      label = String(selectedYear);
+      miniBars = monthlyKm;
+      miniCaption = 'By month';
+      streakDays = streaks.longest;
+      totals = scoped;
+    } else {
+      label = 'Lifetime';
+      // Last 24 months of cumulative-source totals (monthly buckets), trimmed
+      // to the first non-zero so a runner with 14 months of history doesn't
+      // get 10 leading empty bars.
+      const monthlyTotals = new Map<string, number>();
+      for (const a of filteredByLens) {
+        const d = new Date(a.date);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthlyTotals.set(k, (monthlyTotals.get(k) ?? 0) + a.distance);
+      }
+      const sortedKeys = Array.from(monthlyTotals.keys()).sort();
+      const recent = sortedKeys.slice(-24);
+      miniBars = recent.map((k) => monthlyTotals.get(k) ?? 0);
+      miniCaption = 'By month';
+      streakDays = streaks.longest;
+      totals = all;
+    }
+
+    return {
+      scope,
+      label,
+      totalKm: totals.totalKm,
+      runs: totals.runs,
+      totalSec: totals.totalSec,
+      longestKm: longestRunKm,
+      streakDays,
+      miniBars,
+      miniCaption,
+      units,
+    };
+  }, [
+    scope, selectedYear, selectedMonth, selectedWeek,
+    scoped, all, monthlyKm, dailyKmThisWeek, kmByDate,
+    streaks, longestRunKm, filteredByLens, units,
+  ]);
+
+  const shareCardRef = useRef<View>(null);
+  const [sharingSummary, setSharingSummary] = useState(false);
+  const handleShareSummary = useCallback(async () => {
+    if (sharingSummary || !shareCardRef.current) return;
+    setSharingSummary(true);
+    try {
+      const uri = await captureRef(shareCardRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      try {
+        const perm = await MediaLibrary.requestPermissionsAsync(true);
+        if (perm.granted) await MediaLibrary.createAssetAsync(uri);
+      } catch {
+        // ignore camera-roll save failure; share sheet still works.
+      }
+      const distLabel = `${fmtDist(shareSummary.totalKm, units)} ${distUnit(units)}`;
+      await Share.share({
+        url: uri,
+        message: `${shareSummary.label}: ${distLabel} via Runstamp`,
+      });
+    } catch (e) {
+      Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+    } finally {
+      setSharingSummary(false);
+    }
+  }, [sharingSummary, shareSummary, units]);
+
   return (
     <View>
       {comparePeriod && aggB ? (
@@ -527,6 +631,48 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
           </View>
         </Card>
       ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} week={selectedWeek} /> : <LifetimeHero agg={all} />}
+
+      {/* Period summary share. One tap captures a composed PeriodShareCard
+          containing the scope's headline numbers + a mini chart, saves to
+          camera roll (best-effort) and opens the OS share sheet. Hidden
+          when the scope is empty so we don't share a 0 km card. */}
+      {scoped.runs > 0 && (
+        <Pressable
+          onPress={handleShareSummary}
+          disabled={sharingSummary}
+          style={({ pressed }) => [{
+            marginTop: 14, padding: 12, borderRadius: 12,
+            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            opacity: pressed || sharingSummary ? 0.6 : 1,
+          }]}
+        >
+          {sharingSummary ? (
+            <ActivityIndicator size="small" color={c.ink2} />
+          ) : (
+            <Icon.share size={14} color={c.ink2} />
+          )}
+          <View style={{ flex: 1 }}>
+            <TText style={{ fontSize: 13, color: c.ink, fontWeight: '500' }}>
+              Share {shareSummary.scope === 'all' ? 'lifetime' : shareSummary.label.toLowerCase()}
+            </TText>
+            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2, letterSpacing: 0.4 }}>
+              {fmtDist(shareSummary.totalKm, units)} {distUnit(units)} · {shareSummary.runs} RUNS
+            </TText>
+          </View>
+          <TText variant="mono" style={{ fontSize: 13, color: c.ink2 }}>→</TText>
+        </Pressable>
+      )}
+
+      {/* Off-screen render of the share card. position:absolute + left:-10000
+          keeps it out of layout flow and invisible to the user, but it's
+          still in the native view tree so captureRef can read it. */}
+      <View style={{ position: 'absolute', left: -10000, top: 0 }} pointerEvents="none">
+        <View ref={shareCardRef} collapsable={false}>
+          <PeriodShareCard summary={shareSummary} />
+        </View>
+      </View>
+
       {scope === 'week' && (
         <>
           <View style={{ marginTop: 24 }}>
