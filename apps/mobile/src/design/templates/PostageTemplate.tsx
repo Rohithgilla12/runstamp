@@ -17,6 +17,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // PostageTemplate
@@ -31,7 +32,7 @@ interface Props {
 //  - Postmark circle actually renders date + pace inside (was empty rings).
 //  - "DENOMINATION" eyebrow dropped in favour of plain DISTANCE — less jargon.
 //  - Padding uses the shared scale so spacing matches the rest of the family.
-export function PostageTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function PostageTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
   // Stamp inset — perforations sit just inside the outer rect so the paper
   // backdrop bleeds through the notches.
@@ -53,7 +54,7 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
       }}>
         {/* Background layer */}
         {background === 'map' && (
-          <RouteMap points={run.route} width={cardW} height={cardH} style="dark" accent={c.accent} routeStrokeWidth={4} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={cardW} height={cardH} style="dark" accent={c.accent} routeStrokeWidth={4} flat />
         )}
         {background === 'photo' && (
           <PhotoBackground

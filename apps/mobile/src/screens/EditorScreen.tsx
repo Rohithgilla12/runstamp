@@ -348,51 +348,51 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostageTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PostageTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'postmark' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostmarkTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PostmarkTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'boarding' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <BoardingPassTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <BoardingPassTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'passport' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PassportTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <PassportTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'customs' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CustomsTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <CustomsTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'engraved' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <EngravedTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <EngravedTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'wax' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <WaxSealTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <WaxSealTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'minimal' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <MinimalTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <MinimalTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'datestamp' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <DateStampTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <DateStampTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'halftone' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <HalftoneTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <HalftoneTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'cyanotype' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CyanotypeTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <CyanotypeTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'riso' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <RisoTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} />
+              <RisoTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{

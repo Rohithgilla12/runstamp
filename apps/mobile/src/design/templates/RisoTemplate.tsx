@@ -17,6 +17,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // RisoTemplate (PRD §6.3 — "Riso")
@@ -29,7 +30,7 @@ interface Props {
 //
 // Like CyanotypeTemplate this bypasses the live theme accent — riso's
 // charm is the strict 2-spot-colour palette.
-export function RisoTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function RisoTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
   void c;
 
@@ -52,10 +53,10 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
       {background === 'map' && (
         <>
           <View style={{ position: 'absolute', top: offY, left: offX, right: -offX, bottom: -offY, opacity: 0.55 }}>
-            <RouteMap points={run.route} width={width} height={height} style="light" accent={PINK} routeStrokeWidth={3.5} flat />
+            <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={PINK} routeStrokeWidth={3.5} flat />
           </View>
           <View style={{ position: 'absolute', top: -offY, left: -offX, right: offX, bottom: offY, opacity: 0.6 }}>
-            <RouteMap points={run.route} width={width} height={height} style="light" accent={BLUE} routeStrokeWidth={3.5} flat />
+            <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={BLUE} routeStrokeWidth={3.5} flat />
           </View>
         </>
       )}

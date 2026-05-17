@@ -24,6 +24,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // Seeded LCG — Mulberry32-inspired, deterministic.
@@ -55,7 +56,7 @@ function seedFromId(id: string): number {
 // Around the rim, curved TextPath reads: "PERSONAL BEST · <dist> KM · <city> · <date>"
 // In the centre: time in big mono, run title in italic underneath.
 // The background bleeds through the gaps between ribbons.
-export function WaxSealTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function WaxSealTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   const sealSize = Math.min(width, height) * 0.72;
@@ -74,7 +75,7 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
       {/* Backdrop */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.30 }}>
-          <RouteMap points={run.route} width={width} height={height} style="dark" accent={c.accentDeep} routeStrokeWidth={3} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accentDeep} routeStrokeWidth={3} flat />
         </View>
       )}
       {background === 'photo' && (

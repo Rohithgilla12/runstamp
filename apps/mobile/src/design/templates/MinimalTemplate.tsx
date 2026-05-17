@@ -15,6 +15,9 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  // Privacy-masked raw lat/lng — when present, the map background renders real
+  // OSM tiles. null/undefined falls back to the bare paper-and-ink path.
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // MinimalTemplate (PRD §6.3)
@@ -26,7 +29,7 @@ interface Props {
 // dominating the middle, pace / time / elevation in a small mono row, a
 // single solar hairline as the only colour. Background is paper (light or
 // dark theme-aware).
-export function MinimalTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function MinimalTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   const distFont = Math.min(width * 0.30, 120);
@@ -37,7 +40,7 @@ export function MinimalTemplate({ run, width, height, background, units = 'km', 
       {/* Background variants — kept extremely subtle so the type rules. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.08 }}>
-          <RouteMap points={run.route} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
         </View>
       )}
       {background === 'photo' && (

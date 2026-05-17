@@ -17,6 +17,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // DateStampTemplate (PRD §6.3)
@@ -28,7 +29,7 @@ interface Props {
 //
 // The card sits on warm paper; the stamp itself is the only saturated thing.
 // Pace + time + elevation read along a thin baseline rule below.
-export function DateStampTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function DateStampTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   const inkTone = TONE.inkDark;
@@ -46,7 +47,7 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
       {/* Background variants — paper stays paper; map/photo go faint. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.07 }}>
-          <RouteMap points={run.route} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
         </View>
       )}
       {background === 'photo' && (

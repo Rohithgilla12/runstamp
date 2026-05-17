@@ -16,6 +16,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // HalftoneTemplate (PRD §6.3 — "Halftone")
@@ -26,7 +27,7 @@ interface Props {
 //
 // Inspired by the print culture branch of the reference triangle in
 // .impeccable.md — Polaroid / Field Notes / Risograph print shops.
-export function HalftoneTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function HalftoneTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   const inkTone = '#14110d';
@@ -37,7 +38,7 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km',
       {/* Background layer — bleeds behind the halftone dots. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.55 }}>
-          <RouteMap points={run.route} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} flat />
         </View>
       )}
       {background === 'photo' && (

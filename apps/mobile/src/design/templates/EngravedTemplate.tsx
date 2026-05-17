@@ -20,6 +20,8 @@ interface Props {
   /** Engraved is intentionally monochrome — accepts the prop for editor
    *  call-site consistency but ignores it. */
   photoUri?: string | null;
+  /** Engraved has no map backdrop — accepts for call-site uniformity, ignores. */
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // EngravedTemplate

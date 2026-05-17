@@ -17,6 +17,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // Seeded LCG — deterministic, no Math.random() in render paths.
@@ -41,7 +42,7 @@ function seededSequence(seed: number, count: number): number[] {
 // small circles). Left column holds ORIGIN → DESTINATION with city/country.
 // Right "stub" column shows distance, pace, time stacked. A fake barcode strip
 // sits at the bottom. Airmail red/blue diagonal stripe bands at top and bottom.
-export function BoardingPassTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function BoardingPassTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   const stripH = 18;
@@ -62,7 +63,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
       {/* Backdrop map / photo / solid bleeds under the content at low opacity */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.12 }}>
-          <RouteMap points={run.route} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
         </View>
       )}
       {background === 'photo' && (

@@ -17,6 +17,7 @@ interface Props {
   background: 'map' | 'photo' | 'solid';
   units?: Units;
   photoUri?: string | null;
+  rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
 }
 
 // PostmarkTemplate
@@ -27,7 +28,7 @@ interface Props {
 // denomination at the top of the ring, pace + time as small mono labels
 // along the lower arc. The route map (or photo / solid colour) bleeds behind
 // the stamp, muted by a dark scrim.
-export function PostmarkTemplate({ run, width, height, background, units = 'km', photoUri }: Props) {
+export function PostmarkTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
   const c = useColors();
 
   return (
@@ -35,7 +36,7 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
       {/* Backdrop — bleed behind the stamp */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.45 }}>
-          <RouteMap points={run.route} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} flat />
         </View>
       )}
       {background === 'photo' && (
