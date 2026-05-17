@@ -5,6 +5,7 @@ import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
 import { filterByPeriod, delta, type Period } from '../analytics/compare';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useFullRefresh } from '../state/useFullRefresh';
 import { useBestEfforts } from '../state/useBestEfforts';
 import type { BestEffort } from '../services/bestEfforts';
 import { useColors } from '../design/theme';
@@ -62,14 +63,15 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareOn, setCompareOn] = useState(false);
   const [comparePeriod, setComparePeriod] = useState<Period | null>(null);
-  const { activities, loading, refresh } = useActivities();
+  const { activities, loading } = useActivities();
+  const fullRefresh = useFullRefresh();
   const { me } = useAccount();
   const nav = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try { await refresh(); } finally { setRefreshing(false); }
-  }, [refresh]);
+    try { await fullRefresh(); } finally { setRefreshing(false); }
+  }, [fullRefresh]);
 
   useEffect(() => {
     // Compare-mode only makes sense for year + month — week windows are too

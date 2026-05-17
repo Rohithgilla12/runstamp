@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, type Activity } from '../data/sample';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
+import { useFullRefresh } from '../state/useFullRefresh';
 import { useAuth } from '../state/AuthContext';
 import { backfillPlaces } from '../services/places';
 import { useColors } from '../design/theme';
@@ -31,6 +32,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
   const { activities, loading, refresh } = useActivities();
+  const fullRefresh = useFullRefresh();
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState(false);
   // 'all' = lifetime, year number = constrained to that year.
@@ -38,8 +40,8 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const currentYear = new Date().getFullYear();
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try { await refresh(); } finally { setRefreshing(false); }
-  }, [refresh]);
+    try { await fullRefresh(); } finally { setRefreshing(false); }
+  }, [fullRefresh]);
 
   const scopedActivities = useMemo(() => {
     if (scope === 'all') return activities;
