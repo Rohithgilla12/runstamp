@@ -6,6 +6,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-nativ
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
+import { prefetchTiles } from '../services/mapTiles';
 import { distUnit, fmtDist, fmtPace, fmtTime, type Activity } from '../data/sample';
 import { useActivities } from '../state/useActivities';
 import { useAppState } from '../state/AppState';
@@ -134,7 +135,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   // Lifted up so every sticker that renders charts/maps shares one fetch.
   // useActivityStreams gracefully no-ops when id is null.
-  const { route: realRoute, streams: realStreams } = useActivityStreams(run?.id ?? null);
+  const { route: realRoute, rawLatLng: realRawLatLng, streams: realStreams } = useActivityStreams(run?.id ?? null);
   const realHr = parseStream(realStreams.heartrate?.data);
   const realVelocity = parseStream(realStreams.velocity?.data);
   // Strava velocity is m/s; convert to seconds-per-km so the pace sparkline
@@ -161,6 +162,20 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
     setSelected(null);
     setExporting(true);
     try {
+      // Tiles in the bg=map backdrop come from CartoCDN over the network.
+      // captureRef is synchronous — if we don't prefetch, the first share
+      // ships a PNG with half-loaded tile gaps. Prefetch the full bbox so
+      // every tile sits in the RN image cache by the time we snapshot.
+      if (bg === 'map' && realRawLatLng != null && realRawLatLng.length > 1) {
+        let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+        for (const pt of realRawLatLng) {
+          if (pt[0] < minLat) minLat = pt[0];
+          if (pt[0] > maxLat) maxLat = pt[0];
+          if (pt[1] < minLng) minLng = pt[1];
+          if (pt[1] > maxLng) maxLng = pt[1];
+        }
+        await prefetchTiles({ minLat, maxLat, minLng, maxLng }, canvasW, canvasH);
+      }
       // Capture at 2x for retina quality. Output PNG so the transparent
       // watermark area composites cleanly.
       const uri = await captureRef(canvasRef, { format: 'png', quality: 1, result: 'tmpfile' });
@@ -385,7 +400,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             backgroundColor: c.ink, position: 'relative'
           }}>
             {/* Background layer */}
-            {bg === 'map' && <RouteMap points={displayRun.route} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
+            {bg === 'map' && <RouteMap points={displayRun.route} rawLatLng={realRawLatLng} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
             {bg === 'photo' && (
               photoUri ? (
                 <Image source={{ uri: photoUri }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" />

@@ -26,7 +26,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const id = route.params?.id;
   const { activities, loading, refresh: refreshActivities } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
-  const { route: realRoute, streams } = useActivityStreams(run?.id ?? null);
+  const { route: realRoute, rawLatLng: realRawLatLng, streams } = useActivityStreams(run?.id ?? null);
   const { getIdToken } = useAuth();
   const handleRename = useCallback(() => {
     if (!run) return;
@@ -98,7 +98,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
     >
       {/* Hero map */}
       <View style={{ height: 340, position: 'relative' }}>
-        <RouteMap points={realRoute ?? run.route} width={402} height={340} style={dark ? 'dark' : 'light'} accent={c.accent} />
+        <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={402} height={340} style={dark ? 'dark' : 'light'} accent={c.accent} />
         <LinearGradient
           colors={[`${c.paper}cc`, 'transparent', 'transparent', `${c.paper}f0`]}
           locations={[0, 0.25, 0.65, 1]}

@@ -515,12 +515,12 @@ const POST_RUN_HEIGHT = 380;
 function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => void; onShare: () => void }) {
   const c = useColors();
   const { units } = useAppState();
-  const { route: realRoute } = useActivityStreams(run.id);
+  const { route: realRoute, rawLatLng: realRawLatLng } = useActivityStreams(run.id);
   return (
     <Pressable onPress={onOpen} style={({ pressed }) => [{ borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, opacity: pressed ? 0.95 : 1 }]}>
       <View style={{ position: 'relative', height: POST_RUN_HEIGHT }}>
         <View style={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
-          <RouteMap points={realRoute ?? run.route} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
+          <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
         </View>
         <LinearGradient
           colors={['rgba(14,13,11,0.4)', 'rgba(14,13,11,0.1)', 'rgba(14,13,11,0.85)']}

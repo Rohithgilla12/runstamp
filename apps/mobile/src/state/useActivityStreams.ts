@@ -10,7 +10,15 @@ interface UseActivityStreamsState {
   streams: Record<StreamType, ActivityStream | undefined>;
   loading: boolean;
   error: Error | null;
+  /** Normalized [0..1] polyline. Used by RouteMap's bare fallback path. */
   route: Point[] | null;
+  /**
+   * Privacy-masked raw [lat, lng] sequence. RouteMap uses this for the
+   * slippy projection so the polyline aligns pixel-exact with raster map
+   * tiles. null when the user has no GPS streams (treadmill / Apple Health
+   * indoor) or when every point landed inside a privacy zone.
+   */
+  rawLatLng: Array<readonly [number, number]> | null;
   refresh: () => Promise<void>;
 }
 
@@ -49,12 +57,16 @@ export function useActivityStreams(activityId: string | null): UseActivityStream
 
   // Privacy mask + projection. Recomputed when streams OR zones change so
   // adding a zone in Settings updates every open route map without a refetch.
-  const route = useMemo(
+  // parseLatLng returns both shapes — normalized for the bare RouteMap path
+  // and raw lat/lng for the slippy-tile path.
+  const parsed = useMemo(
     () => parseLatLng(streams.latlng?.data, zones),
     [streams.latlng, zones],
   );
+  const route = parsed?.points ?? null;
+  const rawLatLng = parsed?.rawLatLng ?? null;
 
-  return { streams, loading, error, route, refresh: fetchOnce };
+  return { streams, loading, error, route, rawLatLng, refresh: fetchOnce };
 }
 
 function emptyStreams(): Record<StreamType, ActivityStream | undefined> {
@@ -83,7 +95,12 @@ function emptyStreams(): Record<StreamType, ActivityStream | undefined> {
 // cos(mean latitude) to convert to meter-equivalent units — then fit the
 // resulting meter-space bounding box to [0..1] with the SAME divisor on
 // both axes, so the rendered route preserves its real-world shape.
-function parseLatLng(data: unknown, zones: PrivacyZone[]): Point[] | null {
+interface ParsedRoute {
+  points: Point[];
+  rawLatLng: Array<readonly [number, number]>;
+}
+
+function parseLatLng(data: unknown, zones: PrivacyZone[]): ParsedRoute | null {
   if (!Array.isArray(data) || data.length === 0) return null;
   // Coerce to a uniform tuple shape first so the mask + projection don't
   // re-validate per point.
@@ -130,5 +147,5 @@ function parseLatLng(data: unknown, zones: PrivacyZone[]): Point[] | null {
     const y = inset + ((yCenter + yMeters) / span) * scale;
     out.push([x, y]);
   }
-  return out;
+  return { points: out, rawLatLng: masked };
 }
