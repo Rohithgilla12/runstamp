@@ -86,6 +86,8 @@ export type ActivitySource = 'strava' | 'apple_health' | 'manual';
 export interface Activity {
   id: string;
   source?: ActivitySource;
+  /** Source-native id — Strava activity id or HealthKit workout UUID. */
+  externalId?: string;
   date: string;
   day: string;
   time: string;

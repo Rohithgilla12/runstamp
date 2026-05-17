@@ -59,6 +59,7 @@ function mapApiToActivity(a: ApiActivity): Activity {
   return {
     id: a.id,
     source: a.source,
+    externalId: a.externalId,
     date,
     day,
     time,

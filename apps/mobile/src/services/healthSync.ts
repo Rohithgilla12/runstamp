@@ -243,6 +243,59 @@ export async function syncRecentWorkouts(
   return { uploaded, skipped, workoutsFound: workouts.length };
 }
 
+/**
+ * Imports a single HealthKit workout by UUID — used by the "Browse HealthKit
+ * runs" screen to retry a specific workout the auto-sync missed. Same payload
+ * shape as syncRecentWorkouts uses internally; goes through the same dedup
+ * contract on the server, so re-tapping a workout that's already imported is
+ * cheap (returns as a duplicate).
+ *
+ * Throws if HealthKit can't return detail (missing UUID, permission revoked)
+ * or if the backend rejects the upload — the caller surfaces the message.
+ */
+export async function importHealthKitWorkout(
+  idToken: string | null,
+  uuid: string,
+): Promise<{ uploaded: number; duplicates: number; skipped: number }> {
+  const detail = await getRunningWorkoutDetail(uuid);
+  if (detail == null) {
+    throw new Error('HealthKit returned no detail for this workout');
+  }
+  if ((detail.distanceMeters ?? 0) <= 0) {
+    throw new Error('Workout has 0 distance — refusing to upload');
+  }
+
+  const payload: WorkoutPayload = {
+    uuid: detail.uuid,
+    startedAt: detail.startDate.toISOString(),
+    elapsedSeconds: Math.round(detail.duration),
+    distanceMeters: detail.distanceMeters,
+  };
+  if (detail.movingSeconds != null) payload.movingSeconds = detail.movingSeconds;
+  if (detail.elevationGainMeters != null) payload.elevationGainMeters = detail.elevationGainMeters;
+  if (detail.activeEnergyKcal != null) payload.activeEnergyKcal = Math.round(detail.activeEnergyKcal);
+  if (detail.avgHeartRate != null) payload.avgHeartRate = Math.round(detail.avgHeartRate);
+  if (detail.maxHeartRate != null) payload.maxHeartRate = Math.round(detail.maxHeartRate);
+  if (detail.avgRunningPower != null) payload.avgRunningPower = detail.avgRunningPower;
+  if (detail.avgVerticalOscillation != null) payload.avgVerticalOscillation = detail.avgVerticalOscillation;
+  if (detail.avgGroundContactTime != null) payload.avgGroundContactTime = detail.avgGroundContactTime;
+  if (detail.avgStrideLength != null) payload.avgStrideLength = detail.avgStrideLength;
+  if (detail.avgRunningSpeed != null) payload.avgRunningSpeed = detail.avgRunningSpeed;
+  if (detail.avgCadence != null) payload.avgCadence = detail.avgCadence;
+  if (detail.vo2maxMlKgMin != null) payload.vo2maxMlKgMin = detail.vo2maxMlKgMin;
+
+  const latlng = detail.streams.latlng;
+  if (latlng != null && latlng.length > 0) {
+    payload.startLatitude = latlng[0][0];
+    payload.startLongitude = latlng[0][1];
+  }
+  const streams = buildStreamsPayload(detail.streams);
+  if (streams != null) payload.streams = streams;
+  if (detail.splits.length > 0) payload.splits = detail.splits;
+
+  return apiPost<SyncResponse>('/v1/health/workouts', { workouts: [payload] }, { idToken });
+}
+
 function buildStreamsPayload(
   streams: HKWorkoutDetail['streams'],
 ): WorkoutStreamsPayload | null {

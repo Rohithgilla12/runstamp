@@ -33,6 +33,10 @@ const maxActivitiesLimit = 10000
 type activityResponse struct {
 	ID             string   `json:"id"`
 	Source         string   `json:"source"`
+	// ExternalID is the source's native id — Strava activity id, or the
+	// HealthKit workout UUID. The mobile "Browse HealthKit runs" screen uses
+	// it to correlate the live HK list against what's already imported.
+	ExternalID     string   `json:"externalId"`
 	Sport          string   `json:"sport"`
 	StartedAt      string   `json:"startedAt"`
 	Title          string   `json:"title"`
@@ -168,6 +172,7 @@ func toActivityResponse(a *activities.Activity) activityResponse {
 	out := activityResponse{
 		ID:            a.ID,
 		Source:        a.Source,
+		ExternalID:    a.ExternalID,
 		Sport:         a.Sport,
 		StartedAt:     a.StartedAt.UTC().Format(time.RFC3339),
 		DistanceM:     a.DistanceM,

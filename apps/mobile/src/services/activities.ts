@@ -5,6 +5,8 @@ export type ActivitySource = 'strava' | 'apple_health' | 'manual';
 export interface ApiActivity {
   id: string;
   source: ActivitySource;
+  /** Source-native id — Strava activity id, or the HealthKit workout UUID. */
+  externalId: string;
   sport: string;
   startedAt: string;
   title: string;
