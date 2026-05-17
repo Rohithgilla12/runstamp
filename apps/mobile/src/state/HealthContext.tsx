@@ -37,6 +37,15 @@ interface HealthContextValue {
   status: HealthPermissionStatus;
   syncing: boolean;
   lastSyncAt: Date | null;
+  /** Last sync error message, or null if the last attempt succeeded. */
+  lastError: string | null;
+  /**
+   * Last sync result summary (after the most recent runSync call). null
+   * before the first sync of the session. Surfaced so screens can tell the
+   * user "we asked HealthKit and got 0 workouts back" — i.e. the empty-
+   * upload case isn't silently treated as success.
+   */
+  lastResult: { uploaded: number; skipped: number; workoutsFound: number } | null;
   /** Live progress while a sync is running, or null when idle. */
   progress: SyncProgress | null;
   /**
@@ -58,17 +67,29 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<
+    { uploaded: number; skipped: number; workoutsFound: number } | null
+  >(null);
 
   const runSync = useCallback(
     async (since: Date) => {
       const idToken = await getIdToken();
       const sinceISO = since.toISOString();
       setSyncing(true);
+      setLastError(null);
       setProgress({ phase: 'listing', current: 0, total: 0 });
       try {
         const res = await syncRecentWorkouts(idToken, sinceISO, (p) => setProgress(p));
         setLastSyncAt(new Date());
+        setLastResult(res);
         return res;
+      } catch (e) {
+        // Record the message before re-throwing so the connectors UI can show
+        // a persistent "last sync failed: X" line even if the caller's catch
+        // block already alerted and dismissed.
+        setLastError(e instanceof Error ? e.message : String(e));
+        throw e;
       } finally {
         // Always clear the spinner — even if the upload failed mid-stream,
         // the caller will surface the error via its own catch.
@@ -111,7 +132,14 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
 
   const resync = useCallback(
     async (since?: Date) => {
-      if (status !== 'granted') return;
+      // We used to bail on `status !== 'granted'`. That hid every cold-launch
+      // glitch where the auth-status restore returned `shouldRequest` or
+      // `unknown` and never flipped to `granted` — pull-to-refresh would call
+      // resync, resync would silently return, no POST ever fired. Now we only
+      // bail when HK is definitively unavailable (Android / no HK device); in
+      // every other state we try the sync and let HealthKit / the backend
+      // surface the real error.
+      if (status === 'unavailable') return;
       // Manual re-sync: incremental from lastSyncAt with a 7-day overlap to
       // catch any workouts that landed slightly out of order. Fall back to
       // all-time when we have no anchor (first launch after granted).
@@ -131,10 +159,18 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // Restore "granted" on cold launch. Apple won't tell us per-type read
-  // grants, but `getRequestStatusForAuthorization` returning `unnecessary`
-  // means the user has already responded to the prompt — same signal we'd
-  // get from re-tapping connect. Without this the connectors UI shows
-  // "Not connected" on every fresh launch even after the user has connected.
+  // grants — `getRequestStatusForAuthorization` returning `unnecessary`
+  // means the user has already responded to the prompt, which is the same
+  // signal we'd get from re-tapping connect.
+  //
+  // Subtle edge case: when we add new READ_TYPES (e.g. M4 added VO2Max,
+  // power, vert osc) the API returns `shouldRequest` because the user was
+  // never prompted for the new types. The OLD types are still readable
+  // (Apple keeps prior grants) so pull-to-refresh would actually succeed —
+  // but the gate at useFullRefresh would skip it because status was stuck
+  // at 'unknown'. We now optimistically flip to 'granted' so the resync
+  // path runs; if it really is denied, the user gets a loud error instead
+  // of a silent no-op.
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
     let cancelled = false;
@@ -143,8 +179,8 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
       if (cancelled) return;
       setStatus((current) => {
         if (current !== 'unknown') return current;
-        if (next === 'unnecessary') return 'granted';
         if (next === 'unavailable') return 'unavailable';
+        if (next === 'unnecessary' || next === 'shouldRequest') return 'granted';
         return current;
       });
     })();
@@ -173,18 +209,20 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       if (now - lastForegroundSyncRef.current < FOREGROUND_RESYNC_MIN_AGE_MS) return;
       lastForegroundSyncRef.current = now;
-      // Fire and forget; errors are swallowed here because there's no UI
-      // surface for a silent background sync. The next manual resync (or
-      // the next foreground bounce) will retry.
+      // Fire and forget — runSync already records the error into lastError
+      // so the connectors UI can show "last auto-sync failed: …". We don't
+      // pop an alert here (the user didn't initiate this), but we no longer
+      // black-hole the error.
       resync().catch(() => undefined);
+      // (runSync's own catch sets lastError before re-throwing.)
     };
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
   }, [status, syncing, resync]);
 
   const value = useMemo<HealthContextValue>(
-    () => ({ status, syncing, lastSyncAt, progress, connect, resync }),
-    [status, syncing, lastSyncAt, progress, connect, resync],
+    () => ({ status, syncing, lastSyncAt, lastError, lastResult, progress, connect, resync }),
+    [status, syncing, lastSyncAt, lastError, lastResult, progress, connect, resync],
   );
 
   return <HealthCtx.Provider value={value}>{children}</HealthCtx.Provider>;

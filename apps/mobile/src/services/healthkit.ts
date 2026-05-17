@@ -149,6 +149,10 @@ export async function getRunstampReadAuthorizationStatus(): Promise<RunstampHeal
  * Returns running workouts recorded after `since`, newest first.
  * This is the lightweight list used for the sync dedup check — it does NOT
  * fetch per-second streams. Call getRunningWorkoutDetail for rich data.
+ *
+ * Throws if HealthKit rejects the query (revoked permission, OS error). The
+ * caller decides what to show — we used to swallow this and return [], which
+ * turned every permission glitch into a silent no-op upload.
  */
 export async function getRunningWorkoutsSince(
   since: Date,
@@ -158,30 +162,26 @@ export async function getRunningWorkoutsSince(
   limit = -1,
 ): Promise<HKRunWorkout[]> {
   if (Platform.OS !== 'ios') return [];
-  try {
-    const samples = await queryWorkoutSamples({
-      filter: {
-        workoutActivityType: WorkoutActivityType.running,
-        date: { startDate: since },
-      },
-      limit,
-      ascending: false,
-    });
+  const samples = await queryWorkoutSamples({
+    filter: {
+      workoutActivityType: WorkoutActivityType.running,
+      date: { startDate: since },
+    },
+    limit,
+    ascending: false,
+  });
 
-    return samples.map((w) => ({
-      uuid: w.uuid,
-      startDate: w.startDate,
-      endDate: w.endDate,
-      duration: w.duration.quantity,
-      distanceMeters: w.totalDistance?.quantity ?? 0,
-      activeEnergyBurnedKcal: w.totalEnergyBurned?.quantity ?? null,
-      averageHeartRate: null,
-      maxHeartRate: null,
-      elevationGainMeters: null,
-    } satisfies HKRunWorkout));
-  } catch {
-    return [];
-  }
+  return samples.map((w) => ({
+    uuid: w.uuid,
+    startDate: w.startDate,
+    endDate: w.endDate,
+    duration: w.duration.quantity,
+    distanceMeters: w.totalDistance?.quantity ?? 0,
+    activeEnergyBurnedKcal: w.totalEnergyBurned?.quantity ?? null,
+    averageHeartRate: null,
+    maxHeartRate: null,
+    elevationGainMeters: null,
+  } satisfies HKRunWorkout));
 }
 
 /**

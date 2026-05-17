@@ -76,6 +76,15 @@ interface SyncResponse {
 export interface SyncResult {
   uploaded: number;
   skipped: number;
+  /**
+   * How many running workouts HealthKit returned for the window. Zero means
+   * either the user has no runs in the window, or — more commonly — HealthKit
+   * is refusing to hand them over (revoked workout-type read access, fresh
+   * install before the prompt was accepted, etc). The caller surfaces this
+   * to the user so a "0 uploaded" pull-to-refresh isn't silently mistaken
+   * for success.
+   */
+  workoutsFound: number;
 }
 
 /**
@@ -210,7 +219,7 @@ export async function syncRecentWorkouts(
 
   if (allPayloads.length === 0) {
     emit({ phase: 'done', current: 0, total: 0 });
-    return { uploaded: 0, skipped: 0 };
+    return { uploaded: 0, skipped: 0, workoutsFound: workouts.length };
   }
 
   // Upload in chunks too — a 500-workout payload at ~5KB each is 2.5MB JSON,
@@ -231,7 +240,7 @@ export async function syncRecentWorkouts(
     emit({ phase: 'uploading', current: Math.min(i + UPLOAD_BATCH, allPayloads.length), total: allPayloads.length });
   }
   emit({ phase: 'done', current: uploaded + skipped, total: uploaded + skipped });
-  return { uploaded, skipped };
+  return { uploaded, skipped, workoutsFound: workouts.length };
 }
 
 function buildStreamsPayload(
