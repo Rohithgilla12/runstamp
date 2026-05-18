@@ -19,14 +19,19 @@ interface Props<T> {
   width: number;
   /** Total chart height (matches the underlying Svg height). */
   height: number;
-  /** Format the date label shown in the tooltip header. */
-  formatPrimary: (item: T) => string;
+  /**
+   * Format the date label shown in the tooltip header. Receives the touched
+   * item plus its index in the series — handy for charts whose y-value
+   * doesn't carry its own timestamp (e.g. activity-level streams that are
+   * just `number[]` with an implicit time-per-sample).
+   */
+  formatPrimary: (item: T, index: number) => string;
   /** Format the value line shown below the date. */
-  formatValue: (item: T) => string;
+  formatValue: (item: T, index: number) => string;
   /** Optional dot colour for the marker drawn at the touched point. */
   dotColor?: string;
   /** Compute the y-pixel of a given series item — used to position the dot. */
-  pointY?: (item: T) => number;
+  pointY?: (item: T, index: number) => number;
 }
 
 // Transparent overlay that turns any line/scatter chart into a tap-to-read
@@ -108,7 +113,7 @@ export function ChartTooltip<T>({
               style={{
                 position: 'absolute',
                 left: state.px - 4,
-                top: pointY(item) - 4,
+                top: pointY(item, state.index) - 4,
                 width: 8, height: 8, borderRadius: 4,
                 backgroundColor: dotColor ?? c.ink,
                 borderWidth: 1.5, borderColor: c.paper,
@@ -129,10 +134,10 @@ export function ChartTooltip<T>({
             }}
           >
             <TText variant="mono" style={{ fontSize: 9, color: c.paper, opacity: 0.7, letterSpacing: 0.5 }}>
-              {formatPrimary(item)}
+              {formatPrimary(item, state.index)}
             </TText>
             <TText variant="monoMedium" style={{ fontSize: 13, color: c.paper, marginTop: 1 }}>
-              {formatValue(item)}
+              {formatValue(item, state.index)}
             </TText>
           </View>
         </>

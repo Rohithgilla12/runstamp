@@ -4,6 +4,8 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 import type { MonthlyPoint } from '../../analytics/cumulative';
 import { useColors } from '../theme';
 import { TText } from '../typography';
+import { ChartTooltip } from './ChartTooltip';
+import { LegendChip, LegendRow } from './ChartLegend';
 
 interface Props {
   series: MonthlyPoint[];
@@ -41,15 +43,37 @@ export function CumulativeChart({ series, compare }: Props) {
 
   return (
     <View>
-      <Svg width={W} height={H}>
-        {[0.25, 0.5, 0.75].map((p, i) => (
-          <Line key={i} x1={PAD} y1={PAD + (H - PAD * 2) * p} x2={W - PAD} y2={PAD + (H - PAD * 2) * p} stroke={c.line2} />
-        ))}
-        {compare && db ? <Path d={db} fill="none" stroke={c.ink2} strokeWidth={1.5} strokeDasharray="3 3" /> : null}
-        <Path d={`${da} L${PAD + (series.length - 1) * step} ${H - PAD} L${PAD} ${H - PAD}Z`} fill={c.accent} opacity={0.1} />
-        <Path d={da} fill="none" stroke={c.accent} strokeWidth={2} strokeLinecap="round" />
-        <Circle cx={PAD + (series.length - 1) * step} cy={y(last.cumulativeKm)} r={4} fill={c.accent} />
-      </Svg>
+      {/* Legend — only when comparing, since otherwise a single accent line
+          doesn't need labelling. Solid solar bullet for the primary period;
+          dashed ink2 mark for the compare period, matching the chart strokes. */}
+      {compare && (
+        <LegendRow>
+          <LegendChip color={c.accent} label="This period" />
+          <LegendChip color={c.ink2} label="vs compare" dashed />
+        </LegendRow>
+      )}
+      <View style={{ width: W, height: H }}>
+        <Svg width={W} height={H}>
+          {[0.25, 0.5, 0.75].map((p, i) => (
+            <Line key={i} x1={PAD} y1={PAD + (H - PAD * 2) * p} x2={W - PAD} y2={PAD + (H - PAD * 2) * p} stroke={c.line2} />
+          ))}
+          {compare && db ? <Path d={db} fill="none" stroke={c.ink2} strokeWidth={1.5} strokeDasharray="3 3" /> : null}
+          <Path d={`${da} L${PAD + (series.length - 1) * step} ${H - PAD} L${PAD} ${H - PAD}Z`} fill={c.accent} opacity={0.1} />
+          <Path d={da} fill="none" stroke={c.accent} strokeWidth={2} strokeLinecap="round" />
+          <Circle cx={PAD + (series.length - 1) * step} cy={y(last.cumulativeKm)} r={4} fill={c.accent} />
+        </Svg>
+        <ChartTooltip
+          series={series}
+          left={PAD}
+          right={W - PAD}
+          width={W}
+          height={H}
+          dotColor={c.accent}
+          pointY={(p) => y(p.cumulativeKm)}
+          formatPrimary={(p) => p.ym}
+          formatValue={(p) => `${Math.round(p.cumulativeKm).toLocaleString()} km · +${Math.round(p.monthlyKm)} this month`}
+        />
+      </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
         <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{first.ym}</TText>
         <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{last.ym}</TText>
@@ -57,3 +81,4 @@ export function CumulativeChart({ series, compare }: Props) {
     </View>
   );
 }
+

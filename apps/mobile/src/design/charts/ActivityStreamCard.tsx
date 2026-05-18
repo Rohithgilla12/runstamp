@@ -28,6 +28,7 @@ import { Card } from '../atoms';
 import { useColors } from '../theme';
 import { Eyebrow, TText } from '../typography';
 import { ChartInfoButton } from './ChartInfoButton';
+import { ChartTooltip } from './ChartTooltip';
 
 interface Props {
   /** Caps eyebrow at the top — e.g. "HEART RATE", "PACE". */
@@ -136,6 +137,7 @@ export function ActivityStreamCard({
       </View>
 
       <View style={{ marginTop: 10, alignItems: 'center' }}>
+        <View style={{ width: W, height: H }}>
         <Svg width={W} height={H}>
           {yTicks.map((v, i) => {
             const yy = y(v);
@@ -186,6 +188,22 @@ export function ActivityStreamCard({
             );
           })}
         </Svg>
+        <ChartTooltip
+          series={data}
+          left={LEFT}
+          right={W - RIGHT}
+          width={W}
+          height={H}
+          dotColor={stroke}
+          pointY={(v) => y(v)}
+          formatPrimary={(_v, idx) => {
+            // Reconstruct elapsed time at this sample via dt = total / (n-1) * idx.
+            const sampleSec = (durationSec * idx) / Math.max(1, data.length - 1);
+            return formatDuration(sampleSec);
+          }}
+          formatValue={(v) => `${formatValue(v)} ${unit}`}
+        />
+        </View>
       </View>
 
       <View
