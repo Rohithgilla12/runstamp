@@ -57,7 +57,7 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
       {/* Background overlay */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.08 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (

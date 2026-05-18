@@ -54,7 +54,7 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
       }}>
         {/* Background layer */}
         {background === 'map' && (
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={cardW} height={cardH} style="dark" accent={c.accent} routeStrokeWidth={4} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={cardW} height={cardH} style="dark" accent={c.accent} routeStrokeWidth={4} animate={false} flat />
         )}
         {background === 'photo' && (
           <PhotoBackground

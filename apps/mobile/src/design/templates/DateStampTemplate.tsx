@@ -47,7 +47,7 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
       {/* Background variants — paper stays paper; map/photo go faint. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.07 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (

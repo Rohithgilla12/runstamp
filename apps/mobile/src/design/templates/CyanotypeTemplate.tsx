@@ -56,6 +56,7 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
             style="dark"
             accent={CREAM}
             routeStrokeWidth={3}
+            animate={false}
             flat
           />
         </View>

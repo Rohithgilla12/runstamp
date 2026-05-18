@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import type { Point } from '../data/sample';
 import { useColors, useTheme } from './theme';
 import { MapTilesLayer } from './MapTilesLayer';
@@ -29,6 +37,12 @@ interface Props {
   flat?: boolean;
   accent?: string;
   routeStrokeWidth?: number;
+  /**
+   * When true (default), the polyline draws itself on mount with an
+   * ink-trace animation. Set false for share-card captures or any surface
+   * where the final frame is what matters.
+   */
+  animate?: boolean;
 }
 
 // Two paths in this component:
@@ -42,15 +56,14 @@ interface Props {
 //    polyline through a uniform [0..1] -> canvas fit. This is the path used
 //    by synthetic routes (data/sample.ts seed) and the route-map sticker's
 //    fallback for indoor / no-GPS runs.
-//
-// We deliberately don't show fake decoration on the bare path — fake parks
-// and road grids at fixed positions had nothing to do with the actual run
-// and looked off the moment real GPS rendered through here.
 const STYLES = {
   light: { bg: '#e8e1d1' },
   dark:  { bg: '#1d1a16' },
   sat:   { bg: '#222'    },
 } as const;
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export function RouteMap({
   points,
@@ -60,7 +73,8 @@ export function RouteMap({
   style,
   flat = false,
   accent,
-  routeStrokeWidth = 3
+  routeStrokeWidth = 3,
+  animate = true,
 }: Props) {
   const c = useColors();
   const { dark } = useTheme();
@@ -72,35 +86,43 @@ export function RouteMap({
 
   const useTiles = rawLatLng != null && rawLatLng.length > 1;
 
-  let pathD: string;
-  let sx: number, sy: number, ex: number, ey: number;
-  let bbox: BBox | null = null;
+  const { pathD, sx, sy, ex, ey, bbox, pathLen } = useMemo(() => {
+    if (useTiles && rawLatLng) {
+      let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+      for (const pt of rawLatLng) {
+        if (pt[0] < minLat) minLat = pt[0];
+        if (pt[0] > maxLat) maxLat = pt[0];
+        if (pt[1] < minLng) minLng = pt[1];
+        if (pt[1] > maxLng) maxLng = pt[1];
+      }
+      const bb: BBox = { minLat, maxLat, minLng, maxLng };
+      const z = pickZoom(bb, width, height);
+      const { offsetX, offsetY } = centerOffsets(bb, z, width, height);
+      const canvasPts: { x: number; y: number }[] = new Array(rawLatLng.length);
+      for (let i = 0; i < rawLatLng.length; i++) {
+        canvasPts[i] = projectToCanvas(rawLatLng[i][0], rawLatLng[i][1], z, offsetX, offsetY);
+      }
+      const segs: string[] = [];
+      let len = 0;
+      for (let i = 0; i < canvasPts.length; i++) {
+        const p = canvasPts[i];
+        segs.push(`${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+        if (i > 0) {
+          const dx = p.x - canvasPts[i - 1].x;
+          const dy = p.y - canvasPts[i - 1].y;
+          len += Math.sqrt(dx * dx + dy * dy);
+        }
+      }
+      const first = canvasPts[0];
+      const last = canvasPts[canvasPts.length - 1];
+      return {
+        pathD: segs.join(' '),
+        sx: first.x, sy: first.y, ex: last.x, ey: last.y,
+        bbox: bb,
+        pathLen: len,
+      };
+    }
 
-  if (useTiles) {
-    // Slippy projection — every polyline point shares the same z/offsets as
-    // MapTilesLayer below, so they line up to the pixel.
-    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    for (const pt of rawLatLng) {
-      if (pt[0] < minLat) minLat = pt[0];
-      if (pt[0] > maxLat) maxLat = pt[0];
-      if (pt[1] < minLng) minLng = pt[1];
-      if (pt[1] > maxLng) maxLng = pt[1];
-    }
-    bbox = { minLat, maxLat, minLng, maxLng };
-    const z = pickZoom(bbox, width, height);
-    const { offsetX, offsetY } = centerOffsets(bbox, z, width, height);
-    const segs: string[] = [];
-    for (let i = 0; i < rawLatLng.length; i++) {
-      const pt = rawLatLng[i];
-      const { x, y } = projectToCanvas(pt[0], pt[1], z, offsetX, offsetY);
-      segs.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`);
-    }
-    pathD = segs.join(' ');
-    const first = projectToCanvas(rawLatLng[0][0], rawLatLng[0][1], z, offsetX, offsetY);
-    const last = projectToCanvas(rawLatLng[rawLatLng.length - 1][0], rawLatLng[rawLatLng.length - 1][1], z, offsetX, offsetY);
-    sx = first.x; sy = first.y; ex = last.x; ey = last.y;
-  } else {
-    // Bare path — fit normalized [0..1] points into the canvas with letterboxing.
     const pad = 18;
     const xs = points.map((p) => p[0]);
     const ys = points.map((p) => p[1]);
@@ -113,20 +135,83 @@ export function RouteMap({
     const scale = Math.min((width - pad * 2) / rangeX, (height - pad * 2) / rangeY);
     const offX = (width - rangeX * scale) / 2 - minX * scale;
     const offY = (height - rangeY * scale) / 2 - minY * scale;
-    pathD = points
-      .map((p, i) => {
-        const x = p[0] * scale + offX;
-        const y = p[1] * scale + offY;
-        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
-      })
-      .join(' ');
-    const start = points[0];
-    const end = points[points.length - 1];
-    sx = start[0] * scale + offX;
-    sy = start[1] * scale + offY;
-    ex = end[0] * scale + offX;
-    ey = end[1] * scale + offY;
-  }
+    const canvasPts: { x: number; y: number }[] = new Array(points.length);
+    for (let i = 0; i < points.length; i++) {
+      canvasPts[i] = {
+        x: points[i][0] * scale + offX,
+        y: points[i][1] * scale + offY,
+      };
+    }
+    const segs: string[] = [];
+    let len = 0;
+    for (let i = 0; i < canvasPts.length; i++) {
+      const p = canvasPts[i];
+      segs.push(`${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
+      if (i > 0) {
+        const dx = p.x - canvasPts[i - 1].x;
+        const dy = p.y - canvasPts[i - 1].y;
+        len += Math.sqrt(dx * dx + dy * dy);
+      }
+    }
+    const first = canvasPts[0];
+    const last = canvasPts[canvasPts.length - 1];
+    return {
+      pathD: segs.join(' '),
+      sx: first.x, sy: first.y, ex: last.x, ey: last.y,
+      bbox: null as BBox | null,
+      pathLen: len,
+    };
+  }, [useTiles, rawLatLng, points, width, height]);
+
+  // Honor the system Reduce Motion toggle — flipping it in Settings should
+  // affect routes currently on screen.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      if (mounted) setReduceMotion(v);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => {
+      setReduceMotion(v);
+    });
+    return () => {
+      mounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  const progress = useSharedValue(0);
+  const endDotOpacity = useSharedValue(0);
+  const shouldAnimate = animate && !reduceMotion && pathLen > 0;
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      progress.value = 1;
+      endDotOpacity.value = 1;
+      return;
+    }
+    progress.value = 0;
+    endDotOpacity.value = 0;
+    progress.value = withTiming(1, {
+      duration: 1100,
+      // Fast start, gentle settle — like a pen losing pressure as it lands.
+      easing: Easing.bezier(0.16, 1, 0.3, 1),
+    });
+    // Land the dot as the ink completes (~92% of the duration).
+    endDotOpacity.value = withDelay(
+      1010,
+      withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
+    );
+  }, [pathD, shouldAnimate, progress, endDotOpacity]);
+
+  // dasharray = full length, dashoffset = unrevealed portion. As progress
+  // goes 0 → 1, the offset shrinks and the line draws.
+  const lineAnimatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: pathLen * (1 - progress.value),
+  }));
+  const endDotAnimatedProps = useAnimatedProps(() => ({
+    opacity: endDotOpacity.value,
+  }));
 
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -143,11 +228,30 @@ export function RouteMap({
         />
       )}
       {/* Soft halo under the route so the polyline pops against any backdrop. */}
-      <Path d={pathD} fill="none" stroke={a} strokeWidth={routeStrokeWidth * 2.4} strokeLinecap="round" strokeLinejoin="round" opacity={0.18} />
-      <Path d={pathD} fill="none" stroke={a} strokeWidth={routeStrokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <AnimatedPath
+        d={pathD}
+        fill="none"
+        stroke={a}
+        strokeWidth={routeStrokeWidth * 2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.18}
+        strokeDasharray={`${pathLen} ${pathLen}`}
+        animatedProps={lineAnimatedProps}
+      />
+      <AnimatedPath
+        d={pathD}
+        fill="none"
+        stroke={a}
+        strokeWidth={routeStrokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={`${pathLen} ${pathLen}`}
+        animatedProps={lineAnimatedProps}
+      />
       <Circle cx={sx} cy={sy} r={6} fill="#fff" stroke={a} strokeWidth={2} />
       <Circle cx={sx} cy={sy} r={2.5} fill={a} />
-      <Circle cx={ex} cy={ey} r={5} fill={a} />
+      <AnimatedCircle cx={ex} cy={ey} r={5} fill={a} animatedProps={endDotAnimatedProps} />
       {!flat && (
         <G transform={`translate(${width - 26},20)`}>
           <SvgText x={0} y={0} fontSize={9} fill={compassFill} textAnchor="middle">

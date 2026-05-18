@@ -953,7 +953,7 @@ function DraggableSticker({
         <>
           <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: 9 }}>ROUTE</Eyebrow>
           <View style={{ width: 120, height: 80, marginTop: 6, borderRadius: 6, overflow: 'hidden', backgroundColor: 'rgba(20,17,13,0.4)' }}>
-            <RouteMap points={pts} width={120} height={80} style="dark" accent="#e85d2f" routeStrokeWidth={2.2} flat />
+            <RouteMap points={pts} width={120} height={80} style="dark" accent="#e85d2f" routeStrokeWidth={2.2} animate={false} flat />
           </View>
         </>
       );

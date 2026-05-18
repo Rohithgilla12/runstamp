@@ -38,7 +38,7 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km',
       {/* Background layer — bleeds behind the halftone dots. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.55 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} flat />
+          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (
