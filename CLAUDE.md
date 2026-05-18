@@ -60,7 +60,7 @@ design/                    Claude Design handoff — REFERENCE ONLY (HTML/JSX pr
 
 ### Backend (apps/api)
 
-- **Go 1.24, Chi router, pgx/v5, slog (JSON output).** Stdlib + four deps; no ORM.
+- **Go 1.25, Chi router, pgx/v5, slog (JSON output).** Stdlib + four deps; no ORM.
 - **AES-256-GCM** for tokens at rest via `internal/crypto.Sealer`. Key from `RUNSTAMP_TOKEN_ENC_KEY` (64 hex). In dev a zero-key falls back with a `slog.Warn`; in prod the server refuses to start without a real key.
 - **Firebase Admin** for ID-token verification via `internal/auth.Verifier`. Three modes: real (project + creds), creds-less (project only, will fail at verify-time), null (no project — every protected route 401s).
 - **Strava OAuth is server-driven, cadence-style.** Mobile POSTs `/v1/strava/connect` for an authorize URL (state→user binding lives in-memory on the server), browser hits `/v1/strava/callback`, server exchanges with the client secret, redirects to `runstamp://strava/connected`. **Never put the Strava client secret in the mobile bundle.**

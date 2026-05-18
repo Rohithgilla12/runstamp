@@ -56,11 +56,11 @@ function TabsNavigator() {
   const c = useColors();
   return (
     <Tab.Navigator
-      // On iOS 26 the backgroundColor is intentionally ignored — UIKit
-      // picks the Liquid Glass material based on the content scrolling
-      // behind. On older iOS / Android the paper backdrop matches the
-      // rest of the app.
-      tabBarStyle={{ backgroundColor: c.paper }}
+      // No backgroundColor set on tabBarStyle — UIKit picks its own
+      // material. On iOS 26+ that's the genuine Liquid Glass, refracting
+      // whatever content scrolls behind. On iOS 18-25 it's the standard
+      // translucent UITabBar. Setting backgroundColor=paper (as we did
+      // before) tinted the glass and killed the effect.
       tabBarActiveTintColor={c.ink}
       tabBarInactiveTintColor={c.ink3}
     >
