@@ -1,7 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Dimensions, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Dimensions, Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { distUnit, type Activity } from '../data/sample';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
+import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useFullRefresh } from '../state/useFullRefresh';
@@ -35,6 +38,8 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   const fullRefresh = useFullRefresh();
   const [refreshing, setRefreshing] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [activeCity, setActiveCity] = useState<MapCity | null>(null);
+  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   // 'all' = lifetime, year number = constrained to that year.
   const [scope, setScope] = useState<'all' | number>('all');
   const currentYear = new Date().getFullYear();
@@ -119,7 +124,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
         <>
           <View style={{ paddingHorizontal: 14, paddingTop: 18 }}>
             <Card padded={false} style={{ overflow: 'hidden', padding: 0 }}>
-              <WorldMap cities={mapCities} width={mapW - 2} />
+              <WorldMap cities={mapCities} width={mapW - 2} onCityPress={setActiveCity} />
               <View style={{ padding: 14, gap: 10 }}>
                 <View style={{ flexDirection: 'row', gap: 14 }}>
                   <View style={{ flex: 1 }}>
@@ -162,7 +167,13 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
           <View style={{ paddingHorizontal: 14 }}>
             <Card padded={false}>
               {[...places].sort((a, b) => b.km - a.km).map((p, i) => (
-                <PlaceRow key={`${p.city}-${p.country}`} place={p} index={i + 1} hasBorder={i > 0} />
+                <PlaceRow
+                  key={`${p.city}-${p.country}`}
+                  place={p}
+                  index={i + 1}
+                  hasBorder={i > 0}
+                  onPress={() => setActiveCity({ city: p.city, country: p.country, runs: p.runs, km: p.km, first: p.first, lat: p.lat, lon: p.lon })}
+                />
               ))}
             </Card>
           </View>
@@ -173,6 +184,15 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
         cities={mapCities}
         stats={{ cities, countries, continents, totalKm }}
         onClose={() => setSharing(false)}
+      />
+      <CityDetailSheet
+        city={activeCity}
+        activities={activities}
+        onClose={() => setActiveCity(null)}
+        onOpenActivity={(id) => {
+          setActiveCity(null);
+          nav.navigate('Activity', { id });
+        }}
       />
     </ScrollView>
   );
@@ -371,15 +391,29 @@ function BackfillBanner({
   );
 }
 
-function PlaceRow({ place, index, hasBorder }: { place: ComputedPlace; index: number; hasBorder: boolean }) {
+function PlaceRow({
+  place,
+  index,
+  hasBorder,
+  onPress,
+}: {
+  place: ComputedPlace;
+  index: number;
+  hasBorder: boolean;
+  onPress?: () => void;
+}) {
   const c = useColors();
   const { units } = useAppState();
   return (
-    <View style={{
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingHorizontal: 16, paddingVertical: 14,
-      borderTopWidth: hasBorder ? 1 : 0, borderTopColor: c.line2,
-    }}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 16, paddingVertical: 14,
+        borderTopWidth: hasBorder ? 1 : 0, borderTopColor: c.line2,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
       <TText variant="mono" style={{ fontSize: 11, color: c.ink3, width: 18 }}>{String(index).padStart(2, '0')}</TText>
       <View style={{ flex: 1 }}>
         <TText style={{ fontSize: 15, fontWeight: '500', color: c.ink }}>{place.city}</TText>
@@ -392,6 +426,119 @@ function PlaceRow({ place, index, hasBorder }: { place: ComputedPlace; index: nu
         </View>
         <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{place.runs} runs</TText>
       </View>
-    </View>
+    </Pressable>
+  );
+}
+
+// Bottom-sheet detail for a single city. Triggered by tapping a map pin or
+// a row in the "by distance" list. Shows the place tally + last 5 runs in
+// that city; tapping a run navigates to the Activity screen.
+function CityDetailSheet({
+  city,
+  activities,
+  onClose,
+  onOpenActivity,
+}: {
+  city: MapCity | null;
+  activities: Activity[];
+  onClose: () => void;
+  onOpenActivity: (id: string) => void;
+}) {
+  const c = useColors();
+  const { units } = useAppState();
+  const insets = useSafeAreaInsets();
+
+  const runs = useMemo(() => {
+    if (!city) return [];
+    return activities
+      .filter((a) => a.city?.trim() === city.city.trim())
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 5);
+  }, [city, activities]);
+
+  if (!city) return null;
+
+  return (
+    <Modal visible={!!city} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(14,13,11,0.65)' }}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            backgroundColor: c.paper,
+            borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            paddingTop: 14,
+            paddingBottom: Math.max(insets.bottom, 16) + 4,
+            paddingHorizontal: 20,
+          }}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 14 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.line }} />
+          </View>
+
+          <Eyebrow style={{ color: c.ink3 }}>{city.country || 'PLACE'}</Eyebrow>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 2 }}>
+            <TText variant="serif" style={{ fontSize: 28, lineHeight: 32, letterSpacing: -0.4, color: c.ink }}>{city.city}</TText>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 14, marginTop: 18 }}>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>RUNS</Eyebrow>
+              <TText variant="monoMedium" style={{ fontSize: 24, lineHeight: 28, color: c.ink, letterSpacing: -0.6, marginTop: 2 }}>
+                {city.runs}
+              </TText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>DISTANCE</Eyebrow>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
+                <TText variant="monoMedium" style={{ fontSize: 24, lineHeight: 28, color: c.ink, letterSpacing: -0.6 }}>
+                  {Math.round(city.km).toLocaleString()}
+                </TText>
+                <TText style={{ fontSize: 11, color: c.ink3, marginLeft: 3 }}>{distUnit(units)}</TText>
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>SINCE</Eyebrow>
+              <TText variant="mono" style={{ fontSize: 14, color: c.ink, marginTop: 6 }}>
+                {city.first.slice(0, 7)}
+              </TText>
+            </View>
+          </View>
+
+          {runs.length > 0 && (
+            <View style={{ marginTop: 22 }}>
+              <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>RECENT</Eyebrow>
+              <View style={{ marginTop: 4 }}>
+                {runs.map((a, idx) => (
+                  <Pressable
+                    key={a.id}
+                    onPress={() => onOpenActivity(a.id)}
+                    accessibilityLabel={`Open ${a.title}`}
+                    style={({ pressed }) => ({
+                      paddingVertical: 12,
+                      borderTopWidth: idx === 0 ? 0 : 1,
+                      borderTopColor: c.line2,
+                      flexDirection: 'row', alignItems: 'baseline', gap: 12,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <TText style={{ fontSize: 14, color: c.ink }} numberOfLines={1}>{a.title}</TText>
+                      <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
+                        {(a.day ?? '').toUpperCase()} · {a.date.slice(0, 10)}
+                      </TText>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
+                      <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{fmtTime(a.seconds)}</TText>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }

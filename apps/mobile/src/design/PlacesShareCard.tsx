@@ -87,7 +87,7 @@ export function PlacesShareCard({ cities, year, stats, width, height }: Props) {
 
         {/* Map */}
         <View style={{ marginTop: pad * 0.6, alignItems: 'center' }}>
-          <WorldMap cities={cities} width={mapW} />
+          <WorldMap cities={cities} width={mapW} animate={false} />
         </View>
 
         {/* Stats row */}

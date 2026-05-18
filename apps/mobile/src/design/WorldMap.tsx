@@ -1,8 +1,18 @@
-import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { CITY_FALLBACK, CONTINENTS, toXY, type LonLat } from './worldGeometry';
 import { useColors } from './theme';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const PIN_EASE = Easing.bezier(0.22, 1, 0.36, 1);
 
 export interface MapCity {
   city: string;
@@ -21,6 +31,11 @@ interface Props {
   width: number;
   /** Optional tap handler — fires with the tapped city. */
   onCityPress?: (city: MapCity) => void;
+  /**
+   * When true (default), pins fade in one by one on mount. Set false for
+   * view-shot captures where the final frame is what matters.
+   */
+  animate?: boolean;
 }
 
 // The world rendered as a vintage philately map. Continents are simplified
@@ -28,8 +43,16 @@ interface Props {
 // grid, and each visited city gets a small postmark glyph at its projected
 // position. Cities without explicit coords fall back to a hand-curated
 // city centroid map (also in worldGeometry.ts).
-export function WorldMap({ cities, width, onCityPress }: Props) {
+export function WorldMap({ cities, width, onCityPress, animate = true }: Props) {
   const c = useColors();
+
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => { if (mounted) setReduceMotion(v); });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => setReduceMotion(v));
+    return () => { mounted = false; sub.remove(); };
+  }, []);
   // Equirectangular projection: viewBox 360×180. Aspect ratio is 2:1.
   const height = width * 0.5;
 
@@ -105,15 +128,20 @@ export function WorldMap({ cities, width, onCityPress }: Props) {
           <Path d={routePath} fill="none" stroke={c.ink3} strokeWidth={0.6} strokeDasharray="1.4 1.4" />
         )}
 
-        {/* City pins — each a small postmark dot */}
-        {projected.map((p) => {
+        {/* City pins — each a small postmark dot. Staggered drop-in on mount. */}
+        {projected.map((p, i) => {
           const r = pinRadius(p.city.km);
           return (
-            <G key={`${p.city.city}-${p.city.country}`}>
-              <Circle cx={p.x} cy={p.y} r={r + 1.4} fill={c.paper} opacity={0.85} />
-              <Circle cx={p.x} cy={p.y} r={r} fill={c.accent} />
-              <Circle cx={p.x} cy={p.y} r={r + 2.6} fill="none" stroke={c.accent} strokeWidth={0.4} opacity={0.6} />
-            </G>
+            <Pin
+              key={`${p.city.city}-${p.city.country}`}
+              x={p.x}
+              y={p.y}
+              r={r}
+              accent={c.accent}
+              paper={c.paper}
+              index={i}
+              shouldAnimate={animate && !reduceMotion}
+            />
           );
         })}
 
@@ -146,5 +174,60 @@ export function WorldMap({ cities, width, onCityPress }: Props) {
         </View>
       )}
     </View>
+  );
+}
+
+// One pin = three concentric circles (paper halo, accent dot, outer ring).
+// Stagger via withDelay keyed on index, so pins drop in roughly west-to-east
+// in the order projected returns them.
+function Pin({
+  x,
+  y,
+  r,
+  accent,
+  paper,
+  index,
+  shouldAnimate,
+}: {
+  x: number;
+  y: number;
+  r: number;
+  accent: string;
+  paper: string;
+  index: number;
+  shouldAnimate: boolean;
+}) {
+  const progress = useSharedValue(shouldAnimate ? 0 : 1);
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      progress.value = 1;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withDelay(index * 55, withTiming(1, { duration: 360, easing: PIN_EASE }));
+  }, [shouldAnimate, index, progress]);
+
+  // Halo / dot grow from 0 → final r. Outer ring grows from r+2.6 → r+2.6
+  // but only becomes visible at the end so it reads as a final "settled" mark.
+  const haloProps = useAnimatedProps(() => ({
+    r: (r + 1.4) * progress.value,
+    opacity: 0.85 * Math.min(1, progress.value * 1.5),
+  }));
+  const dotProps = useAnimatedProps(() => ({
+    r: r * progress.value,
+    opacity: progress.value,
+  }));
+  const ringProps = useAnimatedProps(() => ({
+    r: (r + 2.6) * progress.value,
+    opacity: 0.6 * Math.max(0, progress.value - 0.55) / 0.45,
+  }));
+
+  return (
+    <G>
+      <AnimatedCircle cx={x} cy={y} fill={paper} animatedProps={haloProps} />
+      <AnimatedCircle cx={x} cy={y} fill={accent} animatedProps={dotProps} />
+      <AnimatedCircle cx={x} cy={y} fill="none" stroke={accent} strokeWidth={0.4} animatedProps={ringProps} />
+    </G>
   );
 }
