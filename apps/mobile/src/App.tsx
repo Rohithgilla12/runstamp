@@ -26,17 +26,17 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppStateProvider>
-          <AuthProvider>
-            <AccountProvider>
+        <AuthProvider>
+          <AccountProvider>
+            <AppStateProvider>
               <PrivacyZonesProvider>
                 <HealthProvider>
                   <Shell />
                 </HealthProvider>
               </PrivacyZonesProvider>
-            </AccountProvider>
-          </AuthProvider>
-        </AppStateProvider>
+            </AppStateProvider>
+          </AccountProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

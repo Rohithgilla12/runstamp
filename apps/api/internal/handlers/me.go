@@ -19,6 +19,12 @@ type meResponse struct {
 	HRMax       *int    `json:"hrMax,omitempty"`
 	HRResting   *int    `json:"hrResting,omitempty"`
 	BirthYear   *int    `json:"birthYear,omitempty"`
+	// UI preferences. omitempty so a fresh user (NULL columns) shows up as
+	// "not set" to the mobile client, which then keeps the local default.
+	UIDark      *bool   `json:"uiDark,omitempty"`
+	UIAccent    *string `json:"uiAccent,omitempty"`
+	UITileStyle *string `json:"uiTileStyle,omitempty"`
+	UIOnboarded *bool   `json:"uiOnboarded,omitempty"`
 	HasStrava   bool    `json:"hasStrava"`
 }
 
@@ -41,6 +47,10 @@ func toMeResponse(u *users.User, hasStrava bool) meResponse {
 		HRMax:       u.HRMax,
 		HRResting:   u.HRResting,
 		BirthYear:   u.BirthYear,
+		UIDark:      u.UIDark,
+		UIAccent:    u.UIAccent,
+		UITileStyle: u.UITileStyle,
+		UIOnboarded: u.UIOnboarded,
 		HasStrava:   hasStrava,
 	}
 }
@@ -83,6 +93,23 @@ type patchMeRequest struct {
 	HRMax       *int    `json:"hrMax"`
 	HRResting   *int    `json:"hrResting"`
 	BirthYear   *int    `json:"birthYear"`
+	UIDark      *bool   `json:"uiDark"`
+	UIAccent    *string `json:"uiAccent"`
+	UITileStyle *string `json:"uiTileStyle"`
+	UIOnboarded *bool   `json:"uiOnboarded"`
+}
+
+// Whitelists keep the column values to known good ones so a stale or
+// malicious client can't write garbage into the row. Defaults change on the
+// mobile side without coordination since NULL means "use the client default."
+var validAccents = map[string]bool{
+	"solar": true, "moss": true, "ink": true, "indigo": true, "sand": true,
+}
+
+var validTileStyles = map[string]bool{
+	"light_nolabels": true, "light_all": true,
+	"dark_nolabels": true, "dark_all": true,
+	"voyager_nolabels": true,
 }
 
 func validateBirthYear(by *int) error {
@@ -140,6 +167,14 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		if req.UIAccent != nil && !validAccents[*req.UIAccent] {
+			writeError(w, http.StatusBadRequest, "uiAccent must be one of solar/moss/ink/indigo/sand")
+			return
+		}
+		if req.UITileStyle != nil && !validTileStyles[*req.UITileStyle] {
+			writeError(w, http.StatusBadRequest, "uiTileStyle must be one of the known CartoCDN basemap slugs")
+			return
+		}
 		user, err := repo.FindByFirebaseUID(r.Context(), vt.UID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to load user")
@@ -156,6 +191,10 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			HRMax:       req.HRMax,
 			HRResting:   req.HRResting,
 			BirthYear:   req.BirthYear,
+			UIDark:      req.UIDark,
+			UIAccent:    req.UIAccent,
+			UITileStyle: req.UITileStyle,
+			UIOnboarded: req.UIOnboarded,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to update profile")

@@ -1,0 +1,5 @@
+ALTER TABLE users
+  DROP COLUMN IF EXISTS ui_dark,
+  DROP COLUMN IF EXISTS ui_accent,
+  DROP COLUMN IF EXISTS ui_tile_style,
+  DROP COLUMN IF EXISTS ui_onboarded;
