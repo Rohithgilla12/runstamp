@@ -124,6 +124,25 @@ docker exec api-postgres-1 psql -U runstamp -d runstamp -c '\dt'
 docker exec api-postgres-1 psql -U runstamp -d runstamp -c 'SELECT version, dirty FROM schema_migrations;'
 ```
 
+## Deploys are automatic — don't race them
+
+The backend auto-deploys to the Oracle Cloud VPS on every push to `main` that touches `apps/api/**`. The workflow is `.github/workflows/deploy-api.yml`: GitHub Actions SSHes to the VPS, `git pull`s, and runs `docker compose up -d --build api`. Migrations run at API boot via golang-migrate. **Just push — CI handles the rest.**
+
+If you need to manually intervene (verify migration applied, inspect a container), SSH to `ubuntu@150.230.131.66`:
+
+```bash
+# Container + image state
+ssh ubuntu@150.230.131.66 "docker ps --filter name=runstamp"
+# Migration version
+ssh ubuntu@150.230.131.66 "docker exec runstamp-postgres psql -U runstamp -d runstamp -c 'SELECT version, dirty FROM schema_migrations;'"
+# API logs
+ssh ubuntu@150.230.131.66 "docker logs --tail=50 runstamp-api"
+# Healthcheck (host port is 8090 → container 8080)
+ssh ubuntu@150.230.131.66 "curl -s localhost:8090/healthz"
+```
+
+**Never** run `docker compose up -d --build api` on the VPS yourself while a CI deploy might be in flight — Compose's swap dance races and the second invocation kills the temp container the first one's mid-renaming, leaving the workflow red even though the image is correct. Wait for `gh run list --workflow=deploy-api.yml -L 1` to settle, or use `gh run watch`.
+
 ## Where the design came from
 
 `design/helios-run/` is the **Claude Design** handoff bundle — HTML/JSX prototype from before this project was renamed Runstamp (was: Helios → Runcard → Runstamp). It's **reference only**. The mobile app is React Native, ported by hand from this prototype with the same visual vocabulary: cream paper, ink charcoal, solar-orange accent, Instrument Serif italic for display moments, JetBrains Mono for numerals.
