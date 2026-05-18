@@ -140,10 +140,10 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const { route: realRoute, rawLatLng: realRawLatLng, streams: realStreams } = useActivityStreams(run?.id ?? null);
   const { splits: realSplits } = useActivityDetail(run?.id ?? null);
   const realHr = parseStream(realStreams.heartrate?.data);
-  const realVelocity = parseStream(realStreams.velocity?.data);
-  // Strava velocity is m/s; convert to seconds-per-km so the pace sparkline
-  // reads "slower=worse" like a runner expects.
-  const realPace = realVelocity ? realVelocity.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
+  const realSpeed = parseStream(realStreams.speed?.data);
+  // Speed is m/s; convert to seconds-per-km so the pace sparkline reads
+  // "slower=worse" like a runner expects.
+  const realPace = realSpeed ? realSpeed.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
 
   const [surface, setSurface] = useState<Surface>('9:16');
   const [bg, setBg] = useState<Background>('map');

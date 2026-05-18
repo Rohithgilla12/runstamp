@@ -58,10 +58,10 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
     );
   }, [run, getIdToken, refreshActivities]);
   const liveHr = parseNumberStream(streams.heartrate?.data);
-  const liveVelocity = parseNumberStream(streams.velocity?.data);
-  // Strava velocity is m/s. Convert to seconds-per-km for the pace chart so
-  // the y-axis means "slower = worse" like a runner expects.
-  const livePace = liveVelocity ? liveVelocity.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
+  const liveSpeed = parseNumberStream(streams.speed?.data);
+  // Speed is m/s. Convert to seconds-per-km for the pace chart so the
+  // y-axis means "slower = worse" like a runner expects.
+  const livePace = liveSpeed ? liveSpeed.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
   const [tab, setTab] = useState<Tab>('splits');
 
   if (!run) {

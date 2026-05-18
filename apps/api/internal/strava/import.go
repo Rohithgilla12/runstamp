@@ -485,16 +485,16 @@ func (im *Importer) enrichOne(ctx context.Context, userID string, act *activitie
 		}
 	}
 
-	// Persist streams (velocity_smooth → "velocity"). Skip time/distance —
-	// they're transient inputs for GAP and aren't in the activity_streams
-	// CHECK constraint.
+	// Persist streams (velocity_smooth → "speed", canonical name shared with
+	// Apple Health). Skip time/distance — transient inputs for GAP, not in
+	// the activity_streams CHECK constraint.
 	for streamType, stream := range streams {
 		if streamType == "time" || streamType == "distance" {
 			continue
 		}
 		storeType := streamType
 		if storeType == "velocity_smooth" {
-			storeType = "velocity"
+			storeType = "speed"
 		}
 		data, marshalErr := json.Marshal(stream.Data)
 		if marshalErr != nil {

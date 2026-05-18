@@ -74,13 +74,12 @@ function emptyStreams(): Record<StreamType, ActivityStream | undefined> {
     latlng: undefined,
     heartrate: undefined,
     altitude: undefined,
-    velocity: undefined,
+    speed: undefined,
     cadence: undefined,
     power: undefined,
     vertical_oscillation: undefined,
     ground_contact_time: undefined,
     stride_length: undefined,
-    speed: undefined,
   };
 }
 

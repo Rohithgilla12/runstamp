@@ -4,13 +4,12 @@ export type StreamType =
   | 'latlng'
   | 'heartrate'
   | 'altitude'
-  | 'velocity'
+  | 'speed'
   | 'cadence'
   | 'power'
   | 'vertical_oscillation'
   | 'ground_contact_time'
-  | 'stride_length'
-  | 'speed';
+  | 'stride_length';
 
 export interface ActivityStream {
   type: StreamType;
