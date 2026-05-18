@@ -130,11 +130,11 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
     >
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Eyebrow>STATISTICS</Eyebrow>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 2 }}>
-          <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6 }}>The </TText>
-          <TText variant="serifItalic" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6 }}>bigger</TText>
-          <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6 }}> picture.</TText>
-        </View>
+        {/* Single composed string with a nested italic span — the previous
+            three-sibling layout could wrap mid-phrase under dynamic type. */}
+        <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, marginTop: 2 }}>
+          The <TText variant="serifItalic" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6 }}>bigger</TText> picture.
+        </TText>
       </View>
 
       <View style={{ paddingHorizontal: 14, paddingTop: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -162,6 +162,8 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
               setCompareOn(next);
               if (next && !comparePeriod) setComparePeriod(defaultComparePeriod(scope, selectedYear, selectedMonth));
             }}
+            accessibilityLabel={compareOn ? 'Turn off compare' : 'Turn on compare with another period'}
+            accessibilityState={{ selected: compareOn }}
             style={{
               paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10,
               backgroundColor: compareOn ? c.ink : c.paper2,
@@ -184,10 +186,13 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
           {!isToday && (
             <Pressable
               onPress={jumpToToday}
-              hitSlop={8}
+              hitSlop={10}
+              accessibilityLabel="Jump to current period"
               style={{ marginLeft: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line }}
             >
-              <TText style={{ fontSize: 12, color: c.accent, fontWeight: '500' }}>Today</TText>
+              {/* Ghost — solar is reserved for PRs / earned moments. Today is
+                   navigation, not celebration. */}
+              <TText style={{ fontSize: 12, color: c.ink, fontWeight: '500' }}>Today</TText>
             </Pressable>
           )}
         </View>
@@ -206,18 +211,28 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
       )}
 
       <View style={{ paddingHorizontal: 14, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Pressable onPress={() => setFiltersOpen((v) => !v)} style={{
-          paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
-          backgroundColor: filtersAreActive(filters) ? c.ink : c.paper2,
-          borderWidth: 1, borderColor: filtersAreActive(filters) ? c.ink : c.line,
-        }}>
+        <Pressable
+          onPress={() => setFiltersOpen((v) => !v)}
+          accessibilityLabel={filtersOpen ? 'Hide filters' : 'Show filters'}
+          accessibilityState={{ expanded: filtersOpen, selected: filtersAreActive(filters) }}
+          style={{
+            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+            backgroundColor: filtersAreActive(filters) ? c.ink : c.paper2,
+            borderWidth: 1, borderColor: filtersAreActive(filters) ? c.ink : c.line,
+          }}
+        >
           <TText style={{ fontSize: 12, color: filtersAreActive(filters) ? c.paper : c.ink }}>
             {filtersAreActive(filters) ? 'Filters active' : 'Filters'}
           </TText>
         </Pressable>
         {filtersAreActive(filters) && (
-          <Pressable onPress={() => setFilters(DEFAULT_FILTERS)}>
-            <TText style={{ fontSize: 12, color: c.ink3, textDecorationLine: 'underline' }}>Clear</TText>
+          <Pressable
+            onPress={() => setFilters(DEFAULT_FILTERS)}
+            accessibilityLabel="Clear filters"
+            hitSlop={8}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line }}
+          >
+            <TText style={{ fontSize: 12, color: c.ink3 }}>Clear</TText>
           </Pressable>
         )}
       </View>
@@ -619,11 +634,16 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
               <TText style={{ fontSize: 10, color: c.ink3 }}>{aggB.runs} runs · {fmtTime(aggB.totalSec)}</TText>
               {(() => {
                 const d = delta(scoped.totalKm, aggB.totalKm);
-                const sign = d.abs >= 0 ? '+' : '';
-                const tone = d.abs >= 0 ? c.moss : c.accent;
+                const positive = d.abs >= 0;
+                const sign = positive ? '+' : '';
+                // Positive deltas keep moss (palette: "positive deltas, synced
+                // dots"). Negative deltas go ink2 with a "↓" — solar is for
+                // earned moments only, not for "this period was worse."
+                const tone = positive ? c.moss : c.ink2;
+                const arrow = positive ? '' : '↓ ';
                 return (
                   <TText variant="mono" style={{ fontSize: 10, color: tone, marginTop: 2 }}>
-                    {sign}{Math.round(d.abs)} km{d.pct === null ? '' : ` · ${sign}${d.pct}%`}
+                    {arrow}{sign}{Math.round(d.abs)} km{d.pct === null ? '' : ` · ${sign}${d.pct}%`}
                   </TText>
                 );
               })()}
@@ -970,7 +990,10 @@ function StatsView({ scope, activities, filters, selectedYear, selectedMonth, se
 function BestEffortRow({ effort }: { effort: BestEffort }) {
   const c = useColors();
   const date = new Date(effort.achievedAt);
-  const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  // Same "Wed · 14 May" shape as the Recent-activity rows so PRs and runs
+  // read as one timeline rather than two date dialects on the same screen.
+  // Older achievements (different year) carry the year suffix.
+  const dateLabel = formatRowDate(date, { withYear: date.getFullYear() !== new Date().getFullYear() });
   return (
     <View style={{
       backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
@@ -984,6 +1007,17 @@ function BestEffortRow({ effort }: { effort: BestEffort }) {
       </View>
     </View>
   );
+}
+
+// "Wed · 14 May" — readable, runner-coded, same shape across the page.
+// Single source of truth so Row and BestEffortRow can't drift again.
+function formatRowDate(d: Date, opts: { withYear: boolean } = { withYear: false }): string {
+  if (Number.isNaN(d.getTime())) return '—';
+  const dow = d.toLocaleDateString(undefined, { weekday: 'short' });
+  const day = d.getDate();
+  const mon = d.toLocaleDateString(undefined, { month: 'short' });
+  const base = `${dow} · ${day} ${mon}`;
+  return opts.withYear ? `${base} ${d.getFullYear()}` : base;
 }
 
 function filterByScope(rows: Activity[], scope: Scope, year: number, month: number, week: WeekKey): Activity[] {
@@ -1030,6 +1064,11 @@ function ScopedHero({ scope, agg, year, month, week }: { scope: Scope; agg: Aggr
 function LifetimeHero({ agg }: { agg: Aggregate }) {
   const c = useColors();
   const { units } = useAppState();
+  // The hero number bypassed fmtDist and rendered km even when units was
+  // 'mi' — imperial users saw the kilometre figure under a "MI TOTAL" eyebrow.
+  // We round to a whole unit at this scale (thousands of km / mi) so
+  // toLocaleString gives a comma-separated integer in both systems.
+  const total = units === 'mi' ? agg.totalKm / 1.609 : agg.totalKm;
   return (
     <Card style={{ backgroundColor: c.ink, borderColor: 'transparent', overflow: 'hidden' }}>
       <View style={{ position: 'absolute', right: -40, top: -40, opacity: 0.07 }}>
@@ -1037,7 +1076,7 @@ function LifetimeHero({ agg }: { agg: Aggregate }) {
       </View>
       <Eyebrow style={{ color: c.onInk3 }}>LIFETIME</Eyebrow>
       <TText variant="monoMedium" style={{ fontSize: 60, lineHeight: 70, letterSpacing: -2.4, color: c.paper, marginTop: 6 }}>
-        {Math.round(agg.totalKm).toLocaleString()}
+        {Math.round(total).toLocaleString()}
       </TText>
       <Eyebrow style={{ color: c.onInk3, marginTop: 4 }}>{distUnit(units).toUpperCase()} TOTAL</Eyebrow>
       <View style={{ flexDirection: 'row', gap: 14, marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.onInkDivider }}>
@@ -1070,7 +1109,7 @@ function Row({ a }: { a: Activity }) {
     }}>
       <View style={{ flex: 1 }}>
         <TText style={{ fontSize: 13, fontWeight: '500', color: c.ink }} numberOfLines={1}>{a.title}</TText>
-        <TText style={{ fontSize: 10, color: c.ink3 }}>{a.date} · {a.day}</TText>
+        <TText style={{ fontSize: 10, color: c.ink3 }}>{formatRowDate(new Date(a.date))}</TText>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <TText variant="monoMedium" style={{ fontSize: 14, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
