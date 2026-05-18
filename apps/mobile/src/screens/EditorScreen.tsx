@@ -18,7 +18,8 @@ import { PostmarkMark, SunMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
 import { StreamChart } from '../design/charts';
 import { useActivityStreams } from '../state/useActivityStreams';
-import type { Point } from '../data/sample';
+import { useActivityDetail } from '../state/useActivityDetail';
+import type { Point, Split } from '../data/sample';
 import { PostageTemplate } from '../design/templates/PostageTemplate';
 import { PostmarkTemplate } from '../design/templates/PostmarkTemplate';
 import { BoardingPassTemplate } from '../design/templates/BoardingPassTemplate';
@@ -81,6 +82,7 @@ function stickerHasValue(
   liveHr: number[] | null,
   livePace: number[] | null,
   liveRoute: Point[] | null,
+  liveSplits: Split[] | null,
 ): boolean {
   switch (key) {
     case 'distance': return run.distance > 0;
@@ -90,7 +92,7 @@ function stickerHasValue(
     case 'elev':     return (run.elev ?? 0) > 0;
     case 'cal':      return (run.cal ?? 0) > 0;
     case 'cadence':  return typeof run.cadence === 'number' && run.cadence > 0;
-    case 'splits':   return (run.splits ?? []).length > 0;
+    case 'splits':   return (liveSplits ?? run.splits ?? []).length > 0;
     case 'hrChart':
       return (liveHr != null && liveHr.length > 1) ||
         (Array.isArray(run.streamHr) && run.streamHr.length > 1);
@@ -136,6 +138,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   // Lifted up so every sticker that renders charts/maps shares one fetch.
   // useActivityStreams gracefully no-ops when id is null.
   const { route: realRoute, rawLatLng: realRawLatLng, streams: realStreams } = useActivityStreams(run?.id ?? null);
+  const { splits: realSplits } = useActivityDetail(run?.id ?? null);
   const realHr = parseStream(realStreams.heartrate?.data);
   const realVelocity = parseStream(realStreams.velocity?.data);
   // Strava velocity is m/s; convert to seconds-per-km so the pace sparkline
@@ -433,7 +436,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 between runs with different data shapes; only renders the ones
                 that have something honest to show. */}
             {stickers
-              .filter((s) => stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null))
+              .filter((s) => stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits))
               .map((s) => (
                 <DraggableSticker
                   key={s.id}
@@ -444,6 +447,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                   liveHr={realHr ?? null}
                   livePace={realPace ?? null}
                   liveRoute={realRoute ?? null}
+                  liveSplits={realSplits}
                   isSelected={selected === s.id}
                   onSelect={() => setSelected(s.id)}
                   onMove={(x, y) => updateStickerPosition(s.id, x, y)}
@@ -546,7 +550,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {STICKER_LIBRARY.filter((s) =>
-                  stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null),
+                  stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
                 ).map((s) => {
                   const placed = stickers.some((p) => p.key === s.key);
                   return (
@@ -564,7 +568,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
               </View>
               {(() => {
                 const hidden = STICKER_LIBRARY.filter((s) =>
-                  !stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null),
+                  !stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
                 );
                 if (hidden.length === 0) return null;
                 return (
@@ -725,6 +729,7 @@ function DraggableSticker({
   liveHr,
   livePace,
   liveRoute,
+  liveSplits,
   isSelected,
   onSelect,
   onMove,
@@ -738,6 +743,7 @@ function DraggableSticker({
   liveHr: number[] | null;
   livePace: number[] | null;
   liveRoute: Point[] | null;
+  liveSplits: Split[] | null;
   isSelected: boolean;
   onSelect: () => void;
   onMove: (x: number, y: number) => void;
@@ -953,7 +959,10 @@ function DraggableSticker({
       break;
     }
     case 'splits': {
-      const splits = run.splits ?? [];
+      // Real splits land via useActivityDetail -> liveSplits. Fall back to
+      // any splits on the run (legacy / synthetic) so the sticker keeps
+      // rendering during the brief window before detail fetch resolves.
+      const splits = liveSplits ?? run.splits ?? [];
       width = 180;
       body = (
         <>

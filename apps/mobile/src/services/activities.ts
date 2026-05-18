@@ -1,3 +1,4 @@
+import type { Split } from '../data/sample';
 import { apiGet } from './api';
 
 export type ActivitySource = 'strava' | 'apple_health' | 'manual';
@@ -41,4 +42,20 @@ export function listActivities(
   limit = 10000,
 ): Promise<ListActivitiesResponse> {
   return apiGet<ListActivitiesResponse>(`/v1/activities?limit=${limit}`, { idToken });
+}
+
+// One activity's full detail — fields the list endpoint deliberately omits
+// (splits + notes). Fetched on demand when the user opens an Activity or
+// the Editor, so the list payload stays small. Embeds the same fields as
+// ApiActivity since the server flattens the response.
+export interface ApiActivityDetail extends ApiActivity {
+  splits?: Split[];
+  notes?: string;
+}
+
+export function getActivityDetail(
+  id: string,
+  idToken: string | null,
+): Promise<ApiActivityDetail> {
+  return apiGet<ApiActivityDetail>(`/v1/activities/${encodeURIComponent(id)}`, { idToken });
 }

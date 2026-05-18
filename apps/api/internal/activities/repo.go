@@ -17,18 +17,47 @@ import (
 // ErrNotFound is returned by repo reads when no row matches.
 var ErrNotFound = errors.New("activities: not found")
 
-// selectColumns is the canonical column list every read query SELECTs.
-// scanActivity expects this exact ordering. Keep them in sync.
+// selectColumns is the FULL column list — used by detail / ingest / dedup
+// reads where we need every field including the heavy JSONB ones. scanActivity
+// expects this exact ordering. Keep them in sync.
+//
+// startLat / startLon are extracted from location_start (PostGIS geography)
+// via ST_Y / ST_X so the application layer never has to parse WKB. Before
+// this, those fields were always nil on read (we wrote them via location_start
+// but the SELECT never decoded them back) — a quiet bug that broke the
+// Places world-map clustering.
 const selectColumns = `id, user_id, source, external_id, sport, started_at,
   elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
   avg_hr, max_hr, avg_pace_s_per_km, calories,
   title, notes,
   location_city, location_country,
+  ST_Y(location_start::geometry), ST_X(location_start::geometry),
   raw, dupe_of, ingested_at,
   cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
   stride_length_m, vo2max_ml_kg_min, avg_speed_m_s, splits,
   gap_seconds_per_km,
   has_detail, has_streams`
+
+// selectColumnsList is the LEAN column list — used by ListForUser only.
+// Drops every field the activities list response doesn't render:
+//   - raw, splits        — heavy JSONB, list never reads
+//   - notes              — not surfaced on the list row
+//   - user_id, dupe_of   — internal bookkeeping
+//   - ingested_at, has_detail, has_streams — internal
+//   - avg_speed_m_s, vertical_oscillation_cm, ground_contact_ms,
+//     stride_length_m   — detail-screen metrics, never in the list
+//
+// scanActivityList expects this ordering. Big perf win: a 561-row list
+// was taking 190ms / 210KB before; this drops raw+splits which were the
+// JSONB bulk.
+const selectColumnsList = `id, source, external_id, sport, started_at,
+  elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
+  avg_hr, max_hr, avg_pace_s_per_km, calories,
+  title,
+  location_city, location_country,
+  ST_Y(location_start::geometry), ST_X(location_start::geometry),
+  cadence_spm, running_power_w, vo2max_ml_kg_min,
+  gap_seconds_per_km`
 
 // Activity is an in-memory view of one activities row.
 type Activity struct {
@@ -331,11 +360,12 @@ func (r *Repository) flipDupeOfTx(ctx context.Context, tx pgx.Tx, existingID, ca
 }
 
 // ListForUser returns canonical activities (dupe_of IS NULL) for a user,
-// most-recent first, up to limit rows. The future Home screen ingest API
-// will call this.
+// most-recent first, up to limit rows. Uses the lean SELECT — drops raw,
+// splits, notes, and other fields the list response doesn't render. For
+// the full row (e.g. splits on the detail screen) call FindByID.
 func (r *Repository) ListForUser(ctx context.Context, userID string, limit int) ([]Activity, error) {
 	sql := `
-SELECT ` + selectColumns + `
+SELECT ` + selectColumnsList + `
 FROM activities
 WHERE user_id = $1
   AND dupe_of IS NULL
@@ -350,13 +380,34 @@ LIMIT $2`
 
 	var out []Activity
 	for rows.Next() {
-		a, err := scanActivity(rows)
+		a, err := scanActivityList(rows)
 		if err != nil {
 			return nil, fmt.Errorf("activities: scan list row: %w", err)
 		}
 		out = append(out, *a)
 	}
 	return out, rows.Err()
+}
+
+// FindByID returns the full activity row (including splits + raw + notes)
+// for the given id, scoped to its owning user. Returns (nil, ErrNotFound)
+// when the row doesn't exist or belongs to another user — same ambiguity
+// shape we use elsewhere so cross-user IDs don't leak existence.
+func (r *Repository) FindByID(ctx context.Context, userID, activityID string) (*Activity, error) {
+	sql := `
+SELECT ` + selectColumns + `
+FROM activities
+WHERE id = $1 AND user_id = $2 AND dupe_of IS NULL`
+
+	row := r.pool.QueryRow(ctx, sql, activityID, userID)
+	a, err := scanActivity(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("activities: find by id: %w", err)
+	}
+	return a, nil
 }
 
 // Pool exposes the underlying pool so the Service can begin transactions.
@@ -409,6 +460,7 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 		&a.AvgHR, &a.MaxHR, &a.AvgPaceSPerKm, &a.Calories,
 		&a.Title, &a.Notes,
 		&a.LocationCity, &a.LocationCountry,
+		&a.StartLat, &a.StartLon,
 		&raw, &a.DupeOf, &a.IngestedAt,
 		&a.CadenceSPM, &a.RunningPowerW, &a.VerticalOscCm, &a.GroundContactMs,
 		&a.StrideLengthM, &a.VO2maxMlKgMin, &a.AvgSpeedMS, &splits,
@@ -424,6 +476,27 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 	if splits != nil {
 		msg := json.RawMessage(splits)
 		a.Splits = &msg
+	}
+	return &a, nil
+}
+
+// scanActivityList scans the lean column set from selectColumnsList. Fields
+// not in the lean set (Raw, Splits, Notes, UserID, DupeOf, IngestedAt, etc)
+// are left at their zero values — handlers that use list rows must not
+// reach for those.
+func scanActivityList(row pgx.Row) (*Activity, error) {
+	var a Activity
+	if err := row.Scan(
+		&a.ID, &a.Source, &a.ExternalID, &a.Sport, &a.StartedAt,
+		&a.ElapsedSeconds, &a.MovingSeconds, &a.DistanceM, &a.ElevationGainM,
+		&a.AvgHR, &a.MaxHR, &a.AvgPaceSPerKm, &a.Calories,
+		&a.Title,
+		&a.LocationCity, &a.LocationCountry,
+		&a.StartLat, &a.StartLon,
+		&a.CadenceSPM, &a.RunningPowerW, &a.VO2maxMlKgMin,
+		&a.GAPSecPerKm,
+	); err != nil {
+		return nil, err
 	}
 	return &a, nil
 }

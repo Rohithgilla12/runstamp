@@ -283,6 +283,7 @@ func main() {
 			r.Delete("/me", accountHandler.Delete)
 			r.Post("/me/device-token", deviceTokenHandler.Register)
 			r.Get("/activities", activitiesHandler.List)
+			r.Get("/activities/{id}", activitiesHandler.Get)
 			r.Patch("/activities/{id}", activitiesHandler.Patch)
 			r.Get("/activities/{id}/streams", streamsHandler.List)
 			r.Get("/stamps", stampsHandler.List)

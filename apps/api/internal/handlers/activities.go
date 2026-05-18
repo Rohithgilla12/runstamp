@@ -103,6 +103,64 @@ func (h *ActivitiesHandler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// activityDetailResponse is the shape returned by GET /v1/activities/{id}.
+// Embeds every field activityResponse already returns plus the heavy fields
+// the list endpoint deliberately omits — splits (per-km breakdown) and
+// notes. Splits is JSON RawMessage so we don't re-decode it server-side
+// just to re-encode it (it landed as JSON from the ingest path and stays
+// JSON to the wire).
+type activityDetailResponse struct {
+	activityResponse
+	Splits *json.RawMessage `json:"splits,omitempty"`
+	Notes  *string          `json:"notes,omitempty"`
+}
+
+// Get handles GET /v1/activities/{id}. Returns the full detail row scoped
+// to the owning user (404 on cross-user IDs to avoid existence leak). This
+// is the on-demand companion to the lean list endpoint — mobile fetches
+// detail when the user opens the Activity / Editor screen, so the list
+// payload stays small.
+func (h *ActivitiesHandler) Get(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil {
+		h.Log.Error("activities get: load user", "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to load user")
+		return
+	}
+	if user == nil {
+		writeError(w, http.StatusNotFound, "user not provisioned")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing activity id")
+		return
+	}
+
+	a, err := h.Activities.Repo().FindByID(r.Context(), user.ID, id)
+	if err != nil {
+		if errors.Is(err, activities.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "activity not found")
+			return
+		}
+		h.Log.Error("activities get: find", "err", err, "activity_id", id)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+
+	out := activityDetailResponse{
+		activityResponse: toActivityResponse(a),
+		Splits:           a.Splits,
+		Notes:            a.Notes,
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 type patchActivityRequest struct {
 	Title *string `json:"title,omitempty"`
 }

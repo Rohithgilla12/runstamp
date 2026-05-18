@@ -7,6 +7,8 @@ import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
 import { useActivities } from '../state/useActivities';
 import { useActivityStreams } from '../state/useActivityStreams';
+import { useActivityDetail } from '../state/useActivityDetail';
+import type { Split } from '../data/sample';
 import { renameActivity } from '../services/activityEdit';
 import { useColors, useTheme } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
@@ -27,6 +29,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const { activities, loading, refresh: refreshActivities } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   const { route: realRoute, rawLatLng: realRawLatLng, streams } = useActivityStreams(run?.id ?? null);
+  const { splits: liveSplits } = useActivityDetail(run?.id ?? null);
   const { getIdToken } = useAuth();
   const handleRename = useCallback(() => {
     if (!run) return;
@@ -216,7 +219,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
         </View>
 
         <View style={{ paddingTop: 16 }}>
-          {tab === 'splits' && <SplitsTable run={run} />}
+          {tab === 'splits' && <SplitsTable splits={liveSplits ?? run.splits ?? []} />}
           {tab === 'hr' && ((liveHr ?? run.streamHr) ? <StreamChart data={(liveHr ?? run.streamHr)!} color={c.accent} /> : <Empty text="No HR data." />)}
           {tab === 'pace' && ((livePace ?? run.streamPace ?? run.streamHr) ? <StreamChart data={(livePace ?? run.streamPace ?? run.streamHr)!} color={c.ink} /> : <Empty text="No pace data." />)}
         </View>
@@ -241,10 +244,9 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   );
 }
 
-function SplitsTable({ run }: { run: Activity }) {
+function SplitsTable({ splits }: { splits: Split[] }) {
   const c = useColors();
   const { units } = useAppState();
-  const splits = run.splits ?? [];
   if (!splits.length) return <Empty text="No splits available." />;
   const minSec = Math.min(...splits.map((s) => s.sec));
   const maxSec = Math.max(...splits.map((s) => s.sec));
