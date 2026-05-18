@@ -1,11 +1,64 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useColors } from '../design/theme';
 import { TText } from '../design/typography';
+
+// Defensive requires for the optional native backdrops. require() throws at
+// the native bridge level if the matching native module isn't compiled into
+// the installed binary (e.g. when this JS bundle lands on an OLD app build
+// via OTA before the user has installed the new TestFlight). Catching here
+// means the tab bar gracefully falls back to a plain paper backdrop on
+// those older binaries instead of crashing on import.
+//
+// Once the user installs the new EAS build that includes expo-glass-effect
+// + expo-blur natives, these requires succeed and the genuine Apple
+// Liquid Glass (iOS 26+) or frosted UIBlurEffect (iOS 18-25) kicks in.
+const GlassView: React.ComponentType<{ style?: ViewStyle; glassEffectStyle?: 'regular' | 'clear'; tintColor?: string; children?: React.ReactNode }> | null = (() => {
+  try { return require('expo-glass-effect').GlassView; } catch { return null; }
+})();
+
+const BlurView: React.ComponentType<{ style?: ViewStyle; intensity?: number; tint?: string; children?: React.ReactNode }> | null = (() => {
+  try { return require('expo-blur').BlurView; } catch { return null; }
+})();
+
+function isIOS26() {
+  if (Platform.OS !== 'ios') return false;
+  const v = parseInt(String(Platform.Version), 10);
+  return Number.isFinite(v) && v >= 26;
+}
+
+// TabBarBackdrop — three-tier visual fallback. iOS 26+ gets genuine
+// Liquid Glass via UIVisualEffectView; iOS 18-25 gets a frosted
+// systemThinMaterial blur (closest approximation); Android + pre-build
+// binaries fall through to the original paper card with a hairline.
+function TabBarBackdrop({ style, children }: { style: ViewStyle; children: React.ReactNode }) {
+  if (isIOS26() && GlassView) {
+    return (
+      <GlassView
+        // glassEffectStyle "regular" gives the standard UIKit Liquid Glass
+        // material (translucent + refractive). "clear" is brighter; we
+        // want the standard so the icons keep contrast against any
+        // backdrop content peeking through.
+        glassEffectStyle="regular"
+        style={style}
+      >
+        {children}
+      </GlassView>
+    );
+  }
+  if (Platform.OS === 'ios' && BlurView) {
+    return (
+      <BlurView intensity={75} tint="systemThinMaterial" style={style}>
+        {children}
+      </BlurView>
+    );
+  }
+  return <View style={style}>{children}</View>;
+}
 import { HomeScreen } from '../screens/HomeScreen';
 import { AnalyticsScreen } from '../screens/AnalyticsScreen';
 import { PlacesScreen } from '../screens/PlacesScreen';
@@ -76,19 +129,32 @@ const TAB_DEFS: { name: keyof TabParamList; label: string; icon: (props: { size:
 const CustomTabBar = React.memo(function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  // When the native glass/blur is active we drop the opaque backdrop +
+  // shadow so the effect can actually see through to the content behind
+  // it. On a paper-fill bar that material wouldn't do anything visible.
+  const hasNativeBackdrop = (isIOS26() && GlassView != null) || (Platform.OS === 'ios' && BlurView != null);
   return (
     <View style={{
       paddingBottom: Math.max(insets.bottom, 16), paddingTop: 8,
-      backgroundColor: c.paper
+      // The outer wrapper stays opaque on platforms WITHOUT native glass
+      // so the icons sit on a defined surface. With glass, the wrapper
+      // is transparent and the content scrolls through.
+      backgroundColor: hasNativeBackdrop ? 'transparent' : c.paper,
     }}>
-      <View style={{
-        marginHorizontal: 14, borderRadius: 18,
-        backgroundColor: c.paper,
-        borderWidth: 1, borderColor: c.line,
-        shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: 6 },
+      <TabBarBackdrop style={{
+        marginHorizontal: 14, borderRadius: 22,
+        // Glass / blur paths skip the paper fill so the effect breathes.
+        // The non-glass path keeps the original card chrome.
+        backgroundColor: hasNativeBackdrop ? undefined : c.paper,
+        borderWidth: hasNativeBackdrop ? 0.5 : 1,
+        borderColor: hasNativeBackdrop ? 'rgba(255,255,255,0.18)' : c.line,
+        shadowColor: '#000',
+        shadowOpacity: hasNativeBackdrop ? 0.04 : 0.08,
+        shadowRadius: 24, shadowOffset: { width: 0, height: 6 },
         elevation: 6,
+        overflow: 'hidden',
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-        paddingHorizontal: 6, paddingVertical: 8
+        paddingHorizontal: 6, paddingVertical: 8,
       }}>
         {state.routes.map((route, idx) => {
           const def = TAB_DEFS.find((d) => d.name === route.name);
@@ -120,7 +186,7 @@ const CustomTabBar = React.memo(function CustomTabBar({ state, navigation }: Bot
             </Pressable>
           );
         })}
-      </View>
+      </TabBarBackdrop>
     </View>
   );
 });
