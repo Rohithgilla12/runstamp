@@ -1,33 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Reflecting pool below the temple -->
+  <g id="shadow" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M 26 188 Q 100 196 174 188"/>
     <path d="M 32 184 Q 100 190 168 184"/>
+    <!-- Water reflections -->
+    <line x1="70" y1="192" x2="130" y2="192" stroke-width="1.2"/>
+    <line x1="85" y1="196" x2="115" y2="196" stroke-width="1.2"/>
+  </g>
 
-    <!-- Stepped plinth (the platform the lotus sits on) -->
+  <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <line x1="46" y1="174" x2="154" y2="174"/>
     <line x1="38" y1="180" x2="162" y2="180"/>
 
-    <!-- The lotus — nine visible petals fanning outward and meeting at the apex -->
-    <!-- Outer-left petal -->
     <path d="M 22 168 Q 8 110 36 60 Q 64 32 100 28"/>
-    <!-- Outer-right petal (mirror) -->
     <path d="M 178 168 Q 192 110 164 60 Q 136 32 100 28"/>
-
-    <!-- Mid-left petal -->
     <path d="M 50 174 Q 38 110 60 60 Q 80 36 100 28"/>
-    <!-- Mid-right petal (mirror) -->
     <path d="M 150 174 Q 162 110 140 60 Q 120 36 100 28"/>
-
-    <!-- Front-left petal -->
     <path d="M 76 174 Q 70 110 86 56 Q 94 32 100 28"/>
-    <!-- Front-right petal (mirror) -->
     <path d="M 124 174 Q 130 110 114 56 Q 106 32 100 28"/>
 
-    <!-- Centre fold seam — gentle vertical line suggesting the central two petals' meeting line -->
-    <line x1="100" y1="174" x2="100" y2="32"/>
+    <!-- Woodcut shading on petals -->
+    <path d="M 38 160 Q 30 120 50 75" stroke-width="1"/>
+    <path d="M 162 160 Q 170 120 150 75" stroke-width="1"/>
+    <path d="M 64 165 Q 56 120 75 70" stroke-width="1"/>
+    <path d="M 136 165 Q 144 120 125 70" stroke-width="1"/>
 
-    <!-- Apex / small finial detail -->
+    <line x1="100" y1="174" x2="100" y2="32"/>
+    <path d="M 92 165 L 92 100" stroke-width="1"/>
+    <path d="M 108 165 L 108 100" stroke-width="1"/>
+  </g>
+
+  <g id="accent" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Highlight edges on petals -->
+    <path d="M 80 174 Q 74 110 90 56 Q 96 32 100 28" stroke-width="1.2"/>
+    <path d="M 120 174 Q 126 110 110 56 Q 104 32 100 28" stroke-width="1.2"/>
+  </g>
+
+  <g id="foil" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <line x1="100" y1="28" x2="100" y2="18"/>
     <circle cx="100" cy="16" r="1.6" fill="currentColor" stroke="none"/>
   </g>

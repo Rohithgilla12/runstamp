@@ -1,52 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-
-  <!-- Mythic-tier shadow plate: distant Himalayan ridge, offset behind ink -->
   <g id="shadow" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Two background peaks -->
     <path d="M 8 132 L 60 38 L 96 90 L 138 30 L 192 118"/>
-    <!-- Mid-ridge contour suggesting a second ridge behind -->
+    <!-- Mountain shading lines -->
+    <path d="M 50 60 L 60 75 M 55 50 L 60 60" stroke-width="1.2"/>
+    <path d="M 130 50 L 120 70 M 138 45 L 128 65" stroke-width="1.2"/>
     <path d="M 30 110 L 68 80 L 84 96 L 106 76 L 132 100 L 168 76 L 186 100"/>
-    <!-- Ground contour at base -->
     <line x1="6" y1="172" x2="194" y2="172"/>
   </g>
 
-  <!-- Primary ink plate: stupa silhouette -->
   <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Lowest plinth (wide three-tier base) -->
     <rect x="60" y="158" width="80" height="14"/>
     <rect x="68" y="146" width="64" height="12"/>
     <rect x="76" y="134" width="48" height="12"/>
+    
+    <!-- Base step shading -->
+    <line x1="62" y1="165" x2="138" y2="165" stroke-width="1"/>
+    <line x1="70" y1="152" x2="130" y2="152" stroke-width="1"/>
+    <line x1="78" y1="140" x2="122" y2="140" stroke-width="1"/>
 
-    <!-- Anda (hemispherical dome) -->
     <path d="M 78 134 Q 100 78 122 134"/>
+    <!-- Dome curve shading -->
+    <path d="M 85 134 Q 100 88 115 134" stroke-width="1.2"/>
+    <path d="M 92 134 Q 100 98 108 134" stroke-width="1.2"/>
 
-    <!-- Harmika (square block atop the dome) -->
     <rect x="92" y="76" width="16" height="12"/>
+    <!-- Harmika eyes (often drawn on stupas) -->
+    <circle cx="96" cy="82" r="1" fill="currentColor"/>
+    <circle cx="104" cy="82" r="1" fill="currentColor"/>
 
-    <!-- Sokushin (conical spire) — three-tier stepped triangle -->
     <path d="M 92 76 L 100 50 L 108 76"/>
     <line x1="94" y1="68" x2="106" y2="68"/>
     <line x1="96" y1="60" x2="104" y2="60"/>
 
-    <!-- Chattra (umbrella discs) -->
     <line x1="92" y1="50" x2="108" y2="50"/>
     <line x1="94" y1="44" x2="106" y2="44"/>
     <line x1="96" y1="38" x2="104" y2="38"/>
-
-    <!-- Pinnacle -->
-    <line x1="100" y1="38" x2="100" y2="30"/>
-    <circle cx="100" cy="28" r="1.8" fill="currentColor" stroke="none"/>
   </g>
 
-  <!-- Mythic foil layer: prayer-flag string strung across the peak -->
-  <g id="foil" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <!-- The string itself, sagging slightly between two peaks -->
+  <g id="accent" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M 18 26 Q 80 48 138 30 Q 168 22 188 38"/>
-    <!-- Five small flags hanging from the string -->
-    <path d="M 36 32 L 36 42 L 44 38 Z"/>
+    <!-- Five small flags -->
+    <path d="M 36 32 L 36 42 L 44 38 Z" fill="currentColor"/>
     <path d="M 64 40 L 64 50 L 72 46 Z"/>
-    <path d="M 96 42 L 96 52 L 104 48 Z"/>
+    <path d="M 96 42 L 96 52 L 104 48 Z" fill="currentColor"/>
     <path d="M 128 36 L 128 46 L 136 42 Z"/>
-    <path d="M 160 30 L 160 40 L 168 36 Z"/>
+    <path d="M 160 30 L 160 40 L 168 36 Z" fill="currentColor"/>
+  </g>
+
+  <g id="foil" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="100" y1="38" x2="100" y2="30"/>
+    <circle cx="100" cy="28" r="1.8" fill="currentColor" stroke="none"/>
   </g>
 </svg>
