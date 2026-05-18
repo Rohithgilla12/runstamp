@@ -15,7 +15,7 @@ import { Eyebrow, TText } from '../design/typography';
 import { Button, Card, Chip } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { RouteMap } from '../design/RouteMap';
-import { StreamChart } from '../design/charts';
+import { ActivityStreamCard } from '../design/charts/ActivityStreamCard';
 import { parseValueStream } from '../analytics/streamData';
 import type { RootStackProps } from '../nav/types';
 
@@ -221,8 +221,37 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
 
         <View style={{ paddingTop: 16 }}>
           {tab === 'splits' && <SplitsTable splits={liveSplits ?? run.splits ?? []} />}
-          {tab === 'hr' && ((liveHr ?? run.streamHr) ? <StreamChart data={(liveHr ?? run.streamHr)!} color={c.accent} /> : <Empty text="No HR data." />)}
-          {tab === 'pace' && ((livePace ?? run.streamPace ?? run.streamHr) ? <StreamChart data={(livePace ?? run.streamPace ?? run.streamHr)!} color={c.ink} /> : <Empty text="No pace data." />)}
+          {tab === 'hr' && (() => {
+            const series = liveHr ?? run.streamHr ?? null;
+            if (!series || series.length < 2) return <Empty text="No HR data." />;
+            return (
+              <ActivityStreamCard
+                title="HEART RATE"
+                data={series}
+                durationSec={run.seconds}
+                unit="bpm"
+                color={c.accent}
+                formatValue={(v) => v.toFixed(0)}
+                explanation="Beats per minute across the run. Higher = harder effort. The dot marks the last sample."
+              />
+            );
+          })()}
+          {tab === 'pace' && (() => {
+            const series = livePace ?? run.streamPace ?? null;
+            if (!series || series.length < 2) return <Empty text="No pace data." />;
+            return (
+              <ActivityStreamCard
+                title="PACE"
+                data={series}
+                durationSec={run.seconds}
+                unit={paceUnit(units)}
+                color={c.ink}
+                formatValue={(v) => fmtPace(v, units)}
+                invertExtremes
+                explanation="Time per kilometre across the run. Lower number = faster. The dot marks your final pace before stopping."
+              />
+            );
+          })()}
         </View>
 
         <View style={{ paddingTop: 20 }}>
