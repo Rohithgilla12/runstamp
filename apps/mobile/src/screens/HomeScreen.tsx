@@ -589,23 +589,34 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
           <View style={{ flex: 1 }} />
 
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 14 }}>
-            <View style={{ flex: 1.2 }}>
+            {/* DISTANCE flex bumped to 1.4 + adjustsFontSizeToFit so big
+                 numbers ("18.31", "42.42") shrink to fit instead of wrapping
+                 to a second line. Small numbers ("5.2") stay at 46pt.
+                 numberOfLines=1 hard-locks against the wrap regardless of
+                 what the auto-shrink decides. */}
+            <View style={{ flex: 1.4 }}>
               <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>DISTANCE</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <TText variant="monoMedium" style={{ fontSize: 46, lineHeight: 54, letterSpacing: -1.4, color: c.paper }}>
+                <TText
+                  variant="monoMedium"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                  style={{ fontSize: 46, lineHeight: 54, letterSpacing: -1.4, color: c.paper }}
+                >
                   {fmtDist(run.distance, units)}
                 </TText>
                 <TText style={{ fontSize: 14, color: c.onInk3, marginLeft: 4 }}>{distUnit(units)}</TText>
               </View>
             </View>
-            <View style={{ flex: 0.9 }}>
+            <View style={{ flex: 0.85 }}>
               <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>PACE</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtPace(run.pace, units)}</TText>
+              <TText variant="monoMedium" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtPace(run.pace, units)}</TText>
               <TText style={{ fontSize: 10, color: c.onInk3 }}>/{distUnit(units)}</TText>
             </View>
-            <View style={{ flex: 1.1 }}>
+            <View style={{ flex: 1.0 }}>
               <Eyebrow style={{ color: c.onInk3, fontSize: 9 }}>TIME</Eyebrow>
-              <TText variant="monoMedium" style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtTime(run.seconds)}</TText>
+              <TText variant="monoMedium" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ fontSize: 22, color: c.paper, letterSpacing: -0.2 }}>{fmtTime(run.seconds)}</TText>
               <TText style={{ fontSize: 10, color: c.onInk3 }}>h:m:s</TText>
             </View>
           </View>
