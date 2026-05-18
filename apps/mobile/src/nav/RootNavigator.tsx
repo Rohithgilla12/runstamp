@@ -70,7 +70,10 @@ const TAB_DEFS: { name: keyof TabParamList; label: string; icon: (props: { size:
   },
 ];
 
-function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+// CustomTabBar — memoised so a re-render of any focused screen doesn't drag
+// the bar through reconciliation. State changes (focused tab index) still
+// trigger a re-render because that's the input we read from.
+const CustomTabBar = React.memo(function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   return (
@@ -96,27 +99,48 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             <Pressable
               key={route.key}
               onPress={() => navigation.navigate(route.name)}
-              style={{
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={def.label}
+              hitSlop={4}
+              // Press feedback was the big missing piece — taps used to land
+              // with no visual ack, so the bar felt unresponsive even when
+              // it wasn't. Drop opacity on press; android_ripple gives the
+              // platform-native feedback on Android.
+              android_ripple={{ color: c.line, borderless: false, radius: 28 }}
+              style={({ pressed }) => ({
                 alignItems: 'center', gap: 3,
                 paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12,
-                backgroundColor: focused ? c.paper2 : 'transparent'
-              }}
+                backgroundColor: focused ? c.paper2 : 'transparent',
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
               {def.icon({ size: 22, color: tint })}
-              <TText style={{ fontSize: 10, color: tint, fontWeight: focused ? '500' : '400' }}>{def.label}</TText>
+              <TText style={{ fontSize: 10, color: tint, fontWeight: focused ? '600' : '400' }}>{def.label}</TText>
             </Pressable>
           );
         })}
       </View>
     </View>
   );
-}
+});
 
 function TabsNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        // freezeOnBlur suspends an inactive tab's JS work. Without this,
+        // every list update reconciles all four tabs even when only one is
+        // visible — heavy on Stats which renders 12 chart cards over 561
+        // activities. Stack rendering resumes on focus with state intact.
+        freezeOnBlur: true,
+        // Hide the tab bar when a keyboard is up (Editor / Settings text
+        // fields) — otherwise it floats above the keyboard taking half the
+        // screen on small devices.
+        tabBarHideOnKeyboard: true,
+      }}
     >
       <Tab.Screen name="Home"    component={HomeScreen} />
       <Tab.Screen name="Stats"   component={AnalyticsScreen} />
