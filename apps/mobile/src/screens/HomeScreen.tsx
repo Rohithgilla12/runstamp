@@ -1,3 +1,27 @@
+// HomeScreen — redesigned per .impeccable.md.
+//
+// Home is an ARTIFACT surface (artifact-coded per the new Surface taxonomy):
+// a keepsake-style page of a personal log book. The latest run is the hero,
+// then a single quiet line of "this week," a rotating recap, recently
+// earned stamps, and a short tail of recent runs. Perforated dividers
+// (the postal-perforation motif from the brand) section the page without
+// shouting at the user with section headers.
+//
+// What changed vs the previous Home:
+//   • Drop the chip row at the top ({N} RUNS / {N} STAMPS) — that's status,
+//     not action; took prime real estate to say what the user already knows.
+//   • Cleaner post-run card: the big solar "Create share card" CTA is gone.
+//     Tap the card → opens Activity (unchanged). Share is a quiet icon in
+//     the corner. The card was already trying to do two things; now it's
+//     a keepsake first, with share as an affordance.
+//   • This-week summary collapses from a hero-metric card into one quiet
+//     ledger line. Same numbers, less chrome.
+//   • RecapCard becomes a single line of inline text instead of a card.
+//   • Recent runs drop per-row share buttons; a single tap-open per row.
+//   • Perforated dividers between sections instead of section headers
+//     stacked on heavy padding. Eyebrows still announce each section
+//     because runners ARE reading these.
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,9 +41,8 @@ import { StampShareModal } from './StampShareModal';
 import { StampBadge } from '../design/StampBadge';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
-import { Delta } from '../design/atoms';
 import { Icon } from '../design/Icon';
-import { SunMark } from '../design/SunMark';
+import { PostmarkMark } from '../design/SunMark';
 import { RouteMap } from '../design/RouteMap';
 import type { TabProps } from '../nav/types';
 
@@ -42,44 +65,28 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
     <ScrollView
       showsVerticalScrollIndicator={false}
       style={{ flex: 1, backgroundColor: c.paper }}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
     >
-      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      {/* Page header — date as a postmark + serif italic greeting. The
+          postmark replaces the previous SunMark to lean into the brand
+          vocabulary on Home specifically. */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View style={{ flex: 1 }}>
           <Eyebrow>{formatTodayEyebrow(new Date())}</Eyebrow>
           <TText variant="serif" style={{ fontSize: 28, lineHeight: 32, letterSpacing: -0.6, marginTop: 4 }}>{greeting},</TText>
           <TText variant="serifItalic" style={{ fontSize: 28, lineHeight: 32, color: c.ink }}>Runner.</TText>
         </View>
         <View style={{ marginTop: 4 }}>
-          <SunMark size={32} />
+          <PostmarkMark size={42} color={c.ink2} />
         </View>
       </View>
 
       {missingHk > 0 && (
-        <Pressable
+        <MissingRunsLine
+          count={missingHk}
           onPress={() => navigation.navigate('HealthRuns')}
-          style={({ pressed }) => [{
-            marginHorizontal: 20, marginTop: 12, padding: 12,
-            borderRadius: 12, backgroundColor: c.paper2,
-            borderWidth: 1, borderColor: c.accent,
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            opacity: pressed ? 0.85 : 1,
-          }]}
-        >
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent }} />
-          <View style={{ flex: 1 }}>
-            <TText style={{ fontSize: 13, color: c.ink, fontWeight: '500' }}>
-              {missingHk === 1
-                ? '1 run in Apple Health isn’t imported yet'
-                : `${missingHk} runs in Apple Health aren’t imported yet`}
-            </TText>
-            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
-              TAP TO REVIEW & IMPORT
-            </TText>
-          </View>
-          <TText variant="mono" style={{ fontSize: 13, color: c.ink2 }}>→</TText>
-        </Pressable>
+        />
       )}
 
       {latest ? (
@@ -113,7 +120,6 @@ function ConnectedHome({
   onOpenStamps: () => void;
   onOpenAllActivities: () => void;
 }) {
-  const c = useColors();
   const { units } = useAppState();
   const weekStats = computeWeekStats(activities, units === 'mi');
   const { earned } = useStamps();
@@ -121,32 +127,6 @@ function ConnectedHome({
   return (
     <>
       <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 8,
-            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line
-          }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.moss }} />
-            <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{activities.length} RUNS</TText>
-          </View>
-          {earned.length > 0 && (
-            <Pressable
-              onPress={onOpenStamps}
-              style={({ pressed }) => [{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
-                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-                backgroundColor: c.ink, opacity: pressed ? 0.85 : 1,
-              }]}
-            >
-              <Icon.spark size={12} color={c.accent} />
-              <TText variant="mono" style={{ fontSize: 11, color: c.paper }}>{earned.length} STAMPS</TText>
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <PostRunCard
           run={latest}
           onOpen={() => onOpenActivity(latest.id)}
@@ -154,117 +134,128 @@ function ConnectedHome({
         />
       </View>
 
-      <SectionHeader title="This week" />
-      <View style={{ paddingHorizontal: 20 }}>
-        <WeekSummary stats={weekStats} />
-      </View>
+      <Perforation />
 
-      <RecapCard activities={activities} earned={earned} />
+      <WeekLedger stats={weekStats} />
 
-      {earned.length > 0 && <RecentlyEarned earned={earned} onOpenStamps={onOpenStamps} />}
+      <RecapLine activities={activities} earned={earned} />
 
-      <SectionHeader
-        title="Recent runs"
-        right={
-          activities.length > 5 ? (
-            <Pressable onPress={onOpenAllActivities} hitSlop={8}>
-              <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
-            </Pressable>
-          ) : null
-        }
+      {earned.length > 0 && (
+        <>
+          <Perforation />
+          <RecentlyEarned earned={earned} onOpenStamps={onOpenStamps} />
+        </>
+      )}
+
+      <Perforation />
+
+      <RecentRuns
+        activities={activities}
+        onOpenActivity={onOpenActivity}
+        onOpenAllActivities={onOpenAllActivities}
       />
-      <View style={{ paddingHorizontal: 20, gap: 8 }}>
-        {activities.slice(0, 5).map((a) => (
-          <Pressable
-            key={a.id}
-            onPress={() => onOpenActivity(a.id)}
-            style={({ pressed }) => [{
-              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
-              borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-              flexDirection: 'row', alignItems: 'center', gap: 12,
-              opacity: pressed ? 0.85 : 1,
-            }]}
-          >
-            <View style={{ flex: 1 }}>
-              <TText style={{ fontSize: 14, fontWeight: '500', color: c.ink }} numberOfLines={1}>{a.title}</TText>
-              <TText style={{ fontSize: 11, color: c.ink3, marginTop: 2 }}>{a.day} · {a.time}</TText>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <TText variant="monoMedium" style={{ fontSize: 16, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
-              <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{fmtTime(a.seconds)}</TText>
-            </View>
-            <Pressable
-              onPress={() => onOpenEditor(a.id)}
-              hitSlop={8}
-              accessibilityLabel={`Share ${a.title}`}
-              style={({ pressed }) => [{
-                width: 36, height: 36, borderRadius: 10,
-                backgroundColor: c.ink, alignItems: 'center', justifyContent: 'center',
-                opacity: pressed ? 0.85 : 1,
-              }]}
-            >
-              <Icon.share size={14} color={c.paper} />
-            </Pressable>
-          </Pressable>
-        ))}
-        {activities.length > 5 && (
-          <Pressable
-            onPress={onOpenAllActivities}
-            hitSlop={8}
-            style={({ pressed }) => [{
-              alignItems: 'center', paddingVertical: 12, marginTop: 4,
-              borderRadius: 12, borderWidth: 1, borderColor: c.line,
-              backgroundColor: 'transparent', opacity: pressed ? 0.85 : 1,
-            }]}
-          >
-            <TText style={{ fontSize: 13, color: c.ink2 }}>
-              See all {activities.length} runs  ›
-            </TText>
-          </Pressable>
-        )}
-      </View>
     </>
   );
 }
 
-// PRD §6.2 — a rotating recap card. Pick one of several candidate facts
-// based on the day, so it stays stable through a session and rotates day
-// to day. Surfaces what's most interesting from real data — silently hides
-// when no fact is meaningful enough to show.
-function RecapCard({ activities, earned }: { activities: Activity[]; earned: CatalogStamp[] }) {
+// Perforation — the postal-perforation motif from .impeccable.md, used as
+// a quiet section divider. A row of 1px dots spaced ~6px apart. Reads as
+// "page tear-line" rather than a heavy hairline divider. Uses ink at low
+// opacity so it sits firmly behind the type.
+function Perforation() {
+  const c = useColors();
+  const dotCount = 36;
+  return (
+    <View style={{ paddingHorizontal: 20, paddingVertical: 22 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {Array.from({ length: dotCount }).map((_, i) => (
+          <View key={i} style={{ width: 2, height: 2, borderRadius: 1, backgroundColor: c.ink, opacity: 0.18 }} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// Missing-runs banner — one quiet inline line, not a bordered card. Solar
+// dot + text, tappable. Earns the solar pop because it's an actionable
+// signal ("a run is waiting") not chrome.
+function MissingRunsLine({ count, onPress }: { count: number; onPress: () => void }) {
+  const c = useColors();
+  const label = count === 1
+    ? '1 run in Apple Health isn’t imported yet'
+    : `${count} runs in Apple Health aren’t imported yet`;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel="Review and import HealthKit runs"
+      style={({ pressed }) => [{
+        marginHorizontal: 20, marginTop: 6, paddingVertical: 10,
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        opacity: pressed ? 0.6 : 1,
+      }]}
+    >
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.accent }} />
+      <TText style={{ flex: 1, fontSize: 12, color: c.ink2 }}>{label}</TText>
+      <TText variant="mono" style={{ fontSize: 11, color: c.accent }}>REVIEW →</TText>
+    </Pressable>
+  );
+}
+
+// WeekLedger — replaces the boxed WeekSummary card. One inline serif italic
+// number plus a quiet mono detail line. No card backdrop, no border — the
+// page is the surface, the type IS the chart.
+function WeekLedger({ stats }: { stats: WeekStats }) {
+  const c = useColors();
+  const { units } = useAppState();
+  const positive = stats.vsLastKm >= 0;
+  const deltaTone = positive ? c.moss : c.ink3;
+  const deltaSign = positive ? '+' : '−';
+  const deltaMag = Math.abs(stats.vsLastKm).toFixed(1);
+  return (
+    <View style={{ paddingHorizontal: 20 }}>
+      <Eyebrow style={{ color: c.ink3 }}>THIS WEEK</Eyebrow>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 }}>
+        <TText variant="monoMedium" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1, color: c.ink }}>
+          {fmtDist(stats.totalKm, units)}
+        </TText>
+        <TText style={{ fontSize: 13, color: c.ink3, marginLeft: 5 }}>{distUnit(units)}</TText>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 6 }}>
+        <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{stats.runs} runs</TText>
+        <Sep />
+        <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>{fmtTime(stats.totalSec)}</TText>
+        <Sep />
+        <TText variant="mono" style={{ fontSize: 11, color: deltaTone }}>
+          {deltaSign}{deltaMag} {distUnit(units)} vs last
+        </TText>
+      </View>
+    </View>
+  );
+}
+
+// RecapLine — single inline serif-and-italic recap, no card. Quieter than
+// the previous boxed RecapCard, so it reads as continuous page-flow.
+function RecapLine({ activities, earned }: { activities: Activity[]; earned: CatalogStamp[] }) {
   const c = useColors();
   const { units } = useAppState();
   const fact = pickRecapFact(activities, earned, units);
   if (!fact) return null;
   return (
-    <>
-      <SectionHeader title="Recap" />
-      <View style={{ paddingHorizontal: 20 }}>
-        <View
-          style={{
-            backgroundColor: c.paper2,
-            borderWidth: 1,
-            borderColor: c.line,
-            borderRadius: 14,
-            padding: 16,
-          }}
-        >
-          <Eyebrow style={{ color: c.ink3 }}>{fact.eyebrow}</Eyebrow>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4, flexWrap: 'wrap' }}>
-            <TText variant="serif" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.lead}</TText>
-            {fact.italic ? (
-              <TText variant="serifItalic" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.italic}</TText>
-            ) : null}
-            {fact.tail ? (
-              <TText variant="serif" style={{ fontSize: 22, lineHeight: 26, letterSpacing: -0.3, color: c.ink }}>{fact.tail}</TText>
-            ) : null}
-          </View>
-          {fact.detail ? (
-            <TText style={{ fontSize: 12, color: c.ink3, marginTop: 8 }}>{fact.detail}</TText>
-          ) : null}
-        </View>
+    <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
+      <Eyebrow style={{ color: c.ink3 }}>{fact.eyebrow}</Eyebrow>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4, flexWrap: 'wrap' }}>
+        <TText variant="serif" style={{ fontSize: 20, lineHeight: 26, letterSpacing: -0.2, color: c.ink }}>{fact.lead}</TText>
+        {fact.italic ? (
+          <TText variant="serifItalic" style={{ fontSize: 20, lineHeight: 26, letterSpacing: -0.2, color: c.ink }}>{fact.italic}</TText>
+        ) : null}
+        {fact.tail ? (
+          <TText variant="serif" style={{ fontSize: 20, lineHeight: 26, letterSpacing: -0.2, color: c.ink }}>{fact.tail}</TText>
+        ) : null}
       </View>
-    </>
+      {fact.detail ? (
+        <TText style={{ fontSize: 12, color: c.ink3, marginTop: 6 }}>{fact.detail}</TText>
+      ) : null}
+    </View>
   );
 }
 
@@ -359,38 +350,91 @@ function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOp
     .slice(0, 6);
   return (
     <>
-      <SectionHeader
-        title="Recently earned"
-        right={
-          <Pressable onPress={onOpenStamps}>
-            <TText style={{ fontSize: 13, color: c.ink2 }}>See all  ›</TText>
-          </Pressable>
-        }
-      />
+      <View style={{ paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Eyebrow style={{ color: c.ink3 }}>RECENTLY EARNED</Eyebrow>
+        <Pressable onPress={onOpenStamps} hitSlop={6} accessibilityLabel="Open stamps">
+          <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>SEE ALL →</TText>
+        </Pressable>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, gap: 10 }}
       >
         {recent.map((s) => (
           <Pressable
             key={s.id}
             onPress={() => setSharing(s)}
+            accessibilityLabel={`Share ${s.name} stamp`}
             style={({ pressed }) => [{
-              alignItems: 'center', width: 110,
-              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line, borderRadius: 14,
-              paddingVertical: 12, paddingHorizontal: 6,
-              opacity: pressed ? 0.85 : 1,
+              alignItems: 'center', width: 96,
+              opacity: pressed ? 0.7 : 1,
             }]}
           >
-            <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={64} />
-            <TText style={{ fontSize: 11, fontWeight: '500', color: c.ink, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
+            <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={68} />
+            <TText style={{ fontSize: 10.5, color: c.ink2, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
               {s.name}
             </TText>
           </Pressable>
         ))}
       </ScrollView>
       <StampShareModal stamp={sharing} onClose={() => setSharing(null)} />
+    </>
+  );
+}
+
+// RecentRuns — short tail. One tap per row → Activity screen. The per-row
+// share button is gone; share now lives inside the activity detail. Reduces
+// every row to one purpose and lets the list breathe.
+function RecentRuns({
+  activities,
+  onOpenActivity,
+  onOpenAllActivities,
+}: {
+  activities: Activity[];
+  onOpenActivity: (id: string) => void;
+  onOpenAllActivities: () => void;
+}) {
+  const c = useColors();
+  const { units } = useAppState();
+  const rows = activities.slice(0, 5);
+  return (
+    <>
+      <View style={{ paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Eyebrow style={{ color: c.ink3 }}>RECENT RUNS</Eyebrow>
+        {activities.length > 5 && (
+          <Pressable onPress={onOpenAllActivities} hitSlop={6} accessibilityLabel="See all runs">
+            <TText variant="mono" style={{ fontSize: 11, color: c.ink2 }}>SEE ALL →</TText>
+          </Pressable>
+        )}
+      </View>
+      <View style={{ paddingHorizontal: 20, paddingTop: 6 }}>
+        {rows.map((a, idx) => (
+          <Pressable
+            key={a.id}
+            onPress={() => onOpenActivity(a.id)}
+            accessibilityLabel={`Open ${a.title}`}
+            style={({ pressed }) => [{
+              paddingVertical: 12,
+              borderTopWidth: idx === 0 ? 0 : 1,
+              borderTopColor: c.line2,
+              flexDirection: 'row', alignItems: 'baseline', gap: 12,
+              opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ flex: 1 }}>
+              <TText style={{ fontSize: 14, color: c.ink }} numberOfLines={1}>{a.title}</TText>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
+                {a.day.toUpperCase()} · {a.time}
+              </TText>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <TText variant="monoMedium" style={{ fontSize: 15, color: c.ink }}>{fmtDist(a.distance, units)}</TText>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3 }}>{fmtTime(a.seconds)}</TText>
+            </View>
+          </Pressable>
+        ))}
+      </View>
     </>
   );
 }
@@ -404,7 +448,7 @@ function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect: () => 
         alignItems: 'flex-start', overflow: 'hidden', position: 'relative',
       }}>
         <View style={{ position: 'absolute', right: -40, top: -40, opacity: 0.12 }}>
-          <SunMark size={200} />
+          <PostmarkMark size={200} color={c.paper} />
         </View>
         <Eyebrow style={{ color: c.accent, marginBottom: 8 }}>{loading ? 'CHECKING…' : 'NO RUNS YET'}</Eyebrow>
         <TText variant="serif" style={{ fontSize: 26, lineHeight: 28, color: c.paper, letterSpacing: -0.4 }}>
@@ -477,28 +521,9 @@ function computeWeekStats(activities: Activity[], _isMi: boolean): WeekStats {
   return { totalKm: thisKm, runs, totalSec, vsLastKm: thisKm - lastKm };
 }
 
-function WeekSummary({ stats }: { stats: WeekStats }) {
+function Sep() {
   const c = useColors();
-  const { units } = useAppState();
-  return (
-    <View style={{ backgroundColor: c.paper2, borderRadius: 14, borderWidth: 1, borderColor: c.line, padding: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <TText variant="monoMedium" style={{ fontSize: 42, lineHeight: 50, letterSpacing: -0.8, color: c.ink }}>
-              {fmtDist(stats.totalKm, units)}
-            </TText>
-            <TText style={{ fontSize: 14, color: c.ink3, marginLeft: 4 }}>{distUnit(units)}</TText>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
-            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>{stats.runs} runs</TText>
-            <TText variant="mono" style={{ fontSize: 12, color: c.ink3 }}>{fmtTime(stats.totalSec)}</TText>
-            <Delta value={stats.vsLastKm} format={(v) => `${v.toFixed(1)} ${distUnit(units)}`} />
-          </View>
-        </View>
-      </View>
-    </View>
-  );
+  return <TText style={{ fontSize: 11, color: c.ink3 }}>·</TText>;
 }
 
 export function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -512,12 +537,17 @@ export function SectionHeader({ title, right }: { title: string; right?: React.R
 
 const POST_RUN_HEIGHT = 380;
 
+// PostRunCard — the run is the artifact. Map backdrop with the route, run
+// title + date as a postmark eyebrow, the headline metric row, and a
+// secondary HR/elev/cal row. The big solar "Create share card" CTA is
+// gone — share is a small icon in the top corner, tap-anywhere-else opens
+// Activity. One purpose per surface.
 function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => void; onShare: () => void }) {
   const c = useColors();
   const { units } = useAppState();
   const { route: realRoute, rawLatLng: realRawLatLng } = useActivityStreams(run.id);
   return (
-    <Pressable onPress={onOpen} style={({ pressed }) => [{ borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, opacity: pressed ? 0.95 : 1 }]}>
+    <Pressable onPress={onOpen} accessibilityLabel={`Open ${run.title}`} style={({ pressed }) => [{ borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, opacity: pressed ? 0.95 : 1 }]}>
       <View style={{ position: 'relative', height: POST_RUN_HEIGHT }}>
         <View style={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
           <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
@@ -530,7 +560,7 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
 
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 18 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
               <Eyebrow style={{ color: c.accent, marginBottom: 4 }}>{run.day.toUpperCase()} · {run.time}</Eyebrow>
               <TText variant="serif" style={{ fontSize: 22, lineHeight: 24, color: c.paper, letterSpacing: -0.4 }}>{run.title}</TText>
               {!!run.place && run.place !== '—' && (
@@ -540,6 +570,20 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
                 </View>
               )}
             </View>
+            <Pressable
+              onPress={(e) => { e.stopPropagation(); onShare(); }}
+              accessibilityLabel={`Open share card editor for ${run.title}`}
+              hitSlop={10}
+              style={({ pressed }) => [{
+                width: 38, height: 38, borderRadius: 12,
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: 'rgba(243,237,226,0.18)',
+                backgroundColor: 'rgba(14,13,11,0.45)',
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Icon.share size={15} color={c.paper} />
+            </Pressable>
           </View>
 
           <View style={{ flex: 1 }} />
@@ -591,18 +635,6 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
               )}
             </View>
           )}
-
-          <Pressable
-            onPress={(e) => { e.stopPropagation(); onShare(); }}
-            style={({ pressed }) => [{
-              marginTop: 14, height: 46, borderRadius: 12, backgroundColor: c.accent,
-              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
-              opacity: pressed ? 0.85 : 1
-            }]}
-          >
-            <Icon.share size={16} color="#fff" />
-            <TText style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Create share card</TText>
-          </Pressable>
         </View>
       </View>
     </Pressable>
