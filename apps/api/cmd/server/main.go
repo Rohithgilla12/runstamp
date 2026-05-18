@@ -57,7 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL, log)
 	if err != nil {
 		log.Error("db pool failed", "err", err)
 		os.Exit(1)

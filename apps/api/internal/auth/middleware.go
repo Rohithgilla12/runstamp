@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
 )
 
 type contextKey struct{}
@@ -32,7 +35,9 @@ func RequireFirebaseAuth(verifier *Verifier, log *slog.Logger) func(http.Handler
 				return
 			}
 
+			authStart := time.Now()
 			vt, err := verifier.Verify(r.Context(), token)
+			middleware.TimingsFromContext(r.Context()).AddAuth(time.Since(authStart))
 			if err != nil {
 				log.DebugContext(r.Context(), "firebase auth middleware: token rejected", "err", err)
 				writeAuthError(w, http.StatusUnauthorized, "invalid token")
