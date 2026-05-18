@@ -1,54 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <g id="shadow" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 8 132 L 60 38 L 96 90 L 138 30 L 192 118"/>
-    <!-- Mountain shading lines -->
-    <path d="M 50 60 L 60 75 M 55 50 L 60 60" stroke-width="1.2"/>
-    <path d="M 130 50 L 120 70 M 138 45 L 128 65" stroke-width="1.2"/>
-    <path d="M 30 110 L 68 80 L 84 96 L 106 76 L 132 100 L 168 76 L 186 100"/>
-    <line x1="6" y1="172" x2="194" y2="172"/>
+    <!-- Detailed jagged mountain range in the back -->
+    <path d="M 4 120 L 30 70 L 45 85 L 70 30 L 95 65 L 110 50 L 140 90 L 165 40 L 196 110"/>
+    <path d="M 20 120 L 50 80 L 65 95 L 90 50 L 115 80 L 140 60 L 170 100 M 180 120 L 190 100" stroke-width="1.5"/>
+    
+    <!-- Mountain ridge shading using dense diagonal hatching -->
+    <path d="M 28 75 L 35 90 M 32 75 L 40 90 M 68 35 L 75 55 M 72 35 L 80 55 M 76 35 L 85 55 M 108 55 L 115 70 M 112 55 L 120 70 M 162 45 L 170 65 M 166 45 L 175 65" stroke-width="1.2"/>
   </g>
 
   <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="60" y="158" width="80" height="14"/>
-    <rect x="68" y="146" width="64" height="12"/>
-    <rect x="76" y="134" width="48" height="12"/>
+    <line x1="20" y1="180" x2="180" y2="180"/>
+    <line x1="30" y1="172" x2="170" y2="172"/>
+    <line x1="40" y1="164" x2="160" y2="164"/>
     
-    <!-- Base step shading -->
-    <line x1="62" y1="165" x2="138" y2="165" stroke-width="1"/>
-    <line x1="70" y1="152" x2="130" y2="152" stroke-width="1"/>
-    <line x1="78" y1="140" x2="122" y2="140" stroke-width="1"/>
+    <!-- Plinth block -->
+    <rect x="50" y="150" width="100" height="14"/>
+    <!-- Plinth block detailed shading -->
+    <path d="M 55 164 L 55 150 M 60 164 L 60 150 M 140 164 L 140 150 M 145 164 L 145 150" stroke-width="1.2"/>
 
-    <path d="M 78 134 Q 100 78 122 134"/>
-    <!-- Dome curve shading -->
-    <path d="M 85 134 Q 100 88 115 134" stroke-width="1.2"/>
-    <path d="M 92 134 Q 100 98 108 134" stroke-width="1.2"/>
+    <!-- Dome of Stupa (Anda) -->
+    <path d="M 60 150 Q 60 90 100 90 Q 140 90 140 150"/>
+    <!-- Dome curvature shading -->
+    <path d="M 70 150 Q 70 100 100 100 Q 130 100 130 150" stroke-width="1.2"/>
+    <path d="M 80 150 Q 80 110 100 110 Q 120 110 120 150" stroke-width="1.2"/>
+    <path d="M 90 150 Q 90 120 100 120 Q 110 120 110 150" stroke-width="1.2"/>
 
-    <rect x="92" y="76" width="16" height="12"/>
-    <!-- Harmika eyes (often drawn on stupas) -->
-    <circle cx="96" cy="82" r="1" fill="currentColor"/>
-    <circle cx="104" cy="82" r="1" fill="currentColor"/>
+    <!-- Harmika (Square top box) -->
+    <rect x="86" y="70" width="28" height="20"/>
+    <line x1="86" y1="75" x2="114" y2="75"/>
+    <line x1="86" y1="80" x2="114" y2="80"/>
+    <!-- Eyes of the Stupa -->
+    <circle cx="94" cy="80" r="2" fill="currentColor"/>
+    <circle cx="106" cy="80" r="2" fill="currentColor"/>
+    <path d="M 94 76 Q 94 74 96 74 M 106 76 Q 106 74 104 74" stroke-width="1.2"/>
 
-    <path d="M 92 76 L 100 50 L 108 76"/>
-    <line x1="94" y1="68" x2="106" y2="68"/>
-    <line x1="96" y1="60" x2="104" y2="60"/>
-
-    <line x1="92" y1="50" x2="108" y2="50"/>
-    <line x1="94" y1="44" x2="106" y2="44"/>
-    <line x1="96" y1="38" x2="104" y2="38"/>
+    <!-- Spire (Sokushin) -->
+    <path d="M 90 70 L 100 20 L 110 70"/>
+    <line x1="92" y1="60" x2="108" y2="60"/>
+    <line x1="94" y1="50" x2="106" y2="50"/>
+    <line x1="96" y1="40" x2="104" y2="40"/>
+    <line x1="98" y1="30" x2="102" y2="30"/>
   </g>
 
   <g id="accent" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 18 26 Q 80 48 138 30 Q 168 22 188 38"/>
-    <!-- Five small flags -->
-    <path d="M 36 32 L 36 42 L 44 38 Z" fill="currentColor"/>
-    <path d="M 64 40 L 64 50 L 72 46 Z"/>
-    <path d="M 96 42 L 96 52 L 104 48 Z" fill="currentColor"/>
-    <path d="M 128 36 L 128 46 L 136 42 Z"/>
-    <path d="M 160 30 L 160 40 L 168 36 Z" fill="currentColor"/>
+    <!-- Prayer flags draped from the spire down to the ground -->
+    <path d="M 100 45 Q 60 70 20 160"/>
+    <path d="M 100 45 Q 140 70 180 160"/>
+    <!-- Individual flags (triangles) -->
+    <path d="M 84 65 L 75 75 L 80 82 Z"/>
+    <path d="M 68 85 L 55 95 L 62 105 Z"/>
+    <path d="M 50 110 L 35 120 L 45 132 Z"/>
+    <path d="M 116 65 L 125 75 L 120 82 Z"/>
+    <path d="M 132 85 L 145 95 L 138 105 Z"/>
+    <path d="M 150 110 L 165 120 L 155 132 Z"/>
   </g>
 
   <g id="foil" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="100" y1="38" x2="100" y2="30"/>
-    <circle cx="100" cy="28" r="1.8" fill="currentColor" stroke="none"/>
+    <!-- Spire tip / pinnacle -->
+    <circle cx="100" cy="16" r="3" fill="currentColor" stroke="none"/>
   </g>
 </svg>

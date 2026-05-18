@@ -1,42 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <g id="shadow" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 26 188 Q 100 196 174 188"/>
-    <path d="M 32 184 Q 100 190 168 184"/>
-    <!-- Water reflections -->
-    <line x1="70" y1="192" x2="130" y2="192" stroke-width="1.2"/>
-    <line x1="85" y1="196" x2="115" y2="196" stroke-width="1.2"/>
+    <!-- Serene reflecting pools -->
+    <path d="M 10 188 Q 55 196 100 188 T 190 188"/>
+    <path d="M 20 180 Q 55 186 100 180 T 180 180" stroke-width="1.5"/>
+    <path d="M 40 194 Q 70 198 100 194 T 160 194" stroke-width="1.2"/>
   </g>
 
   <g id="ink" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="46" y1="174" x2="154" y2="174"/>
-    <line x1="38" y1="180" x2="162" y2="180"/>
+    <!-- Elevated Lotus Base -->
+    <rect x="40" y="168" width="120" height="8"/>
+    <rect x="30" y="176" width="140" height="4"/>
 
-    <path d="M 22 168 Q 8 110 36 60 Q 64 32 100 28"/>
-    <path d="M 178 168 Q 192 110 164 60 Q 136 32 100 28"/>
-    <path d="M 50 174 Q 38 110 60 60 Q 80 36 100 28"/>
-    <path d="M 150 174 Q 162 110 140 60 Q 120 36 100 28"/>
-    <path d="M 76 174 Q 70 110 86 56 Q 94 32 100 28"/>
-    <path d="M 124 174 Q 130 110 114 56 Q 106 32 100 28"/>
+    <!-- Lotus Petals (Back layer) -->
+    <path d="M 16 168 Q 10 100 50 50 Q 75 30 100 24"/>
+    <path d="M 184 168 Q 190 100 150 50 Q 125 30 100 24"/>
+    <!-- Hatching on back petals -->
+    <path d="M 30 160 Q 25 110 55 65" stroke-width="1.2"/>
+    <path d="M 170 160 Q 175 110 145 65" stroke-width="1.2"/>
 
-    <!-- Woodcut shading on petals -->
-    <path d="M 38 160 Q 30 120 50 75" stroke-width="1"/>
-    <path d="M 162 160 Q 170 120 150 75" stroke-width="1"/>
-    <path d="M 64 165 Q 56 120 75 70" stroke-width="1"/>
-    <path d="M 136 165 Q 144 120 125 70" stroke-width="1"/>
+    <!-- Mid layer petals -->
+    <path d="M 40 168 Q 30 90 70 45 Q 85 30 100 24"/>
+    <path d="M 160 168 Q 170 90 130 45 Q 115 30 100 24"/>
+    <path d="M 52 168 Q 45 100 75 60" stroke-width="1.2"/>
+    <path d="M 148 168 Q 155 100 125 60" stroke-width="1.2"/>
 
-    <line x1="100" y1="174" x2="100" y2="32"/>
-    <path d="M 92 165 L 92 100" stroke-width="1"/>
-    <path d="M 108 165 L 108 100" stroke-width="1"/>
+    <!-- Front layer petals -->
+    <path d="M 64 168 Q 60 100 90 50 Q 96 30 100 24"/>
+    <path d="M 136 168 Q 140 100 110 50 Q 104 30 100 24"/>
+    <path d="M 76 168 Q 75 110 95 65" stroke-width="1.5"/>
+    <path d="M 124 168 Q 125 110 105 65" stroke-width="1.5"/>
+
+    <!-- Center core and ribbing -->
+    <path d="M 100 168 L 100 24"/>
+    <path d="M 90 168 Q 95 100 100 40" stroke-width="1.5"/>
+    <path d="M 110 168 Q 105 100 100 40" stroke-width="1.5"/>
   </g>
 
   <g id="accent" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Highlight edges on petals -->
-    <path d="M 80 174 Q 74 110 90 56 Q 96 32 100 28" stroke-width="1.2"/>
-    <path d="M 120 174 Q 126 110 110 56 Q 104 32 100 28" stroke-width="1.2"/>
+    <!-- Distinctive petal tips / edges -->
+    <path d="M 50 50 Q 75 30 100 24" stroke-width="2"/>
+    <path d="M 150 50 Q 125 30 100 24" stroke-width="2"/>
+    <path d="M 70 45 Q 85 30 100 24" stroke-width="2"/>
+    <path d="M 130 45 Q 115 30 100 24" stroke-width="2"/>
   </g>
 
   <g id="foil" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="100" y1="28" x2="100" y2="18"/>
-    <circle cx="100" cy="16" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="100" cy="18" r="3" fill="currentColor" stroke="none"/>
   </g>
 </svg>
