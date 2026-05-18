@@ -16,6 +16,7 @@ import { Button, Card, Chip } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { RouteMap } from '../design/RouteMap';
 import { StreamChart } from '../design/charts';
+import { parseValueStream } from '../analytics/streamData';
 import type { RootStackProps } from '../nav/types';
 
 type Tab = 'splits' | 'hr' | 'pace';
@@ -57,8 +58,8 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
       run.title,
     );
   }, [run, getIdToken, refreshActivities]);
-  const liveHr = parseNumberStream(streams.heartrate?.data);
-  const liveSpeed = parseNumberStream(streams.speed?.data);
+  const liveHr = parseValueStream(streams.heartrate?.data);
+  const liveSpeed = parseValueStream(streams.speed?.data);
   // Speed is m/s. Convert to seconds-per-km for the pace chart so the
   // y-axis means "slower = worse" like a runner expects.
   const livePace = liveSpeed ? liveSpeed.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
@@ -320,13 +321,3 @@ function SourceCard({ source }: { source?: 'strava' | 'apple_health' | 'manual' 
   );
 }
 
-// Strava streams arrive as `number[]`. Sanity-check the shape and drop
-// non-finite values so the chart doesn't choke on a stray null.
-function parseNumberStream(data: unknown): number[] | null {
-  if (!Array.isArray(data) || data.length === 0) return null;
-  const out: number[] = [];
-  for (const v of data) {
-    if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
-  }
-  return out.length > 0 ? out : null;
-}

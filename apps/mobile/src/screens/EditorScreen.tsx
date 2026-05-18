@@ -19,6 +19,7 @@ import { RouteMap } from '../design/RouteMap';
 import { StreamChart } from '../design/charts';
 import { useActivityStreams } from '../state/useActivityStreams';
 import { useActivityDetail } from '../state/useActivityDetail';
+import { parseValueStream } from '../analytics/streamData';
 import type { Point, Split } from '../data/sample';
 import { PostageTemplate } from '../design/templates/PostageTemplate';
 import { PostmarkTemplate } from '../design/templates/PostmarkTemplate';
@@ -139,8 +140,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   // useActivityStreams gracefully no-ops when id is null.
   const { route: realRoute, rawLatLng: realRawLatLng, streams: realStreams } = useActivityStreams(run?.id ?? null);
   const { splits: realSplits } = useActivityDetail(run?.id ?? null);
-  const realHr = parseStream(realStreams.heartrate?.data);
-  const realSpeed = parseStream(realStreams.speed?.data);
+  const realHr = parseValueStream(realStreams.heartrate?.data);
+  const realSpeed = parseValueStream(realStreams.speed?.data);
   // Speed is m/s; convert to seconds-per-km so the pace sparkline reads
   // "slower=worse" like a runner expects.
   const realPace = realSpeed ? realSpeed.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
@@ -1025,13 +1026,3 @@ function DraggableSticker({
   );
 }
 
-// Sanity-strip a Strava stream — same as the helper in ActivityScreen.
-// Returns null when the array is empty or all-NaN.
-function parseStream(data: unknown): number[] | null {
-  if (!Array.isArray(data) || data.length === 0) return null;
-  const out: number[] = [];
-  for (const v of data) {
-    if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
-  }
-  return out.length > 1 ? out : null;
-}
