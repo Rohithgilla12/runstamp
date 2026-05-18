@@ -150,7 +150,12 @@ const config: ExpoConfig = {
     // on RNFB* targets. Required because @react-native-firebase modules
     // include <React/...> headers non-modularly, which clang rejects
     // under static framework linkage.
-    './plugins/withFirebaseStaticFrameworks'
+    './plugins/withFirebaseStaticFrameworks',
+    // Native bottom tabs — wraps UITabBarController on iOS (gets iOS 26
+    // Liquid Glass automatically) and BottomNavigationView on Android.
+    // Required plugin entry so the autolinking picks up the iOS pod and
+    // the Android module.
+    'react-native-bottom-tabs'
   ],
   // ONLY public values. Firebase no longer lives here — the plist is the
   // source of truth. The web client id is public per Google's OAuth model.
