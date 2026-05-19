@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 import { TILE_STYLES, tileUrl, type TileStyle } from '../services/mapTiles';
 import type { TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +19,9 @@ import { backfillPlaces } from '../services/places';
 import { deleteAccount } from '../services/account';
 import { useAccount } from '../state/useAccount';
 import { usePrivacyZones } from '../state/usePrivacyZones';
+import { useStamps } from '../state/useStamps';
 import type { Activity } from '../data/sample';
+import type { DefaultSurface } from '../state/AppState';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { Card } from '../design/atoms';
@@ -31,13 +33,53 @@ import type { TabProps } from '../nav/types';
 
 type Sub = 'main' | 'connections' | 'privacy';
 
+// Default-share cycle. Tapping the Settings row rotates through these.
+// Order is sized by what most runners reach for first (Story → square → feed).
+const SURFACES: DefaultSurface[] = ['9:16', '1:1', '4:5'];
+const SURFACE_LABEL: Record<DefaultSurface, string> = {
+  '9:16': 'Story',
+  '1:1':  'Square',
+  '4:5':  'Feed',
+};
+function nextSurface(s: DefaultSurface): DefaultSurface {
+  const i = SURFACES.indexOf(s);
+  return SURFACES[(i + 1) % SURFACES.length];
+}
+
 export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { units, dark, setDark, setHasOnboarded, tileStyle, setTileStyle } = useAppState();
+  const { units, setUnits, dark, setDark, setHasOnboarded, tileStyle, setTileStyle, defaultSurface, setDefaultSurface } = useAppState();
   const { signOut, user } = useAuth();
   const { activities } = useActivities();
+  const { earned } = useStamps();
   const { me, save: saveAccount } = useAccount();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // JSON-only for now. GPX zip needs each activity's stream — that's a
+      // backend endpoint (PRD §6.9), which is a follow-up. This export is
+      // honest at this layer: the JSON contains the data Runstamp has
+      // *on the client*, so the user can take it elsewhere today.
+      const payload = {
+        app: 'Runstamp',
+        version: '0.1.0',
+        exportedAt: new Date().toISOString(),
+        user: { firebaseUid: user?.uid, email: user?.email ?? null },
+        activities,
+        stamps: earned,
+      };
+      const json = JSON.stringify(payload, null, 2);
+      await Share.share({ message: json, title: 'Runstamp export' });
+    } catch (e) {
+      Alert.alert('Couldn’t export', e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, activities, earned, user]);
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [sub, setSub] = useState<Sub>('main');
   const [hrMax, setHrMax] = useState<string>('');
@@ -197,8 +239,19 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
           <Row icon={<Icon.spark size={18} color={c.accent} />} label="Stamps collection" value="View catalog" onPress={() => rootNav.navigate('Stamps')} />
           <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value="Strava · Apple Health" onPress={() => setSub('connections')} />
           <Row icon={<Icon.privacy size={18} color={c.ink2} />} label="Privacy" value="200 m blur · on" onPress={() => setSub('privacy')} />
-          <Row icon={<Icon.ruler size={18} color={c.ink2} />} label="Units" value={units === 'km' ? 'Metric' : 'Imperial'} chevron />
-          <Row icon={<Icon.cam size={18} color={c.ink2} />} label="Default share" value="9:16 · Magazine" chevron isLast />
+          <Row
+            icon={<Icon.ruler size={18} color={c.ink2} />}
+            label="Units"
+            value={units === 'km' ? 'Metric' : 'Imperial'}
+            onPress={() => setUnits(units === 'km' ? 'mi' : 'km')}
+          />
+          <Row
+            icon={<Icon.cam size={18} color={c.ink2} />}
+            label="Default share"
+            value={`${defaultSurface} · ${SURFACE_LABEL[defaultSurface]}`}
+            onPress={() => setDefaultSurface(nextSurface(defaultSurface))}
+            isLast
+          />
         </Card>
       </View>
 
@@ -227,7 +280,12 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
       <SectionHeader title="Data" />
       <View style={{ paddingHorizontal: 14 }}>
         <Card padded={false}>
-          <Row icon={<Icon.download size={18} color={c.ink2} />} label="Export data" value="GPX zip · JSON" chevron />
+          <Row
+            icon={<Icon.download size={18} color={c.ink2} />}
+            label="Export data"
+            value={exporting ? 'Preparing…' : 'JSON · share'}
+            onPress={handleExport}
+          />
           <Row icon={<Icon.github size={18} color={c.ink2} />} label="View source" value="github.com/gilla/runstamp" chevron />
           <Row icon={<Icon.bolt size={18} color={c.ink2} />} label="Replay onboarding" onPress={() => setHasOnboarded(false)} chevron />
           <Row icon={<Icon.user size={18} color={c.ink2} />} label="Sign out" onPress={signOut} chevron isLast />

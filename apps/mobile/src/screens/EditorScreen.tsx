@@ -142,7 +142,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   // "slower=worse" like a runner expects.
   const realPace = realSpeed ? realSpeed.map((v) => (v > 0.1 ? 1000 / v : 0)) : null;
 
-  const [surface, setSurface] = useState<Surface>('9:16');
+  const { defaultSurface } = useAppState();
+  const [surface, setSurface] = useState<Surface>(defaultSurface);
   const [bg, setBg] = useState<Background>('map');
   const [template, setTemplate] = useState<Template>('stickers');
   const [tab, setTab] = useState<TabKey>('templates');
