@@ -359,6 +359,110 @@ func (r *Repository) flipDupeOfTx(ctx context.Context, tx pgx.Tx, existingID, ca
 	return nil
 }
 
+// DupeRef is a thin projection of a duplicate row — just enough for the
+// mobile client to render "also imported from <source> at <time>" and offer
+// a switch. The full row is reachable via the canonical → flip → re-fetch
+// path if needed.
+type DupeRef struct {
+	ID         string
+	Source     string
+	StartedAt  time.Time
+	DistanceM  float64
+	ElapsedSec int
+}
+
+// ListDupesOfCanonical returns every row marked as a duplicate of the given
+// canonical activity, scoped to the owning user. Usually returns 0 or 1 rows
+// since we only ingest from two sources today.
+func (r *Repository) ListDupesOfCanonical(ctx context.Context, userID, canonicalID string) ([]DupeRef, error) {
+	rows, err := r.pool.Query(ctx, `
+SELECT id, source, started_at, distance_m, elapsed_seconds
+FROM activities
+WHERE user_id = $1 AND dupe_of = $2
+ORDER BY started_at`, userID, canonicalID)
+	if err != nil {
+		return nil, fmt.Errorf("activities: list dupes of canonical: %w", err)
+	}
+	defer rows.Close()
+	var out []DupeRef
+	for rows.Next() {
+		var d DupeRef
+		if err := rows.Scan(&d.ID, &d.Source, &d.StartedAt, &d.DistanceM, &d.ElapsedSec); err != nil {
+			return nil, fmt.Errorf("activities: scan dupe ref: %w", err)
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// SwapCanonical promotes a duplicate to canonical and demotes the current
+// canonical to dupe_of = <new canonical>. Both rows must belong to the same
+// user. The operation runs in a single transaction so concurrent reads never
+// see two canonicals or zero canonicals for the same run.
+//
+// Returns ErrNotFound if either id is missing or owned by a different user.
+// No-op (returns nil) if newCanonicalID is already canonical.
+func (r *Repository) SwapCanonical(ctx context.Context, userID, newCanonicalID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("activities: swap canonical: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Lock the target row and its current canonical sibling. FOR UPDATE so a
+	// racing Strava ingest can't flip dupe_of out from under us mid-swap.
+	var targetUserID string
+	var targetDupeOf *string
+	err = tx.QueryRow(ctx,
+		`SELECT user_id, dupe_of FROM activities WHERE id = $1 FOR UPDATE`,
+		newCanonicalID).Scan(&targetUserID, &targetDupeOf)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("activities: swap canonical: read target: %w", err)
+	}
+	if targetUserID != userID {
+		// Don't leak existence to other users.
+		return ErrNotFound
+	}
+	if targetDupeOf == nil {
+		// Already canonical — nothing to do.
+		return tx.Commit(ctx)
+	}
+
+	currentCanonicalID := *targetDupeOf
+	// Lock the current canonical too. If it was deleted between the dupe_of
+	// pointer and now, fall through to a clean promotion (just clear dupe_of).
+	var canonicalUserID string
+	err = tx.QueryRow(ctx,
+		`SELECT user_id FROM activities WHERE id = $1 FOR UPDATE`,
+		currentCanonicalID).Scan(&canonicalUserID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		// Stale pointer. Just promote the dupe.
+	case err != nil:
+		return fmt.Errorf("activities: swap canonical: read current: %w", err)
+	case canonicalUserID != userID:
+		// This would mean a fk violation — defensive bail.
+		return ErrNotFound
+	default:
+		// Demote the existing canonical to point at the new one.
+		if _, err := tx.Exec(ctx,
+			`UPDATE activities SET dupe_of = $1 WHERE id = $2`,
+			newCanonicalID, currentCanonicalID); err != nil {
+			return fmt.Errorf("activities: swap canonical: demote: %w", err)
+		}
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE activities SET dupe_of = NULL WHERE id = $1`,
+		newCanonicalID); err != nil {
+		return fmt.Errorf("activities: swap canonical: promote: %w", err)
+	}
+	return tx.Commit(ctx)
+}
+
 // ListForUser returns canonical activities (dupe_of IS NULL) for a user,
 // most-recent first, up to limit rows. Uses the lean SELECT — drops raw,
 // splits, notes, and other fields the list response doesn't render. For

@@ -5,9 +5,10 @@
 // without paying the list-payload cost for every other run.
 
 import { useCallback, useEffect, useState } from 'react';
-import { getActivityDetail, type ApiActivityDetail } from '../services/activities';
+import { canonicalizeActivity, getActivityDetail, type ApiActivityDetail } from '../services/activities';
 import type { Split } from '../data/sample';
 import { useAuth } from './AuthContext';
+import { useActivities } from './useActivities';
 
 interface UseActivityDetailState {
   detail: ApiActivityDetail | null;
@@ -15,10 +16,19 @@ interface UseActivityDetailState {
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
+  /**
+   * Promote a sibling dupe to canonical (PRD §6.8). Pass the id of the
+   * dupe row — usually one of `detail.relatedDupes`. Returns the newly
+   * canonicalized detail so callers can re-key navigation if needed. Also
+   * refreshes the shared activities list so the list view picks up the
+   * swap without a manual pull-to-refresh.
+   */
+  canonicalize: (newCanonicalId: string) => Promise<ApiActivityDetail | null>;
 }
 
 export function useActivityDetail(activityId: string | null): UseActivityDetailState {
   const { user, getIdToken } = useAuth();
+  const { refresh: refreshActivities } = useActivities();
   const [detail, setDetail] = useState<ApiActivityDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -45,6 +55,22 @@ export function useActivityDetail(activityId: string | null): UseActivityDetailS
     fetchOnce();
   }, [fetchOnce]);
 
+  const canonicalize = useCallback(async (newCanonicalId: string) => {
+    if (!user) return null;
+    try {
+      const idToken = await getIdToken();
+      const next = await canonicalizeActivity(newCanonicalId, idToken);
+      setDetail(next);
+      // The list view caches the old canonical row; pull fresh so the swap
+      // is visible everywhere.
+      refreshActivities().catch(() => {/* non-fatal */});
+      return next;
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+      return null;
+    }
+  }, [user, getIdToken, refreshActivities]);
+
   // Splits land from two ingestion paths with different field names:
   //   - Apple Health sync: { index, distanceM, durationSec, avgHr }
   //   - Legacy / mobile-shape:                       { k, sec, hr }
@@ -53,7 +79,7 @@ export function useActivityDetail(activityId: string | null): UseActivityDetailS
   // layer.
   const splits = detail?.splits != null ? normaliseSplits(detail.splits) : null;
 
-  return { detail, splits, loading, error, refresh: fetchOnce };
+  return { detail, splits, loading, error, refresh: fetchOnce, canonicalize };
 }
 
 function normaliseSplits(raw: unknown): Split[] | null {

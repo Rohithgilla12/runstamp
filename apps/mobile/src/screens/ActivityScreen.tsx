@@ -30,7 +30,7 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
   const { activities, loading, refresh: refreshActivities } = useActivities();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   const { route: realRoute, rawLatLng: realRawLatLng, streams } = useActivityStreams(run?.id ?? null);
-  const { splits: liveSplits } = useActivityDetail(run?.id ?? null);
+  const { detail, splits: liveSplits, canonicalize } = useActivityDetail(run?.id ?? null);
   const { getIdToken } = useAuth();
   const handleRename = useCallback(() => {
     if (!run) return;
@@ -257,6 +257,32 @@ export function ActivityScreen({ route, navigation }: RootStackProps<'Activity'>
         <View style={{ paddingTop: 20 }}>
           <Eyebrow style={{ marginBottom: 8 }}>SOURCE</Eyebrow>
           <SourceCard source={run.source} />
+          {detail?.relatedDupes && detail.relatedDupes.length > 0 && (
+            <SwitchSourceRow
+              dupes={detail.relatedDupes}
+              onSwitch={async (dupeId) => {
+                Alert.alert(
+                  'Switch source',
+                  'Use the other version as the canonical record for this run? Stamps and stats will recompute from it.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Switch',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const next = await canonicalize(dupeId);
+                        if (next) {
+                          // The newly-canonical row has a different id, so
+                          // re-point the screen at it.
+                          navigation.setParams({ id: next.id });
+                        }
+                      },
+                    },
+                  ],
+                );
+              }}
+            />
+          )}
         </View>
 
         <View style={{ paddingTop: 20 }}>
@@ -350,3 +376,59 @@ function SourceCard({ source }: { source?: 'strava' | 'apple_health' | 'manual' 
   );
 }
 
+// SwitchSourceRow — surfaces the other-source dupe of this run and offers
+// to promote it (PRD §6.8). Quiet ledger-style row, single tap; the parent
+// confirms via Alert before flipping. We rarely render more than one dupe
+// row in practice (two sources today), but loop so this generalises if
+// Health Connect lands.
+function SwitchSourceRow({
+  dupes,
+  onSwitch,
+}: {
+  dupes: { id: string; source: string; startedAt: string }[];
+  onSwitch: (dupeId: string) => void;
+}) {
+  const c = useColors();
+  return (
+    <View style={{ marginTop: 10 }}>
+      {dupes.map((d, i) => {
+        const label = d.source === 'strava'
+          ? 'Strava'
+          : d.source === 'apple_health'
+            ? 'Apple Health'
+            : d.source;
+        return (
+          <Pressable
+            key={d.id}
+            onPress={() => onSwitch(d.id)}
+            accessibilityLabel={`Switch canonical source to ${label}`}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 10,
+              backgroundColor: c.paper2,
+              borderWidth: 1,
+              borderColor: c.line,
+              marginTop: i === 0 ? 0 : 6,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.accent }} />
+            <View style={{ flex: 1 }}>
+              <TText style={{ fontSize: 12, color: c.ink }}>
+                Also imported from <TText style={{ fontWeight: '600', color: c.ink }}>{label}</TText>
+              </TText>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2 }}>
+                TAP TO USE THAT VERSION
+              </TText>
+            </View>
+            <TText variant="mono" style={{ fontSize: 11, color: c.accent }}>SWITCH →</TText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}

@@ -113,6 +113,19 @@ type activityDetailResponse struct {
 	activityResponse
 	Splits *json.RawMessage `json:"splits,omitempty"`
 	Notes  *string          `json:"notes,omitempty"`
+	// RelatedDupes — other-source rows that the dedupe matcher marked as
+	// dupes of this canonical run. Mobile uses these to offer "switch
+	// which version is canonical" (PRD §6.8). Usually 0 or 1 entry since
+	// we only ingest from two sources today.
+	RelatedDupes []dupeRefResponse `json:"relatedDupes,omitempty"`
+}
+
+type dupeRefResponse struct {
+	ID         string  `json:"id"`
+	Source     string  `json:"source"`
+	StartedAt  string  `json:"startedAt"`
+	DistanceM  float64 `json:"distanceMeters"`
+	ElapsedSec int     `json:"elapsedSeconds"`
 }
 
 // Get handles GET /v1/activities/{id}. Returns the full detail row scoped
@@ -157,6 +170,84 @@ func (h *ActivitiesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		activityResponse: toActivityResponse(a),
 		Splits:           a.Splits,
 		Notes:            a.Notes,
+	}
+	// Surface sibling dupes so mobile can offer the "switch source" UX.
+	// Failures here aren't fatal — log + ship the rest of the response.
+	dupes, dErr := h.Activities.Repo().ListDupesOfCanonical(r.Context(), user.ID, a.ID)
+	if dErr != nil {
+		h.Log.Warn("activities get: list dupes", "err", dErr, "activity_id", a.ID)
+	} else {
+		for _, d := range dupes {
+			out.RelatedDupes = append(out.RelatedDupes, dupeRefResponse{
+				ID:         d.ID,
+				Source:     d.Source,
+				StartedAt:  d.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+				DistanceM:  d.DistanceM,
+				ElapsedSec: d.ElapsedSec,
+			})
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// Canonicalize handles POST /v1/activities/{id}/canonicalize — promotes a
+// duplicate row to the canonical version of its run. PRD §6.8 manual
+// override for cases where the automatic Strava-wins rule got it wrong.
+//
+// Idempotent: if {id} is already canonical, returns 200 with the current
+// detail. Otherwise atomically demotes the existing canonical to dupe_of
+// = {id} and clears dupe_of on {id} (see Repository.SwapCanonical).
+func (h *ActivitiesHandler) Canonicalize(w http.ResponseWriter, r *http.Request) {
+	vt, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "missing authentication")
+		return
+	}
+	user, err := h.Users.FindByFirebaseUID(r.Context(), vt.UID)
+	if err != nil || user == nil {
+		writeError(w, http.StatusNotFound, "user not provisioned")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing activity id")
+		return
+	}
+
+	if err := h.Activities.Repo().SwapCanonical(r.Context(), user.ID, id); err != nil {
+		if errors.Is(err, activities.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "activity not found")
+			return
+		}
+		h.Log.Error("activities canonicalize: swap", "err", err, "activity_id", id)
+		writeError(w, http.StatusInternalServerError, "swap failed")
+		return
+	}
+
+	// Return the freshly canonicalized row so the mobile client can swap
+	// state without a separate fetch round-trip.
+	a, err := h.Activities.Repo().FindByID(r.Context(), user.ID, id)
+	if err != nil {
+		h.Log.Error("activities canonicalize: re-read", "err", err, "activity_id", id)
+		writeError(w, http.StatusInternalServerError, "re-read failed")
+		return
+	}
+	out := activityDetailResponse{
+		activityResponse: toActivityResponse(a),
+		Splits:           a.Splits,
+		Notes:            a.Notes,
+	}
+	dupes, dErr := h.Activities.Repo().ListDupesOfCanonical(r.Context(), user.ID, a.ID)
+	if dErr == nil {
+		for _, d := range dupes {
+			out.RelatedDupes = append(out.RelatedDupes, dupeRefResponse{
+				ID:         d.ID,
+				Source:     d.Source,
+				StartedAt:  d.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+				DistanceM:  d.DistanceM,
+				ElapsedSec: d.ElapsedSec,
+			})
+		}
 	}
 	writeJSON(w, http.StatusOK, out)
 }

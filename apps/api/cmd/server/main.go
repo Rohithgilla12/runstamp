@@ -291,6 +291,7 @@ func main() {
 			r.Get("/activities", activitiesHandler.List)
 			r.Get("/activities/{id}", activitiesHandler.Get)
 			r.Patch("/activities/{id}", activitiesHandler.Patch)
+			r.Post("/activities/{id}/canonicalize", activitiesHandler.Canonicalize)
 			r.Get("/activities/{id}/streams", streamsHandler.List)
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)

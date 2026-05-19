@@ -1,5 +1,5 @@
 import type { Split } from '../data/sample';
-import { apiGet } from './api';
+import { apiGet, apiPost } from './api';
 
 export type ActivitySource = 'strava' | 'apple_health' | 'manual';
 
@@ -51,6 +51,17 @@ export function listActivities(
 export interface ApiActivityDetail extends ApiActivity {
   splits?: Split[];
   notes?: string;
+  relatedDupes?: ApiDupeRef[];
+}
+
+// Sibling row marked as a dupe of this canonical activity. PRD §6.8 manual
+// canonical override — mobile uses this to offer "Switch source."
+export interface ApiDupeRef {
+  id: string;
+  source: string;
+  startedAt: string;
+  distanceMeters: number;
+  elapsedSeconds: number;
 }
 
 export function getActivityDetail(
@@ -58,4 +69,13 @@ export function getActivityDetail(
   idToken: string | null,
 ): Promise<ApiActivityDetail> {
   return apiGet<ApiActivityDetail>(`/v1/activities/${encodeURIComponent(id)}`, { idToken });
+}
+
+// Promote a duplicate row to canonical. Returns the freshly canonicalized
+// detail so callers don't need a second fetch.
+export function canonicalizeActivity(
+  id: string,
+  idToken: string | null,
+): Promise<ApiActivityDetail> {
+  return apiPost<ApiActivityDetail>(`/v1/activities/${encodeURIComponent(id)}/canonicalize`, undefined, { idToken });
 }
