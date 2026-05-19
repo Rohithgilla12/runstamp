@@ -120,7 +120,6 @@ function mapApiToActivity(a: ApiActivity): Activity {
     power: a.runningPowerW && a.runningPowerW > 0 ? Math.round(a.runningPowerW) : undefined,
     startLat: typeof a.startLat === 'number' ? a.startLat : undefined,
     startLon: typeof a.startLon === 'number' ? a.startLon : undefined,
-    shoe: '',
     route: route(hashId(a.id), inferRouteKind(distanceKm, a)),
     weather: { t: 22, w: '—', icon: 'clear' },
     kind: inferKind(a, distanceKm),

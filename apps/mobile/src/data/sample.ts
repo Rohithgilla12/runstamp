@@ -57,26 +57,6 @@ export function route(seed: number, kind: RouteKind = 'loop'): Point[] {
   return pts;
 }
 
-export interface Shoe {
-  id: string;
-  brand: string;
-  model: string;
-  color: string;
-  km: number;
-  cap: number;
-  primary: boolean;
-  retired: boolean;
-  since: string;
-  race?: boolean;
-}
-
-export const SHOES: Shoe[] = [
-  { id: 's1', brand: 'Saucony', model: 'Endorphin Speed 4', color: '#e85d2f', km: 312, cap: 600, primary: true,  retired: false, since: '2026-02-10' },
-  { id: 's2', brand: 'ASICS',   model: 'Novablast 4',        color: '#3c6e8c', km: 188, cap: 700, primary: false, retired: false, since: '2026-03-04' },
-  { id: 's3', brand: 'Nike',    model: 'Vaporfly 3',         color: '#d4ff3a', km: 64,  cap: 250, primary: false, retired: false, since: '2026-01-20', race: true },
-  { id: 's4', brand: 'Hoka',    model: 'Clifton 9',          color: '#a89576', km: 612, cap: 700, primary: false, retired: false, since: '2025-09-12' }
-];
-
 export type ActivityKind = 'easy' | 'long' | 'workout' | 'travel' | 'race';
 export interface Split { k: number; sec: number; hr: number }
 export interface Weather { t: number; w: string; icon: 'sun' | 'cloud' | 'rain' | 'fog' | 'clear' }
@@ -109,7 +89,6 @@ export interface Activity {
   power?: number;
   startLat?: number;
   startLon?: number;
-  shoe: string;
   splits?: Split[];
   streamHr?: number[];
   streamPace?: number[];
@@ -140,7 +119,7 @@ export const ACT: Activity[] = [
     title: 'Cubbon Park long run',
     place: 'Cubbon Park, Bangalore', city: 'Bangalore', country: 'India',
     distance: 24.02, seconds: 7920, elev: 86, pace: 330,
-    avgHr: 152, maxHr: 168, cal: 1684, cadence: 174, shoe: 's1',
+    avgHr: 152, maxHr: 168, cal: 1684, cadence: 174,
     splits: rawSplits([5,5,5,30,32,28,30,29,31,29,30,30,31,29,29,30,31,32,33,34,35,30,28,29]),
     streamHr: gen(120, 30, [140, 165], 0.4),
     streamPace: gen(120, 30, [310, 360], 0.5),
@@ -154,7 +133,7 @@ export const ACT: Activity[] = [
     title: 'Sankey Tank loops',
     place: 'Sankey Tank, Bangalore', city: 'Bangalore', country: 'India',
     distance: 8.12, seconds: 2400, elev: 18, pace: 0,
-    avgHr: 148, maxHr: 158, cal: 540, cadence: 178, shoe: 's2',
+    avgHr: 148, maxHr: 158, cal: 540, cadence: 178,
     splits: [
       { k: 1, sec: 298, hr: 142 }, { k: 2, sec: 295, hr: 148 }, { k: 3, sec: 296, hr: 150 },
       { k: 4, sec: 293, hr: 152 }, { k: 5, sec: 294, hr: 153 }, { k: 6, sec: 296, hr: 153 },
@@ -170,7 +149,7 @@ export const ACT: Activity[] = [
     title: '400m × 10 intervals',
     place: 'Kanteerava Stadium, Bangalore', city: 'Bangalore', country: 'India',
     distance: 9.45, seconds: 2700, elev: 8, pace: 0,
-    avgHr: 162, maxHr: 182, cal: 680, cadence: 188, shoe: 's3',
+    avgHr: 162, maxHr: 182, cal: 680, cadence: 188,
     streamHr: gen(45, 30, [120, 185], 0.9),
     route: route(2.4, 'urban'),
     weather: { t: 23, w: 'Humid', icon: 'cloud' },
@@ -181,7 +160,7 @@ export const ACT: Activity[] = [
     title: 'Hebbal Lake recovery',
     place: 'Hebbal Lake, Bangalore', city: 'Bangalore', country: 'India',
     distance: 6.3, seconds: 2070, elev: 12, pace: 0,
-    avgHr: 138, maxHr: 146, cal: 410, cadence: 170, shoe: 's2',
+    avgHr: 138, maxHr: 146, cal: 410, cadence: 170,
     route: route(3.0, 'lake'),
     streamHr: gen(35, 30, [132, 146], 0.2),
     weather: { t: 21, w: 'Clear', icon: 'clear' },
@@ -192,7 +171,7 @@ export const ACT: Activity[] = [
     title: 'Marine Drive sunrise',
     place: 'Marine Drive, Mumbai', city: 'Mumbai', country: 'India',
     distance: 12.1, seconds: 3720, elev: 6, pace: 0,
-    avgHr: 150, maxHr: 160, cal: 820, cadence: 176, shoe: 's1',
+    avgHr: 150, maxHr: 160, cal: 820, cadence: 176,
     route: route(4.5, 'out'),
     streamHr: gen(60, 30, [142, 160], 0.4),
     weather: { t: 28, w: 'Humid', icon: 'cloud' },
@@ -203,7 +182,7 @@ export const ACT: Activity[] = [
     title: 'Sunday 28K',
     place: 'Cubbon Park, Bangalore', city: 'Bangalore', country: 'India',
     distance: 28.05, seconds: 9540, elev: 108, pace: 0,
-    avgHr: 155, maxHr: 171, cal: 1980, cadence: 174, shoe: 's1',
+    avgHr: 155, maxHr: 171, cal: 1980, cadence: 174,
     route: route(5.2, 'loop'),
     streamHr: gen(140, 30, [145, 170], 0.3),
     weather: { t: 25, w: 'Clear', icon: 'clear' },
@@ -214,7 +193,7 @@ export const ACT: Activity[] = [
     title: 'Vagator beach run',
     place: 'Vagator, Goa', city: 'Goa', country: 'India',
     distance: 9.4, seconds: 3120, elev: 14, pace: 0,
-    avgHr: 152, maxHr: 165, cal: 660, cadence: 172, shoe: 's2',
+    avgHr: 152, maxHr: 165, cal: 660, cadence: 172,
     route: route(6.7, 'out'),
     weather: { t: 30, w: 'Hot', icon: 'sun' },
     kind: 'travel'
@@ -224,7 +203,7 @@ export const ACT: Activity[] = [
     title: 'Hampstead Heath',
     place: 'Hampstead Heath, London', city: 'London', country: 'United Kingdom',
     distance: 11.2, seconds: 3600, elev: 142, pace: 0,
-    avgHr: 155, maxHr: 172, cal: 780, cadence: 170, shoe: 's4',
+    avgHr: 155, maxHr: 172, cal: 780, cadence: 170,
     route: route(7.9, 'trail'),
     weather: { t: 9, w: 'Drizzle', icon: 'rain' },
     kind: 'travel'
@@ -234,7 +213,7 @@ export const ACT: Activity[] = [
     title: 'Imperial Palace loop',
     place: 'Chiyoda, Tokyo', city: 'Tokyo', country: 'Japan',
     distance: 10.0, seconds: 2880, elev: 24, pace: 0,
-    avgHr: 148, maxHr: 158, cal: 680, cadence: 178, shoe: 's4',
+    avgHr: 148, maxHr: 158, cal: 680, cadence: 178,
     route: route(8.5, 'loop'),
     weather: { t: 6, w: 'Crisp', icon: 'clear' },
     kind: 'travel'

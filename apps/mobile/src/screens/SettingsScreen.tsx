@@ -29,7 +29,7 @@ import { SunMark } from '../design/SunMark';
 import { SectionHeader } from './HomeScreen';
 import type { TabProps } from '../nav/types';
 
-type Sub = 'main' | 'shoes' | 'connections' | 'privacy';
+type Sub = 'main' | 'connections' | 'privacy';
 
 export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
@@ -103,7 +103,6 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
     );
   }, [displayName, saveAccount]);
 
-  if (sub === 'shoes') return <ShoesScreen back={() => setSub('main')} />;
   if (sub === 'connections') return <ConnectionsScreen back={() => setSub('main')} />;
   if (sub === 'privacy') return <PrivacyScreen back={() => setSub('main')} />;
 
@@ -196,7 +195,6 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
       <View style={{ paddingHorizontal: 14 }}>
         <Card padded={false}>
           <Row icon={<Icon.spark size={18} color={c.accent} />} label="Stamps collection" value="View catalog" onPress={() => rootNav.navigate('Stamps')} />
-          <Row icon={<Icon.shoe size={18} color={c.ink2} />} label="Shoes" value="Coming soon" onPress={() => setSub('shoes')} />
           <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value="Strava · Apple Health" onPress={() => setSub('connections')} />
           <Row icon={<Icon.privacy size={18} color={c.ink2} />} label="Privacy" value="200 m blur · on" onPress={() => setSub('privacy')} />
           <Row icon={<Icon.ruler size={18} color={c.ink2} />} label="Units" value={units === 'km' ? 'Metric' : 'Imperial'} chevron />
@@ -368,29 +366,6 @@ function SubHeader({ back, title }: { back: () => void; title: string }) {
       <Eyebrow>{title}</Eyebrow>
       <View style={{ width: 36 }} />
     </View>
-  );
-}
-
-function ShoesScreen({ back }: { back: () => void }) {
-  const c = useColors();
-  return (
-    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
-      <SubHeader back={back} title="SHOES" />
-      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
-        <TText variant="serif" style={{ fontSize: 30, lineHeight: 32, letterSpacing: -0.6, color: c.ink }}>Shoes are coming.</TText>
-        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, lineHeight: 18 }}>
-          Track mileage per pair, retire shoes when they’re cooked, and tag every run with what you wore. We’re shipping this in M5.
-        </TText>
-      </View>
-      <View style={{ paddingHorizontal: 14, paddingTop: 24 }}>
-        <Card style={{ backgroundColor: c.paper2 }}>
-          <Eyebrow style={{ color: c.ink3 }}>ROADMAP · M5</Eyebrow>
-          <TText style={{ fontSize: 13, color: c.ink2, marginTop: 8 }}>
-            Until then, your runs show without a shoe tag.
-          </TText>
-        </Card>
-      </View>
-    </ScrollView>
   );
 }
 

@@ -5,7 +5,7 @@
 
 **Author:** Gilla
 **Status:** Draft
-**Last updated:** 2026-05-15
+**Last updated:** 2026-05-19
 **Name:** Runstamp *(domain target: `runstamp.app`)*
 **Internal codename:** Helios (keep in repo names if desired: `helios-api`, `helios-worker`)
 
@@ -218,7 +218,7 @@ A vertical scroll:
 - **Best efforts this month**: 1K, 5K, 10K, HM, M tiles with time + sparkline.
 - **Recently earned stamps**: horizontal carousel of the last 3–5 stamps with earn dates. Tap → stamp detail + share.
 - **Recap card**: rotating ("you ran in 3 cities this month", "longest run streak: 12 days", "2 stamps away from your next mythic").
-- **Shoe widget** if shoes are tracked — current mileage on each pair, color-coded by % of expected lifespan. *(Direct ask for you — multi-pair rotation + flat feet → caring about shoe wear.)*
+- ~~Shoe widget~~ — dropped. See §10 for the rationale.
 
 ### 6.3 Editor (the headline feature)
 
@@ -327,7 +327,7 @@ Designed to be the single most shareable artifact Runstamp produces all year. Dr
 
 - Units (metric/imperial).
 - Connected accounts.
-- Shoes (CRUD, mileage cap per pair).
+- ~~Shoes~~ — dropped (see §10).
 - Default template, default share size.
 - Privacy zone (hide map start/end within N meters of home — like Strava). **Critical** for OSS credibility.
 - Data export (GPX zip + JSON).
@@ -414,6 +414,10 @@ Total: ~17–21 weekends → **~5 months** at a sustainable side-project pace al
 | HealthKit background delivery throttling on iOS | iOS throttles `HKObserverQuery` callbacks aggressively for battery — delivery can lag 15+ minutes. Document this honestly. Pair it with a pull-to-refresh on Home and a "Sync now" button in settings so users have an escape hatch. |
 | HealthKit route data is `CLLocation` samples, not a polyline | Need to assemble points client-side, downsample to ~500 for chart/map render, upload as a stream. Same shape as Strava streams so the editor doesn't care which source rendered it. |
 | Scope creep into "live tracking" | Hard "no" until v2. The MVP is a post-run companion. Pin this in the README. |
+
+### Decisions made post-draft
+
+- **2026-05-19 — Shoe tracking dropped.** The original PRD §6.2 carried a Home shoe widget and §6.9 had Shoes CRUD; both are cut. Reasoning: (1) it can't be automatic — HealthKit doesn't surface shoes, and Strava's gear-assignment is manual-per-activity and most users skip it; the whole product promise is "we turn automatic data into beautiful artifacts," so manual entry breaks the mental model. (2) Gear management doesn't fit the stamp metaphor — every other surface is a post-run *artifact*, not a thing-you-tend-to. (3) Serious shoe-trackers already have tools (Strava's gear screen, dedicated apps). (4) The "Coming soon" stub had been in Settings since M1 and never got promoted — that's the signal. Revisit only if Strava starts returning shoe-assignment in the activity webhook by default.
 
 ### Open questions for you to decide
 

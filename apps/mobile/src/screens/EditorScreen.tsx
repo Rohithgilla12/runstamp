@@ -67,10 +67,6 @@ type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'
   | 'cadence' | 'splits' | 'hrChart' | 'paceChart'
   | 'map' | 'date' | 'title' | 'place';
-// `shoe` sticker removed from the library until shoe tracking ships (PRD §M5
-// / settings/Shoes is a roadmap placeholder right now). It previously
-// hardcoded "Saucony Endorphin" which looked like every other user's share
-// card. Add it back when CRUD + per-activity shoe lookup is wired.
 
 // Returns true when the sticker has meaningful data to render for this run.
 // Used both to filter the sticker library picker (no HR on this run → hide

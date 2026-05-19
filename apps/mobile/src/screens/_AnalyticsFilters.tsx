@@ -61,7 +61,6 @@ export function AnalyticsFilters({ value, onChange }: Props) {
           {([1, 2, 3, 4, 5] as const).map((z) => (
             <FilterChip key={z} label={`Z${z}`} selected={value.zones.has(z)} onPress={() => toggleZone(z)} />
           ))}
-          <FilterChip label="Shoe" disabled />
         </ScrollView>
       </View>
       {value.zones.size === 0 ? null : (
