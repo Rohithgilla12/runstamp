@@ -241,6 +241,12 @@ func main() {
 			Users:     usersRepo,
 			Log:       log,
 		}
+		exportHandler := &handlers.ExportHandler{
+			Activities: activitiesService,
+			Users:      usersRepo,
+			Stamps:     stampsRepo,
+			Log:        log,
+		}
 		bestEffortsHandler := &handlers.BestEffortsHandler{
 			Pool:  pool,
 			Users: usersRepo,
@@ -293,6 +299,7 @@ func main() {
 			r.Get("/privacy-zones", privacyZonesHandler.List)
 			r.Post("/privacy-zones", privacyZonesHandler.Create)
 			r.Delete("/privacy-zones/{id}", privacyZonesHandler.Delete)
+			r.Get("/export.zip", exportHandler.ZipExport)
 		})
 	})
 
