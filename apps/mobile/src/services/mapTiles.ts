@@ -119,6 +119,7 @@ export function centerOffsets(
 }
 
 // Returns the tile-grid bounds (inclusive) that cover a bbox at a given zoom.
+// Used by prefetch; for the on-screen tile layer use tilesForCanvas (below).
 export function tilesForBbox(
   bbox: BBox,
   z: number,
@@ -131,6 +132,33 @@ export function tilesForBbox(
   };
 }
 
+// Returns every tile coordinate whose screen rectangle overlaps the canvas
+// viewport, given the projection's pixel offsets. This is the right function
+// for the on-screen layer: tilesForBbox only covers the route's bounding box,
+// which leaves the canvas blank when the route is a thin line (e.g. an
+// out-and-back on a single road) since the bbox is much narrower than the
+// canvas at the fitted zoom.
+//
+// Clamped to maxTilesPerAxis (default 16) so a pathological combination of
+// zoom + offsets never asks for an unbounded number of tiles. At reasonable
+// canvas sizes a single screen needs ~4-8 tiles per axis.
+export function tilesForCanvas(
+  offsetX: number,
+  offsetY: number,
+  canvasW: number,
+  canvasH: number,
+  maxTilesPerAxis = 16,
+): { x0: number; x1: number; y0: number; y1: number } {
+  const rawX0 = Math.floor(-offsetX / TILE_SIZE);
+  const rawX1 = Math.ceil((canvasW - offsetX) / TILE_SIZE) - 1;
+  const rawY0 = Math.floor(-offsetY / TILE_SIZE);
+  const rawY1 = Math.ceil((canvasH - offsetY) / TILE_SIZE) - 1;
+  // Clamp the axis span so we never blow past a reasonable tile budget.
+  const x1 = Math.min(rawX1, rawX0 + maxTilesPerAxis - 1);
+  const y1 = Math.min(rawY1, rawY0 + maxTilesPerAxis - 1);
+  return { x0: rawX0, x1, y0: rawY0, y1 };
+}
+
 // Prefetches every tile in a bbox so that the next render finds them in the
 // React Native image cache. Used by the editor's share flow before
 // captureRef, so the exported PNG isn't half-blank on first share.
@@ -140,7 +168,11 @@ export function tilesForBbox(
 // share-card-sized 4-6 tile grid without slamming the CDN.
 export async function prefetchTiles(bbox: BBox, canvasW: number, canvasH: number, style: TileStyle = DEFAULT_TILE_STYLE): Promise<void> {
   const z = pickZoom(bbox, canvasW, canvasH);
-  const { x0, x1, y0, y1 } = tilesForBbox(bbox, z);
+  const { offsetX, offsetY } = centerOffsets(bbox, z, canvasW, canvasH);
+  // Match the on-screen layer's tile set so the share-card capture finds
+  // every tile in cache. Using tilesForBbox here meant the captured PNG
+  // had blank side bars whenever the route was a thin line.
+  const { x0, x1, y0, y1 } = tilesForCanvas(offsetX, offsetY, canvasW, canvasH);
   const urls: string[] = [];
   for (let x = x0; x <= x1; x++) {
     for (let y = y0; y <= y1; y++) {

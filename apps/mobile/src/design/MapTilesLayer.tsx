@@ -18,7 +18,7 @@ import {
   centerOffsets,
   pickZoom,
   tileUrl,
-  tilesForBbox,
+  tilesForCanvas,
   type BBox,
   type TileStyle,
 } from '../services/mapTiles';
@@ -36,7 +36,11 @@ interface Props {
 export function MapTilesLayer({ bbox, width, height, opacity = 1, style }: Props) {
   const z = pickZoom(bbox, width, height);
   const { offsetX, offsetY } = centerOffsets(bbox, z, width, height);
-  const { x0, x1, y0, y1 } = tilesForBbox(bbox, z);
+  // Tiles cover the whole canvas, not just the route's bbox. Otherwise a
+  // thin route (e.g. an out-and-back on a single road) leaves the canvas
+  // sides blank because the bbox is much narrower than the canvas at the
+  // fitted zoom.
+  const { x0, x1, y0, y1 } = tilesForCanvas(offsetX, offsetY, width, height);
 
   const tiles: Array<{ x: number; y: number; url: string }> = [];
   for (let x = x0; x <= x1; x++) {
