@@ -21,11 +21,12 @@ type meResponse struct {
 	BirthYear   *int    `json:"birthYear,omitempty"`
 	// UI preferences. omitempty so a fresh user (NULL columns) shows up as
 	// "not set" to the mobile client, which then keeps the local default.
-	UIDark      *bool   `json:"uiDark,omitempty"`
-	UIAccent    *string `json:"uiAccent,omitempty"`
-	UITileStyle *string `json:"uiTileStyle,omitempty"`
-	UIOnboarded *bool   `json:"uiOnboarded,omitempty"`
-	HasStrava   bool    `json:"hasStrava"`
+	UIDark           *bool   `json:"uiDark,omitempty"`
+	UIAccent         *string `json:"uiAccent,omitempty"`
+	UITileStyle      *string `json:"uiTileStyle,omitempty"`
+	UIOnboarded      *bool   `json:"uiOnboarded,omitempty"`
+	UIDefaultSurface *string `json:"uiDefaultSurface,omitempty"`
+	HasStrava        bool    `json:"hasStrava"`
 }
 
 func toMeResponse(u *users.User, hasStrava bool) meResponse {
@@ -47,11 +48,12 @@ func toMeResponse(u *users.User, hasStrava bool) meResponse {
 		HRMax:       u.HRMax,
 		HRResting:   u.HRResting,
 		BirthYear:   u.BirthYear,
-		UIDark:      u.UIDark,
-		UIAccent:    u.UIAccent,
-		UITileStyle: u.UITileStyle,
-		UIOnboarded: u.UIOnboarded,
-		HasStrava:   hasStrava,
+		UIDark:           u.UIDark,
+		UIAccent:         u.UIAccent,
+		UITileStyle:      u.UITileStyle,
+		UIOnboarded:      u.UIOnboarded,
+		UIDefaultSurface: u.UIDefaultSurface,
+		HasStrava:        hasStrava,
 	}
 }
 
@@ -93,10 +95,11 @@ type patchMeRequest struct {
 	HRMax       *int    `json:"hrMax"`
 	HRResting   *int    `json:"hrResting"`
 	BirthYear   *int    `json:"birthYear"`
-	UIDark      *bool   `json:"uiDark"`
-	UIAccent    *string `json:"uiAccent"`
-	UITileStyle *string `json:"uiTileStyle"`
-	UIOnboarded *bool   `json:"uiOnboarded"`
+	UIDark           *bool   `json:"uiDark"`
+	UIAccent         *string `json:"uiAccent"`
+	UITileStyle      *string `json:"uiTileStyle"`
+	UIOnboarded      *bool   `json:"uiOnboarded"`
+	UIDefaultSurface *string `json:"uiDefaultSurface"`
 }
 
 // Whitelists keep the column values to known good ones so a stale or
@@ -110,6 +113,13 @@ var validTileStyles = map[string]bool{
 	"light_nolabels": true, "light_all": true,
 	"dark_nolabels": true, "dark_all": true,
 	"voyager_nolabels": true,
+}
+
+// Allowed editor surfaces. Keep in sync with the DefaultSurface union in
+// apps/mobile/src/state/AppState.tsx — if you add a new aspect ratio there,
+// add it here too or a 400 is the next thing you'll see.
+var validDefaultSurfaces = map[string]bool{
+	"9:16": true, "1:1": true, "4:5": true,
 }
 
 func validateBirthYear(by *int) error {
@@ -175,6 +185,10 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "uiTileStyle must be one of the known CartoCDN basemap slugs")
 			return
 		}
+		if req.UIDefaultSurface != nil && !validDefaultSurfaces[*req.UIDefaultSurface] {
+			writeError(w, http.StatusBadRequest, "uiDefaultSurface must be one of 9:16, 1:1, 4:5")
+			return
+		}
 		user, err := repo.FindByFirebaseUID(r.Context(), vt.UID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to load user")
@@ -191,10 +205,11 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			HRMax:       req.HRMax,
 			HRResting:   req.HRResting,
 			BirthYear:   req.BirthYear,
-			UIDark:      req.UIDark,
-			UIAccent:    req.UIAccent,
-			UITileStyle: req.UITileStyle,
-			UIOnboarded: req.UIOnboarded,
+			UIDark:           req.UIDark,
+			UIAccent:         req.UIAccent,
+			UITileStyle:      req.UITileStyle,
+			UIOnboarded:      req.UIOnboarded,
+			UIDefaultSurface: req.UIDefaultSurface,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to update profile")

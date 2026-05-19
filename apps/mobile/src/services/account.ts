@@ -16,6 +16,7 @@ export interface MeResponse {
   uiAccent?: string;
   uiTileStyle?: string;
   uiOnboarded?: boolean;
+  uiDefaultSurface?: string;
   hasStrava: boolean;
 }
 
@@ -30,6 +31,7 @@ export interface ProfilePatch {
   uiAccent?: string;
   uiTileStyle?: string;
   uiOnboarded?: boolean;
+  uiDefaultSurface?: '9:16' | '1:1' | '4:5';
 }
 
 export function getMe(idToken: string | null): Promise<MeResponse> {

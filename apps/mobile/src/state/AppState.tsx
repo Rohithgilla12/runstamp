@@ -23,9 +23,12 @@ import { DEFAULT_TILE_STYLE, type TileStyle } from '../services/mapTiles';
 import { useAccount } from './useAccount';
 
 // Default share surface — what the editor opens to when there's no
-// per-run override. Client-only for the moment; server persistence pending
-// a `ui_default_surface` column on users (one migration away).
+// per-run override. Server-persisted via PATCH /v1/me uiDefaultSurface.
 export type DefaultSurface = '9:16' | '1:1' | '4:5';
+
+function isDefaultSurface(v: unknown): v is DefaultSurface {
+  return v === '9:16' || v === '1:1' || v === '4:5';
+}
 
 interface AppStateValue {
   dark: boolean;
@@ -72,6 +75,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     if (me.uiAccent != null) setAccentLocal(me.uiAccent as AccentKey);
     if (me.uiTileStyle != null) setTileStyleLocal(me.uiTileStyle as TileStyle);
     if (me.uiOnboarded != null) setHasOnboardedLocal(me.uiOnboarded);
+    if (isDefaultSurface(me.uiDefaultSurface)) setDefaultSurfaceLocal(me.uiDefaultSurface);
     // units: server stores 'metric' / 'imperial' on the existing `units`
     // column; mobile uses 'km' / 'mi'. Translate in both directions.
     if (me.units === 'imperial') setUnitsLocal('mi');
@@ -112,8 +116,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setTileStyleLocal(v);
     saveRef.current({ uiTileStyle: v }).catch((e) => console.warn('[AppState] save uiTileStyle failed', e));
   };
-  // defaultSurface stays client-only until the matching server column lands.
-  const setDefaultSurface = (v: DefaultSurface) => setDefaultSurfaceLocal(v);
+  const setDefaultSurface = (v: DefaultSurface) => {
+    setDefaultSurfaceLocal(v);
+    saveRef.current({ uiDefaultSurface: v }).catch((e) => console.warn('[AppState] save uiDefaultSurface failed', e));
+  };
 
   const value = useMemo<AppStateValue>(
     () => ({ dark, accent, units, hasOnboarded, tileStyle, defaultSurface, setDark, setAccent, setUnits, setHasOnboarded, setTileStyle, setDefaultSurface }),
