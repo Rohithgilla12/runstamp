@@ -1,0 +1,118 @@
+# Runstamp self-host stack.
+#
+# This is the OSS self-host story: Postgres + PostGIS + Redis + the API,
+# bundled so anyone with Docker can run a full Runstamp backend with one
+# command. Bring your own Firebase project (auth), Strava API credentials
+# (optional — only needed if you connect Strava), and a 64-hex token
+# encryption key.
+#
+# Quick start:
+#
+#   1. cp .env.example .env
+#   2. Edit .env — at minimum: RUNSTAMP_TOKEN_ENC_KEY (openssl rand -hex 32),
+#      RUNSTAMP_WAITLIST_IP_SALT (openssl rand -hex 16), FIREBASE_PROJECT_ID,
+#      FIREBASE_CREDENTIALS_HOST_PATH (path to your Firebase service-account.json).
+#   3. docker compose up -d --build
+#   4. curl http://localhost:8090/healthz   →   {"status":"ok"}
+#
+# The production deploy (apps/api/docker-compose.yml) adds a Cloudflared
+# tunnel sidecar; this file intentionally leaves the API on a published
+# host port so self-hosters can put it behind their own reverse proxy
+# (Caddy, nginx, Traefik, whatever).
+
+name: runstamp
+
+services:
+  postgres:
+    # imresamu/postgis is the canonical multi-arch fork — same Debian base,
+    # PostGIS 3.4 / PG 16, natively built for both amd64 and arm64.
+    image: imresamu/postgis:16-3.4-alpine
+    container_name: runstamp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-runstamp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-runstamp}
+      POSTGRES_DB: ${POSTGRES_DB:-runstamp}
+    # Localhost-bound by default. Comment out the bind address or change
+    # the host port if you need direct external psql access (unusual for
+    # production — most setups don't expose Postgres at all).
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - runstamp_pg:/var/lib/postgresql/data
+    networks:
+      - runstamp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-runstamp} -d ${POSTGRES_DB:-runstamp}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: runstamp-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - runstamp_redis:/data
+    networks:
+      - runstamp
+
+  api:
+    build:
+      context: ./apps/api
+      args:
+        VERSION: ${RUNSTAMP_VERSION:-dev}
+    container_name: runstamp-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      RUNSTAMP_PORT: 8080
+      RUNSTAMP_ENV: ${RUNSTAMP_ENV:-development}
+      RUNSTAMP_PUBLIC_BASE_URL: ${RUNSTAMP_PUBLIC_BASE_URL:-http://localhost:8090}
+      RUNSTAMP_ALLOWED_ORIGINS: ${RUNSTAMP_ALLOWED_ORIGINS:-runstamp://*}
+      DATABASE_URL: "postgres://${POSTGRES_USER:-runstamp}:${POSTGRES_PASSWORD:-runstamp}@postgres:5432/${POSTGRES_DB:-runstamp}?sslmode=disable"
+      REDIS_URL: "redis://redis:6379/0"
+      # 64-char hex (openssl rand -hex 32). Tokens encrypted at rest with AES-256-GCM.
+      RUNSTAMP_TOKEN_ENC_KEY: "${RUNSTAMP_TOKEN_ENC_KEY:?must be a 64-char hex (openssl rand -hex 32)}"
+      # 32-char hex (openssl rand -hex 16). Salts hashed IPs in the waitlist table.
+      RUNSTAMP_WAITLIST_IP_SALT: "${RUNSTAMP_WAITLIST_IP_SALT:?must be a 32-char hex (openssl rand -hex 16)}"
+      # Strava is optional. Leave blank if you don't want Strava connectivity.
+      STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID:-}"
+      STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET:-}"
+      STRAVA_WEBHOOK_VERIFY_TOKEN: "${STRAVA_WEBHOOK_VERIFY_TOKEN:-}"
+      STRAVA_SUCCESS_DEEPLINK: ${STRAVA_SUCCESS_DEEPLINK:-runstamp://strava/connected}
+      STRAVA_FAILURE_DEEPLINK: ${STRAVA_FAILURE_DEEPLINK:-runstamp://strava/error}
+      # Firebase Admin SDK config. Required for verifying mobile auth tokens.
+      # Set FIREBASE_AUTH_OPTIONAL=1 only for development — production must verify.
+      FIREBASE_PROJECT_ID: "${FIREBASE_PROJECT_ID:-}"
+      FIREBASE_CREDENTIALS_PATH: "${FIREBASE_CREDENTIALS_PATH:-/run/secrets/firebase-service-account.json}"
+      FIREBASE_AUTH_OPTIONAL: "${FIREBASE_AUTH_OPTIONAL:-}"
+    volumes:
+      # Mount your Firebase service-account JSON read-only. Default host path
+      # is ./secrets/firebase-service-account.json (gitignored). Override with
+      # FIREBASE_CREDENTIALS_HOST_PATH in .env if you keep it elsewhere.
+      - ${FIREBASE_CREDENTIALS_HOST_PATH:-./secrets/firebase-service-account.json}:/run/secrets/firebase-service-account.json:ro
+    # Host port 8090 → container 8080. Put a reverse proxy in front for
+    # public deployment (TLS termination + a real hostname).
+    ports:
+      - "${RUNSTAMP_API_HOST_PORT:-8090}:8080"
+    networks:
+      - runstamp
+
+networks:
+  runstamp:
+    name: runstamp
+    driver: bridge
+
+volumes:
+  runstamp_pg:
+    name: runstamp_pg
+  runstamp_redis:
+    name: runstamp_redis

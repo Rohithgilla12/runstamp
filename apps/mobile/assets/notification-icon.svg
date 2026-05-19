@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Android notification icon. Android renders this as a white-on-transparent
+  silhouette in the status bar — color values are ignored. So this SVG only
+  uses #FFF on a transparent canvas. Simplified design: just the postmark
+  ring + "RS" so the silhouette stays legible at 24dp.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <circle cx="48" cy="48" r="42" fill="none" stroke="#ffffff" stroke-width="3" />
+  <circle cx="48" cy="48" r="36" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="2 2" opacity="0.85" />
+  <text x="48" y="60" fill="#ffffff" font-family="ui-monospace, monospace" font-size="32" font-weight="800" text-anchor="middle" letter-spacing="-1">RS</text>
+</svg>
