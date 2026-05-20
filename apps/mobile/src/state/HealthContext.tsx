@@ -23,6 +23,11 @@ import React, {
   useState,
 } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
+import {
+  enableBackgroundDelivery,
+  subscribeToChanges,
+  UpdateFrequency,
+} from '@kingstinct/react-native-healthkit';
 import { useAuth } from './AuthContext';
 import {
   getRunstampReadAuthorizationStatus,
@@ -30,6 +35,13 @@ import {
   requestRunstampHealthPermissions,
 } from '../services/healthkit';
 import { syncRecentWorkouts, type SyncProgress } from '../services/healthSync';
+
+// HKObserverQuery + background delivery wires the OS into our sync loop:
+// iOS wakes the app process when a new workout lands in Health, fires our
+// observer, and the subscribeToChanges callback runs a throttled resync.
+// Without this we only synced on foreground transitions, so cold launches
+// (the morning "open the app after a run" path) never auto-imported.
+const HK_WORKOUT_TYPE = 'HKWorkoutTypeIdentifier' as const;
 
 export type HealthPermissionStatus = 'unknown' | 'granted' | 'denied' | 'unavailable';
 
@@ -189,36 +201,94 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Auto-resync on app foreground. iOS HKObserverQuery + background delivery
-  // is the proper PRD §6.8 fix and lands in a later milestone (needs native
-  // wiring). Until then, every time the user brings the app back to the
-  // foreground and we haven't synced in the last 5 minutes, fire an
-  // incremental resync in the background. Cheap when no new workouts exist
-  // (HKAnchoredObjectQuery + dedup contract make repeat calls idempotent).
+  // Three triggers feed the auto-sync loop, sharing one throttle:
+  //   1. HKObserverQuery — iOS wakes us when a new workout lands.
+  //   2. Cold launch — fired once when status first becomes 'granted'.
+  //   3. background → foreground transition — covers warm relaunches.
+  // All three call the same throttled-resync gate; lastForegroundSyncRef
+  // is the single source of truth for "have we synced recently."
   const FOREGROUND_RESYNC_MIN_AGE_MS = 5 * 60 * 1000;
   const lastForegroundSyncRef = useRef<number>(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const initialSyncDoneRef = useRef(false);
+  const syncingRef = useRef(syncing);
+  useEffect(() => { syncingRef.current = syncing; }, [syncing]);
 
+  // Reset the cold-launch guard whenever the user moves away from granted
+  // so a revoke → regrant cycle re-fires the initial sync.
+  useEffect(() => {
+    if (status !== 'granted') initialSyncDoneRef.current = false;
+  }, [status]);
+
+  // Inline because each trigger needs to read the latest `syncing` from a
+  // ref (not capture it) — otherwise the subscribeToChanges callback would
+  // stale-capture syncing=false and re-fire mid-sync.
+  const tryBackgroundResync = useCallback(() => {
+    if (syncingRef.current) return;
+    const now = Date.now();
+    if (now - lastForegroundSyncRef.current < FOREGROUND_RESYNC_MIN_AGE_MS) return;
+    lastForegroundSyncRef.current = now;
+    resync().catch(() => undefined);
+  }, [resync]);
+
+  // ── Trigger 1: HKObserverQuery + background delivery ────────────────
+  // enableBackgroundDelivery flips iOS into wake-the-app-when-data-changes
+  // mode. subscribeToChanges registers the JS callback. iOS throttles
+  // observer firings aggressively for battery (delivery can lag 15+
+  // minutes per PRD §10), so we still keep the cold-launch + foreground
+  // triggers below as belt-and-braces.
+  useEffect(() => {
+    if (status !== 'granted' || Platform.OS !== 'ios') return;
+    let subscription: { remove: () => boolean } | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        await enableBackgroundDelivery(HK_WORKOUT_TYPE, UpdateFrequency.immediate);
+      } catch (e) {
+        // Silent — running without background delivery still works via
+        // the other two triggers. Most common cause: entitlement missing
+        // on a debug build.
+        console.warn('[HealthContext] enableBackgroundDelivery failed', e);
+      }
+      if (cancelled) return;
+      try {
+        subscription = subscribeToChanges(HK_WORKOUT_TYPE, () => {
+          tryBackgroundResync();
+        });
+      } catch (e) {
+        console.warn('[HealthContext] subscribeToChanges failed', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [status, tryBackgroundResync]);
+
+  // ── Trigger 2: cold-launch initial sync ─────────────────────────────
+  // The AppState listener below only fires on background → active
+  // transitions; a fresh launch lands directly in 'active' so it never
+  // fires. Without this, every morning the user opened the app and the
+  // "1 workout to import" banner appeared without anything pulling it in.
+  useEffect(() => {
+    if (status !== 'granted') return;
+    if (initialSyncDoneRef.current) return;
+    initialSyncDoneRef.current = true;
+    tryBackgroundResync();
+  }, [status, tryBackgroundResync]);
+
+  // ── Trigger 3: background → foreground transition ───────────────────
   useEffect(() => {
     if (status !== 'granted') return;
     const onChange = (next: AppStateStatus) => {
       const prev = appStateRef.current;
       appStateRef.current = next;
       if (!(prev.match(/inactive|background/) && next === 'active')) return;
-      if (syncing) return;
-      const now = Date.now();
-      if (now - lastForegroundSyncRef.current < FOREGROUND_RESYNC_MIN_AGE_MS) return;
-      lastForegroundSyncRef.current = now;
-      // Fire and forget — runSync already records the error into lastError
-      // so the connectors UI can show "last auto-sync failed: …". We don't
-      // pop an alert here (the user didn't initiate this), but we no longer
-      // black-hole the error.
-      resync().catch(() => undefined);
-      // (runSync's own catch sets lastError before re-throwing.)
+      tryBackgroundResync();
     };
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
-  }, [status, syncing, resync]);
+  }, [status, tryBackgroundResync]);
 
   const value = useMemo<HealthContextValue>(
     () => ({ status, syncing, lastSyncAt, lastError, lastResult, progress, connect, resync }),
