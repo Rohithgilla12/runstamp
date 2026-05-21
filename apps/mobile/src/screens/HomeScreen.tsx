@@ -435,7 +435,13 @@ function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOp
               opacity: pressed ? 0.7 : 1,
             }]}
           >
-            <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={68} />
+            {/* Bitmap-cache each badge — StampBadge is a multi-path SVG
+                (rings, ticks, curved text), and we render up to 6 in a
+                horizontal scroll. Without rasterization, every Home scroll
+                frame recomposites all of them. */}
+            <View collapsable={false} shouldRasterizeIOS renderToHardwareTextureAndroid>
+              <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={68} />
+            </View>
             <TText style={{ fontSize: 10.5, color: c.ink2, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
               {s.name}
             </TText>
@@ -612,7 +618,19 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
   const { route: realRoute, rawLatLng: realRawLatLng } = useActivityStreams(run.id);
   return (
     <Pressable onPress={onOpen} accessibilityLabel={`Open ${run.title}`} style={({ pressed }) => [{ borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, opacity: pressed ? 0.95 : 1 }]}>
-      <View style={{ position: 'relative', height: POST_RUN_HEIGHT }}>
+      {/* shouldRasterizeIOS + renderToHardwareTextureAndroid: the RouteMap
+          inside is a heavy SVG (raster tiles + polyline + gradient). Native
+          rasterization caches the composed result as a bitmap after first
+          paint so scrolling past doesn't recomposite SVG paths per frame.
+          The press-state opacity sits on the parent Pressable, not on this
+          view, so the cache stays valid across taps. collapsable=false
+          stops RN's view-flattening from removing the rasterizing layer. */}
+      <View
+        collapsable={false}
+        shouldRasterizeIOS
+        renderToHardwareTextureAndroid
+        style={{ position: 'relative', height: POST_RUN_HEIGHT }}
+      >
         <View style={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
           <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
         </View>
