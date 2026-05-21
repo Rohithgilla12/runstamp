@@ -48,3 +48,19 @@ design.bin
 apps/mobile/*.ipa
 apps/mobile/*.aab
 apps/mobile/*.apk
+
+# Editor folders
+.idea/
+.vscode/
+.cursor/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Test + screenshot debris at repo root (Playwright captures, preview pages,
+# scratch scripts). Keep `apps/**/assets/*.png` etc. unaffected.
+/*.png
+/*.jpg
+/preview.html
+/fix_comments.mjs
+/generate_stamp_components.mjs
