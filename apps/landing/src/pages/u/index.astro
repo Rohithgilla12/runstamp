@@ -1,20 +1,17 @@
 ---
 // runstamp.app/u/<handle> — public profile page.
 //
-// Static SPA shell. _redirects rewrites /u/* → /u/index.html (200) so any
-// handle URL serves this file. Client-side script extracts the handle
-// from window.location.pathname, hits /v1/profiles/<handle>, and either
-// populates the page or shows a quiet 404 state.
+// Static SPA shell. A Cloudflare Worker rewrites /u/* to this file so any
+// handle URL serves the same template. The client-side script reads the
+// handle from window.location.pathname, hits /v1/profiles/<handle>, and
+// either populates the page or shows a quiet 404 state.
 //
-// Brand vocabulary lives in Base.astro's design tokens. No server-side
-// data fetch — keeping the Astro project static-output simpler and means
-// CDN cache hits for the shell across every profile.
+// Visual vocabulary follows .impeccable.md: paper + ink + solar accent,
+// postal motifs (postmark circles, perforated edges, cancellation lines),
+// Instrument Serif italic for display moments, JetBrains Mono for numerals.
 
 import Base from "../../layouts/Base.astro";
 
-// Default OG image — the runtime script swaps it for a per-profile image
-// once a real OG image renderer ships. For now, the static brand OG keeps
-// link previews on-brand.
 const title = "A runner's album · Runstamp";
 const description = "A public stamp album on Runstamp — every city, every PB, every run.";
 ---
@@ -24,10 +21,10 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     <a class="profile-back" href="/">← Runstamp</a>
 
     <div data-state="loading" id="profile">
-      <p class="profile-loading eyebrow">Loading…</p>
+      <p class="profile-loading">Loading…</p>
     </div>
 
-    <!-- Empty / 404 state. Hidden until the fetch decides. -->
+    <!-- 404 state. Hidden until the fetch decides. -->
     <div class="profile-missing" id="profile-missing" hidden>
       <p class="eyebrow">404 · NOT FOUND</p>
       <h1>This album isn't public.</h1>
@@ -38,31 +35,73 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       <a class="profile-cta" href="/">Open Runstamp</a>
     </div>
 
-    <!-- The populated state. Hidden until fetch lands. -->
+    <!-- Populated state. Hidden until fetch lands. -->
     <article class="profile-card" id="profile-card" hidden>
-      <header class="profile-header">
-        <p class="eyebrow" id="profile-handle-eyebrow">@—</p>
-        <h1 class="profile-name" id="profile-name">—</h1>
-        <p class="profile-tagline" id="profile-tagline"></p>
+      <!-- Postcard hero — ink panel with postmark, big serif italic name. -->
+      <header class="hero">
+        <div class="hero-grain" aria-hidden="true"></div>
+        <svg class="hero-postmark" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <path id="hero-rim-top" d="M 100 18 a 82 82 0 1 1 -0.1 0 z" />
+            <path id="hero-rim-bot" d="M 100 182 a 82 82 0 1 0 -0.1 0 z" />
+          </defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="#e85d2f" stroke-width="2" stroke-dasharray="3 3" opacity="0.85" />
+          <circle cx="100" cy="100" r="80" fill="none" stroke="#e85d2f" stroke-width="1.4" opacity="0.65" />
+          <line x1="22" y1="96" x2="178" y2="96" stroke="#e85d2f" stroke-width="1.2" opacity="0.55" />
+          <line x1="22" y1="104" x2="178" y2="104" stroke="#e85d2f" stroke-width="1.2" opacity="0.55" />
+          <text font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="4" fill="#e85d2f" opacity="0.85">
+            <textPath href="#hero-rim-top" startOffset="50%" text-anchor="middle">RUNSTAMP</textPath>
+          </text>
+          <text font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="3" fill="#e85d2f" opacity="0.75">
+            <textPath href="#hero-rim-bot" startOffset="50%" text-anchor="middle">EST · 2026</textPath>
+          </text>
+          <text x="100" y="86" text-anchor="middle" font-family="Instrument Serif, serif" font-style="italic" font-size="20" fill="#f3ede2" id="postmark-city">—</text>
+          <text x="100" y="124" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="2.5" fill="rgba(243,237,226,0.55)" id="postmark-country">WORLDWIDE</text>
+        </svg>
+
+        <div class="hero-content">
+          <p class="eyebrow hero-eyebrow" id="profile-handle-eyebrow">@—</p>
+          <h1 class="hero-name" id="profile-name">—</h1>
+          <p class="hero-tagline" id="profile-tagline"></p>
+        </div>
+
+        <!-- Cancellation marks across the bottom of the postcard. -->
+        <svg class="hero-cancel" viewBox="0 0 600 24" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="8" x2="600" y2="8" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+          <line x1="0" y1="12" x2="600" y2="12" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+          <line x1="0" y1="16" x2="600" y2="16" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+        </svg>
       </header>
 
-      <section class="profile-totals" id="profile-totals">
+      <!-- Tally strip. Big mono numerals, no chrome. -->
+      <section class="tally" id="profile-totals" aria-label="Lifetime totals">
         <!-- Populated by script. -->
       </section>
 
+      <!-- Stamps grid. Each cell is an actual SVG postmark badge. -->
       <section class="profile-section" id="profile-stamps-section" hidden>
-        <p class="eyebrow">STAMPS</p>
-        <div class="profile-stamps-grid" id="profile-stamps-grid"></div>
+        <header class="section-header">
+          <p class="eyebrow">EARNED</p>
+          <p class="section-count" id="profile-stamps-count"></p>
+        </header>
+        <div class="stamps-grid" id="profile-stamps-grid"></div>
       </section>
 
+      <!-- Cities — passport-style ledger. -->
       <section class="profile-section" id="profile-cities-section" hidden>
-        <p class="eyebrow">PASSPORT</p>
-        <ol class="profile-cities" id="profile-cities"></ol>
+        <header class="section-header">
+          <p class="eyebrow">PASSPORT</p>
+          <p class="section-count" id="profile-cities-count"></p>
+        </header>
+        <ol class="cities-list" id="profile-cities"></ol>
       </section>
 
       <footer class="profile-footer">
+        <svg class="footer-rule" viewBox="0 0 600 6" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="3" x2="600" y2="3" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 4" />
+        </svg>
         <p class="profile-footer-line">
-          A page on <a href="/">Runstamp</a> — free, open source, collect a stamp for every run.
+          A page on <a href="/">Runstamp</a> · collect a stamp for every run.
         </p>
       </footer>
     </article>
@@ -71,7 +110,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 
 <style>
   .profile-root {
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
     padding: var(--space-6) var(--space-4) var(--space-16);
     min-height: 100vh;
@@ -84,7 +123,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     text-transform: uppercase;
     color: var(--ink-3);
     text-decoration: none;
-    margin-bottom: var(--space-12);
+    margin-bottom: var(--space-8);
   }
   .profile-back:hover { color: var(--solar); }
 
@@ -92,6 +131,10 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     color: var(--ink-3);
     text-align: center;
     padding: var(--space-16) 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
   .profile-missing {
@@ -121,162 +164,331 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     font-weight: 500;
   }
 
-  .profile-header {
-    padding-bottom: var(--space-6);
-    border-bottom: 1px dashed var(--line);
+  /* ── Hero postcard ─────────────────────────────────────────────── */
+  .hero {
+    position: relative;
+    background: var(--ink);
+    color: var(--paper);
+    padding: clamp(2rem, 5vw, 3rem) clamp(1.5rem, 4vw, 2.5rem);
+    padding-bottom: clamp(2.5rem, 6vw, 3.5rem);
+    border-radius: 4px;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: clamp(1rem, 3vw, 2rem);
+    align-items: center;
+    min-height: 280px;
   }
-  .profile-name {
+  /* Subtle paper grain over the ink so it reads as printed, not flat. */
+  .hero-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 300px;
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .hero-eyebrow {
+    color: var(--solar);
+    font-family: var(--font-mono);
+    letter-spacing: 0.18em;
+  }
+  .hero-name {
     font-family: var(--font-display);
-    font-size: clamp(2.4rem, 6vw, 3.5rem);
-    line-height: 1;
-    letter-spacing: -0.02em;
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--paper);
     margin-top: var(--space-2);
+    word-wrap: break-word;
   }
-  .profile-name em {
+  .hero-name em {
     font-style: italic;
     color: var(--solar);
+    font-weight: normal;
   }
-  .profile-tagline {
-    color: var(--ink-3);
+  .hero-tagline {
+    color: rgba(243, 237, 226, 0.62);
     margin-top: var(--space-3);
     font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .hero-postmark {
+    position: relative;
+    z-index: 1;
+    width: clamp(150px, 22vw, 200px);
+    height: clamp(150px, 22vw, 200px);
+    transform: rotate(-6deg);
+    flex-shrink: 0;
+    justify-self: end;
+  }
+  .hero-cancel {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    height: 24px;
+    width: 100%;
+    z-index: 0;
+  }
+  @media (max-width: 540px) {
+    .hero {
+      grid-template-columns: 1fr;
+      text-align: left;
+      gap: var(--space-4);
+    }
+    .hero-postmark {
+      justify-self: end;
+      width: 130px;
+      height: 130px;
+    }
   }
 
-  .profile-totals {
+  /* ── Tally strip ───────────────────────────────────────────────── */
+  .tally {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: var(--space-4);
-    padding: var(--space-6) 0;
-    border-bottom: 1px dashed var(--line);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    margin-top: var(--space-8);
+    background: var(--line);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
   }
-  .profile-totals .tally-label {
+  @media (max-width: 540px) {
+    .tally { grid-template-columns: repeat(2, 1fr); }
+  }
+  .tally-cell {
+    background: var(--paper);
+    padding: var(--space-4) var(--space-4) var(--space-4);
+  }
+  .tally-label {
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    letter-spacing: 0.16em;
+    font-size: 10px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--ink-3);
   }
-  .profile-totals .tally-value {
+  .tally-value {
     font-family: var(--font-mono);
-    font-size: var(--text-2xl);
     font-weight: 500;
-    color: var(--ink);
-    letter-spacing: -0.02em;
-    margin-top: var(--space-1);
-  }
-  .profile-totals .tally-unit {
-    font-size: var(--text-xs);
-    color: var(--ink-3);
-    margin-left: 0.2em;
-  }
-
-  .profile-section {
-    padding: var(--space-8) 0;
-    border-bottom: 1px dashed var(--line);
-  }
-
-  .profile-stamps-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: var(--space-3);
-    margin-top: var(--space-4);
-  }
-  .stamp-badge {
-    aspect-ratio: 1;
-    border-radius: 50%;
-    border: 1.5px solid var(--solar);
-    background: color-mix(in oklab, var(--solar) 8%, var(--paper));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 500;
-    text-align: center;
-    color: var(--solar-deep);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 6px;
+    font-size: clamp(1.8rem, 4.5vw, 2.6rem);
     line-height: 1.05;
-    overflow: hidden;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    margin-top: var(--space-2);
+    font-feature-settings: "tnum" 1;
   }
-  .stamp-badge.rare    { border-color: var(--ink); color: var(--ink); }
-  .stamp-badge.mythic  { border-color: var(--moss); color: var(--moss); background: color-mix(in oklab, var(--moss) 6%, var(--paper)); }
+  .tally-unit {
+    font-size: 0.4em;
+    color: var(--ink-3);
+    margin-left: 0.25em;
+    font-weight: normal;
+    letter-spacing: 0;
+  }
 
-  .profile-cities {
-    margin-top: var(--space-4);
+  /* ── Section header (eyebrow + count) ─────────────────────────── */
+  .profile-section {
+    padding-top: var(--space-12);
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-6);
+  }
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+  }
+
+  /* ── Stamps grid ──────────────────────────────────────────────── */
+  .stamps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: var(--space-4) var(--space-3);
+  }
+  .stamp {
+    aspect-ratio: 1;
+    display: block;
+  }
+  .stamp svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ── Cities ledger ─────────────────────────────────────────────── */
+  .cities-list {
     list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0 var(--space-6);
     counter-reset: city;
   }
-  .profile-cities li {
+  .city-row {
     counter-increment: city;
     display: grid;
-    grid-template-columns: 28px 1fr auto;
+    grid-template-columns: 32px 1fr auto;
     gap: var(--space-3);
     align-items: baseline;
     padding: var(--space-3) 0;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px dashed var(--line);
   }
-  .profile-cities li:first-child { border-top: 0; }
-  .profile-cities li::before {
+  .city-row::before {
     content: counter(city, decimal-leading-zero);
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
+    font-size: 10px;
+    letter-spacing: 0.1em;
     color: var(--ink-3);
   }
-  .city-name  { font-size: var(--text-base); color: var(--ink); }
-  .city-meta  { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-3); }
+  .city-name {
+    font-size: var(--text-base);
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .city-country {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    margin-left: 0.5em;
+  }
+  .city-runs {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    font-feature-settings: "tnum" 1;
+  }
 
+  /* ── Footer ────────────────────────────────────────────────────── */
   .profile-footer {
-    margin-top: var(--space-8);
-    padding-top: var(--space-6);
-    text-align: center;
+    margin-top: var(--space-16);
     color: var(--ink-3);
-    font-size: var(--text-xs);
+    text-align: center;
   }
-  .profile-footer a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); }
-  .profile-footer a:hover { text-decoration-color: var(--solar); }
+  .footer-rule {
+    width: 100%;
+    height: 6px;
+    color: var(--line);
+    margin-bottom: var(--space-6);
+  }
+  .profile-footer-line {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+  }
+  .profile-footer-line a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+  }
+  .profile-footer-line a:hover { text-decoration-color: var(--solar); }
 </style>
 
 <script is:inline>
-  // Tile-friendly: this script runs on every /u/<handle> request after the
-  // CDN serves the static shell. Keep it dependency-free and small.
   (function () {
     const API_BASE = "https://runstamp-api.gilla.fun";
 
-    // Stamp catalogue → tier mapping. Light enough to inline; if it grows
-    // we'll fetch a static JSON from the same CDN. Tier values must match
-    // apps/api/internal/stamps catalog ids.
+    // Stamp catalogue → tier. Light enough to inline. Unknown stamps
+    // default to common. Mirror apps/api/internal/stamps catalog ids.
     const STAMP_TIERS = {
-      // Add ids over time as new mythic / rare stamps ship. Anything
-      // unknown defaults to common (silver), which is the safe baseline.
-      sub_3_45_marathon:    "rare",
-      sub_4_marathon:       "rare",
-      sub_2_half:           "rare",
-      sub_50_10k:           "rare",
-      boston_qualifier:     "mythic",
-      sub_3_marathon:       "mythic",
-      every_continent:      "mythic",
-      "1000km_year":        "rare",
-      "5000km_year":        "mythic",
+      sub_3_45_marathon: "rare",
+      sub_4_marathon:    "rare",
+      sub_2_half:        "rare",
+      sub_50_10k:        "rare",
+      boston_qualifier:  "mythic",
+      sub_3_marathon:    "mythic",
+      every_continent:   "mythic",
+      "1000km_year":     "rare",
+      "5000km_year":     "mythic",
     };
 
-    function tierFor(stampId) {
-      return STAMP_TIERS[stampId] || "common";
-    }
+    const TIER_COLORS = {
+      common: { ring: "#e85d2f", text: "#3a2920", bg:   "rgba(232,93,47,0.06)", label: "COMMON" },
+      rare:   { ring: "#14110d", text: "#14110d", bg:   "rgba(20,17,13,0.05)",  label: "RARE"   },
+      mythic: { ring: "#4a6b3a", text: "#2c4124", bg:   "rgba(74,107,58,0.07)", label: "MYTHIC" },
+    };
+
+    // Two-letter ISO-like code for the postmark country band. We have the
+    // full country name; collapse to 3 chars max for the rim text.
+    const ISO_CODES = {
+      "India": "IN", "United States": "US", "United Kingdom": "UK",
+      "Germany": "DE", "France": "FR", "Japan": "JP", "Australia": "AU",
+      "Canada": "CA", "China": "CN", "Brazil": "BR", "Spain": "ES",
+      "Italy": "IT", "Singapore": "SG", "Thailand": "TH", "Netherlands": "NL",
+      "Switzerland": "CH", "Sweden": "SE", "Norway": "NO", "Denmark": "DK",
+      "Ireland": "IE", "Mexico": "MX", "South Africa": "ZA", "Kenya": "KE",
+      "Ethiopia": "ET", "New Zealand": "NZ", "Portugal": "PT", "Poland": "PL",
+      "Belgium": "BE", "Austria": "AT",
+    };
+
+    function tierFor(stampId) { return STAMP_TIERS[stampId] || "common"; }
 
     function nameFromStampId(id) {
-      // No catalogue lookup on the web yet; humanise the id so the grid
-      // reads as "Sub-3:45 Marathon" instead of "sub_3_45_marathon".
+      // Strip leading numbers / pad them, then title-case. Distance tags
+      // (10k, 21k, 42k) stay uppercase.
       return id
         .replace(/_/g, " ")
         .replace(/\b(\d+)k\b/gi, "$1K")
+        .replace(/\bhm\b/gi, "Half")
+        .replace(/\bm\b/gi, " Marathon")
+        .trim()
         .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    // Build a circular postmark stamp SVG. Two-line name, curved tier
+    // text along the top rim, dashed outer ring.
+    function stampSVG(name, tier) {
+      const colors = TIER_COLORS[tier] || TIER_COLORS.common;
+      const idSuffix = Math.random().toString(36).slice(2, 8);
+      const lines = wrapStampText(name, 14);
+      return `
+<svg viewBox="0 0 120 120" role="img" aria-label="${escapeAttr(name)} — ${colors.label}">
+  <defs>
+    <path id="rim-${idSuffix}" d="M 60 12 a 48 48 0 1 1 -0.1 0 z" />
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="${colors.bg}" stroke="${colors.ring}" stroke-width="1.4" stroke-dasharray="3 2" />
+  <circle cx="60" cy="60" r="46" fill="none" stroke="${colors.ring}" stroke-width="0.8" opacity="0.7" />
+  <text font-family="JetBrains Mono, monospace" font-size="6" letter-spacing="2.4" fill="${colors.ring}" opacity="0.85">
+    <textPath href="#rim-${idSuffix}" startOffset="50%" text-anchor="middle">${escapeAttr(colors.label)} · STAMP</textPath>
+  </text>
+  <line x1="22" y1="58" x2="98" y2="58" stroke="${colors.ring}" stroke-width="0.5" opacity="0.4" />
+  <line x1="22" y1="64" x2="98" y2="64" stroke="${colors.ring}" stroke-width="0.5" opacity="0.4" />
+  ${lines.map((l, i) => `<text x="60" y="${56 + i * 11 - (lines.length - 1) * 5}" text-anchor="middle" font-family="Instrument Serif, serif" font-style="italic" font-size="13" fill="${colors.text}">${escapeAttr(l)}</text>`).join("")}
+  <text x="60" y="88" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="5.5" letter-spacing="1.6" fill="${colors.ring}" opacity="0.6">STAMPED</text>
+</svg>`;
+    }
+
+    // Greedy word-wrap to a max char width per line. Returns 1-2 lines.
+    function wrapStampText(s, maxChars) {
+      const words = s.split(" ");
+      if (words.length === 1) return [s];
+      const lines = [];
+      let line = "";
+      for (const w of words) {
+        if ((line + " " + w).trim().length <= maxChars) line = (line + " " + w).trim();
+        else { lines.push(line); line = w; if (lines.length === 1) break; }
+      }
+      if (line) lines.push(line);
+      return lines.slice(0, 2);
+    }
+
+    function escapeAttr(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function isoForCountry(name) {
+      if (!name) return "WORLDWIDE";
+      return ISO_CODES[name] || name.slice(0, 3).toUpperCase();
     }
 
     function pathHandle() {
       const parts = window.location.pathname.split("/").filter(Boolean);
-      // /u/<handle>[/...] — take the first segment after /u/.
       const idx = parts.indexOf("u");
       return idx >= 0 ? parts[idx + 1] || null : null;
     }
@@ -289,13 +501,13 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       const el = document.getElementById("profile-totals");
       if (!el) return;
       const cells = [
-        { label: "STAMPS",     value: t.stamps != null ? t.stamps : 0 },
-        { label: "DISTANCE",   value: Math.round(t.distanceKm).toLocaleString(), unit: "km" },
-        { label: "COUNTRIES",  value: t.countries },
-        { label: "RUNS",       value: t.runs },
+        { label: "STAMPS",    value: String(t.stamps != null ? t.stamps : 0) },
+        { label: "DISTANCE",  value: Math.round(t.distanceKm || 0).toLocaleString(), unit: "km" },
+        { label: "COUNTRIES", value: String(t.countries || 0) },
+        { label: "RUNS",      value: String(t.runs || 0) },
       ];
       el.innerHTML = cells.map((c) => `
-        <div>
+        <div class="tally-cell">
           <div class="tally-label">${c.label}</div>
           <div class="tally-value">${c.value}${c.unit ? `<span class="tally-unit">${c.unit}</span>` : ""}</div>
         </div>
@@ -305,12 +517,14 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     function renderStamps(stamps) {
       const section = document.getElementById("profile-stamps-section");
       const grid = document.getElementById("profile-stamps-grid");
-      if (!grid || !section) return;
+      const count = document.getElementById("profile-stamps-count");
+      if (!grid || !section || !count) return;
       if (!stamps || stamps.length === 0) { section.hidden = true; return; }
+      count.textContent = `${stamps.length} earned`;
       grid.innerHTML = stamps.slice(0, 60).map((s) => {
         const tier = tierFor(s.stampId);
         const name = nameFromStampId(s.stampId);
-        return `<div class="stamp-badge ${tier}" title="${name}">${name}</div>`;
+        return `<div class="stamp">${stampSVG(name, tier)}</div>`;
       }).join("");
       section.hidden = false;
     }
@@ -318,15 +532,26 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     function renderCities(cities) {
       const section = document.getElementById("profile-cities-section");
       const list = document.getElementById("profile-cities");
-      if (!list || !section) return;
+      const count = document.getElementById("profile-cities-count");
+      if (!list || !section || !count) return;
       if (!cities || cities.length === 0) { section.hidden = true; return; }
-      list.innerHTML = cities.slice(0, 40).map((c) => `
-        <li>
-          <div class="city-name">${c.city}</div>
-          <div class="city-meta">${c.country || "—"} · ${c.runs}</div>
+      count.textContent = `${cities.length}`;
+      list.innerHTML = cities.slice(0, 60).map((c) => `
+        <li class="city-row">
+          <div>
+            <span class="city-name">${escapeAttr(c.city)}</span>
+            ${c.country ? `<span class="city-country">${escapeAttr(isoForCountry(c.country))}</span>` : ""}
+          </div>
+          <div class="city-runs">${c.runs}×</div>
         </li>
       `).join("");
       section.hidden = false;
+    }
+
+    function pickPostmarkCity(cities) {
+      // Prefer the city with the most runs — the user's "home base."
+      if (!cities || cities.length === 0) return null;
+      return cities.reduce((best, c) => (!best || c.runs > best.runs ? c : best), null);
     }
 
     async function load() {
@@ -336,7 +561,6 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         show("profile-missing");
         return;
       }
-
       try {
         const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`);
         if (!r.ok) {
@@ -346,26 +570,47 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         }
         const data = await r.json();
         const totals = data.totals || {};
-        const tWithStamps = Object.assign({}, totals, { stamps: (data.stamps || []).length });
+        const totalsWithStamps = Object.assign({}, totals, { stamps: (data.stamps || []).length });
 
         setText("profile-handle-eyebrow", `@${data.handle}`);
         const displayName = data.displayName && data.displayName.trim() ? data.displayName : data.handle;
         const nameEl = document.getElementById("profile-name");
         if (nameEl) {
-          nameEl.innerHTML = `${displayName}<em>.</em>`;
+          // Split into "First <em>Last</em>" so the italic emphasis lands
+          // on the last word; falls back gracefully for single-word names.
+          const parts = displayName.split(" ");
+          if (parts.length >= 2) {
+            const tail = parts.pop();
+            nameEl.innerHTML = `${escapeAttr(parts.join(" "))} <em>${escapeAttr(tail)}.</em>`;
+          } else {
+            nameEl.innerHTML = `<em>${escapeAttr(displayName)}.</em>`;
+          }
         }
-        const tagline = `${totals.cities || 0} cities · ${totals.countries || 0} countries · ${Math.round(totals.distanceKm || 0).toLocaleString()} km lifetime`;
+        const tagline = [
+          `${totals.cities || 0} ${totals.cities === 1 ? "city" : "cities"}`,
+          `${totals.countries || 0} ${totals.countries === 1 ? "country" : "countries"}`,
+          `${Math.round(totals.distanceKm || 0).toLocaleString()} km`,
+        ].join(" · ");
         setText("profile-tagline", tagline);
-        renderTotals(tWithStamps);
+
+        // Postmark stamps the "home base" city onto the hero.
+        const home = pickPostmarkCity(data.cities);
+        if (home) {
+          setText("postmark-city", home.city);
+          setText("postmark-country", isoForCountry(home.country));
+        } else {
+          setText("postmark-city", data.handle);
+          setText("postmark-country", "WORLDWIDE");
+        }
+
+        renderTotals(totalsWithStamps);
         renderStamps(data.stamps);
         renderCities(data.cities);
 
-        // Tighten the document title so shares carry the handle.
         document.title = `${displayName} on Runstamp`;
-
         hide("profile");
         show("profile-card");
-      } catch (e) {
+      } catch {
         hide("profile");
         show("profile-missing");
       }
