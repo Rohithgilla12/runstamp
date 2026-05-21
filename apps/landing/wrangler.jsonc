@@ -2,8 +2,15 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "runstamp",
   "compatibility_date": "2025-05-01",
+  "main": "src/worker.ts",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // Force /u/* to invoke the Worker before static-asset matching so we
+    // can rewrite /u/<handle> → /u/index.html (Workers Static Assets
+    // doesn't honor _redirects; this is the supported way to do path
+    // rewrites). Everything else goes to ASSETS first as usual.
+    "run_worker_first": ["/u/*"]
   }
 }
