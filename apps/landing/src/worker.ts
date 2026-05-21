@@ -19,20 +19,23 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
 
-    // /u/<handle> → serve /u/index.html. We rewrite the request URL
-    // before forwarding to the assets fetcher so window.location on the
-    // client still reads the original path and our script can extract
-    // the handle.
-    if (url.pathname.startsWith("/u/") && url.pathname !== "/u/" && url.pathname !== "/u/index.html") {
+    // /u/<handle> → serve the SPA shell at /u/. We rewrite to "/u/" (not
+    // "/u/index.html") because Cloudflare's html_handling normalization
+    // 307-redirects /u/index.html → /u/ — fetching the file directly
+    // would return the redirect response with an empty body and a stale
+    // Location header. /u/ resolves to the directory index without that
+    // round-trip. window.location on the client still carries the
+    // original /u/<handle> path so the page script can read the handle.
+    if (url.pathname.startsWith("/u/") && url.pathname !== "/u/") {
       const rewritten = new URL(req.url);
-      rewritten.pathname = "/u/index.html";
+      rewritten.pathname = "/u/";
       const proxied = await env.ASSETS.fetch(new Request(rewritten, req));
-      // Pass through the asset's response but with a 200 status (the
-      // assets binding might return 200 already; this is defensive in
-      // case of edge cases).
+      // Strip the Location header in case it leaked through; force 200.
+      const headers = new Headers(proxied.headers);
+      headers.delete("location");
       return new Response(proxied.body, {
         status: 200,
-        headers: proxied.headers,
+        headers,
       });
     }
 
