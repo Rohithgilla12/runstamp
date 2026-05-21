@@ -124,6 +124,7 @@ export function AnalyticsScreen(_props: TabProps<'Stats'>) {
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
+      removeClippedSubviews
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}

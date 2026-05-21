@@ -22,7 +22,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState, type AppStateStatus, Platform } from 'react-native';
+import { AppState, type AppStateStatus, InteractionManager, Platform } from 'react-native';
 import {
   enableBackgroundDelivery,
   subscribeToChanges,
@@ -270,11 +270,19 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   // transitions; a fresh launch lands directly in 'active' so it never
   // fires. Without this, every morning the user opened the app and the
   // "1 workout to import" banner appeared without anything pulling it in.
+  //
+  // Deferred via InteractionManager so the sync doesn't kick off mid-mount
+  // and block first paint / first interaction. The HK sync hits the
+  // network + spins multi-second backfills; firing it before the nav tree
+  // settles is one of the bigger sources of "feels laggy on launch."
   useEffect(() => {
     if (status !== 'granted') return;
     if (initialSyncDoneRef.current) return;
     initialSyncDoneRef.current = true;
-    tryBackgroundResync();
+    const handle = InteractionManager.runAfterInteractions(() => {
+      tryBackgroundResync();
+    });
+    return () => handle.cancel();
   }, [status, tryBackgroundResync]);
 
   // ── Trigger 3: background → foreground transition ───────────────────

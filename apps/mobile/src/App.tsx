@@ -4,6 +4,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type Theme as NavTheme, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { enableFreeze } from 'react-native-screens';
+
+// Suspends the React tree on inactive screens. Tab you're not viewing
+// stops re-rendering until you swipe back. With 5 stacks + many provider
+// subscribers this is the single biggest perf knob in the app — without
+// it, a refresh in ActivitiesProvider re-renders every screen including
+// the four that aren't on the GPU. State is preserved via Suspense.
+//
+// Must be called BEFORE any screen mounts, so this lives at module scope
+// rather than inside the App component.
+enableFreeze(true);
 import { AppStateProvider, useAppState } from './state/AppState';
 import { AuthProvider, useAuth } from './state/AuthContext';
 import { AccountProvider } from './state/useAccount';

@@ -64,6 +64,7 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
+      removeClippedSubviews
       style={{ flex: 1, backgroundColor: c.paper }}
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.ink2} />}
