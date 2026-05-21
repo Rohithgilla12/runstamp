@@ -6,7 +6,7 @@ Project guide for Claude sessions on Runstamp. Read this before touching anythin
 
 > Collect a stamp for every run.
 
-Open-source mobile app (iOS + Android via Expo) for runners. Post-run share-card editor + analytics + a "passport for cities you've run in" + an achievement / stamp catalogue. **Not a tracker** — reads runs from Strava / Apple Health (M6) and turns them into shareable artifacts. Full vision in `runstamp-prd.md`.
+Open-source mobile app (iOS + Android via Expo) for runners. Post-run share-card editor + analytics + a "passport for cities you've run in" + an achievement / stamp catalogue. **Not a tracker** — reads runs from Strava / Apple Health (M6) and turns them into shareable artifacts. Full vision in the local-only `runstamp-prd.md` (gitignored; lives only on the maintainer's machine, not in the public repo).
 
 ## Repo layout
 

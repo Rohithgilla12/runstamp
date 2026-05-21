@@ -22,7 +22,7 @@ An open-source, post-run companion for runners — turn every Strava and Apple H
 
 The runner I know wants two things on the same Sunday morning: a beautiful post about the run that just happened, and the bigger picture (cities, PBs, streaks) without paying Strava Premium. Runstamp does both, on both platforms, with your data living wherever you want.
 
-Read the full vision in [`runstamp-prd.md`](./runstamp-prd.md). Design language is documented in [`.impeccable.md`](./.impeccable.md) — paper, ink, solar accent, postal vocabulary, "quiet · earned · collectible."
+Design language is documented in [`.impeccable.md`](./.impeccable.md) — paper, ink, solar accent, postal vocabulary, "quiet · earned · collectible."
 
 ## Repo layout
 
@@ -36,7 +36,6 @@ packages/
   templates/               OSS-contributable stamp template definitions (MIT).
   shared-types/            Zod schemas shared between mobile + api (MIT).
 docker-compose.yml         Self-host bundle — Postgres + PostGIS + Redis + API.
-runstamp-prd.md            Product spec, milestones, open questions.
 .impeccable.md             Design system + brand vocabulary.
 CONTRIBUTING.md            How to ship a template, stamp, or bug fix.
 SECURITY.md                Responsible disclosure.
@@ -133,10 +132,8 @@ If you find a security issue, please follow the disclosure process in [`SECURITY
 
 Split license so the OSS sharing model works cleanly:
 
-- **App + backend: AGPL-3.0** — `apps/mobile/`, `apps/api/`, `apps/landing/`. See [`LICENSE`](./LICENSE).
+- **App + backend: AGPL-3.0** — `apps/mobile/`, `apps/api/`, `apps/landing/`. See [`LICENSE`](./LICENSE). The AGPL keeps hosted clones honest: if you run Runstamp as a service, your changes go back to the community.
 - **Templates + shared types: MIT** — `packages/templates/`, `packages/shared-types/`. Designers can lift these anywhere without friction.
-
-Rationale in [`runstamp-prd.md`](./runstamp-prd.md) §7.
 
 ## Inspirations
 
