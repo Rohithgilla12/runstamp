@@ -406,12 +406,55 @@ function daysAgo(iso: string): number {
   return Math.max(0, days);
 }
 
+// EarnedStampSlot — extracted + memo'd so the multi-path StampBadge SVG
+// only re-renders when its own props change. Without this, a context
+// update upstream (useActivities refresh, useAccount.me hydration, etc.)
+// would re-render the whole carousel + every badge inside it, even though
+// none of the stamp data changed. Combined with the rasterization wrapper,
+// scrolling past the badges is now near-free.
+const EarnedStampSlot = React.memo(function EarnedStampSlot({
+  stamp,
+  inkColor,
+  onPress,
+}: {
+  stamp: CatalogStamp;
+  inkColor: string;
+  onPress: (s: CatalogStamp) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onPress(stamp)}
+      accessibilityLabel={`Share ${stamp.name} stamp`}
+      style={({ pressed }) => [{
+        alignItems: 'center', width: 96,
+        opacity: pressed ? 0.7 : 1,
+      }]}
+    >
+      <View collapsable={false} shouldRasterizeIOS renderToHardwareTextureAndroid>
+        <StampBadge id={`home-${stamp.id}`} name={stamp.name} tier={stamp.tier} earned size={68} />
+      </View>
+      <TText style={{ fontSize: 10.5, color: inkColor, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
+        {stamp.name}
+      </TText>
+    </Pressable>
+  );
+});
+
 function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOpenStamps: () => void }) {
   const c = useColors();
   const [sharing, setSharing] = useState<CatalogStamp | null>(null);
-  const recent = [...earned]
-    .sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))
-    .slice(0, 6);
+  // Stable sort + reference: memo keyed on the earned-id list so adding /
+  // earning a new stamp recomputes but a generic re-render doesn't.
+  const recent = useMemo(
+    () => [...earned]
+      .sort((a, b) => (b.earnedAt ?? '').localeCompare(a.earnedAt ?? ''))
+      .slice(0, 6),
+    [earned],
+  );
+  // Stable onPress reference for the memo'd slot. Without this, every
+  // RecentlyEarned render passes a new fn and the memo defeats itself.
+  const handleSlotPress = useCallback((s: CatalogStamp) => setSharing(s), []);
+
   return (
     <>
       <View style={{ paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -426,26 +469,7 @@ function RecentlyEarned({ earned, onOpenStamps }: { earned: CatalogStamp[]; onOp
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, gap: 10 }}
       >
         {recent.map((s) => (
-          <Pressable
-            key={s.id}
-            onPress={() => setSharing(s)}
-            accessibilityLabel={`Share ${s.name} stamp`}
-            style={({ pressed }) => [{
-              alignItems: 'center', width: 96,
-              opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            {/* Bitmap-cache each badge — StampBadge is a multi-path SVG
-                (rings, ticks, curved text), and we render up to 6 in a
-                horizontal scroll. Without rasterization, every Home scroll
-                frame recomposites all of them. */}
-            <View collapsable={false} shouldRasterizeIOS renderToHardwareTextureAndroid>
-              <StampBadge id={`home-${s.id}`} name={s.name} tier={s.tier} earned size={68} />
-            </View>
-            <TText style={{ fontSize: 10.5, color: c.ink2, marginTop: 6, textAlign: 'center' }} numberOfLines={2}>
-              {s.name}
-            </TText>
-          </Pressable>
+          <EarnedStampSlot key={s.id} stamp={s} inkColor={c.ink2} onPress={handleSlotPress} />
         ))}
       </ScrollView>
       <StampShareModal stamp={sharing} onClose={() => setSharing(null)} />
@@ -632,7 +656,15 @@ function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: () => vo
         style={{ position: 'relative', height: POST_RUN_HEIGHT }}
       >
         <View style={{ position: 'absolute', inset: 0, opacity: 0.85 }}>
-          <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} />
+          {/* animate={false} on Home — the ink-trace is a brand keystone
+              on Activity / Editor / Year-in-Stamps where it's an event,
+              but Home is a recurring surface (seen on every app open) and
+              the per-frame SVG path animation invalidates the bitmap
+              cache that shouldRasterizeIOS just set up. Killing the
+              animation here keeps the cache hot from frame 1, and the
+              trace still plays in the surfaces where it actually adds
+              meaning. */}
+          <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} animate={false} />
         </View>
         <LinearGradient
           colors={['rgba(14,13,11,0.4)', 'rgba(14,13,11,0.1)', 'rgba(14,13,11,0.85)']}
