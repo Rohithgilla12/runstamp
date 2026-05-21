@@ -31,7 +31,7 @@ import { SunMark } from '../design/SunMark';
 import { SectionHeader } from './HomeScreen';
 import type { TabProps } from '../nav/types';
 
-type Sub = 'main' | 'connections' | 'privacy';
+type Sub = 'main' | 'connections' | 'privacy' | 'profile';
 
 // Default-share cycle. Tapping the Settings row rotates through these.
 // Order is sized by what most runners reach for first (Story → square → feed).
@@ -147,6 +147,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
 
   if (sub === 'connections') return <ConnectionsScreen back={() => setSub('main')} />;
   if (sub === 'privacy') return <PrivacyScreen back={() => setSub('main')} />;
+  if (sub === 'profile') return <ProfileScreen back={() => setSub('main')} />;
 
   return (
     <ScrollView
@@ -237,6 +238,12 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
       <View style={{ paddingHorizontal: 14 }}>
         <Card padded={false}>
           <Row icon={<Icon.spark size={18} color={c.accent} />} label="Stamps collection" value="View catalog" onPress={() => rootNav.navigate('Stamps')} />
+          <Row
+            icon={<Icon.user size={18} color={c.ink2} />}
+            label="Public profile"
+            value={me?.profilePublic && me?.handle ? `runstamp.app/u/${me.handle}` : me?.handle ? 'Private' : 'Not claimed'}
+            onPress={() => setSub('profile')}
+          />
           <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value="Strava · Apple Health" onPress={() => setSub('connections')} />
           <Row icon={<Icon.privacy size={18} color={c.ink2} />} label="Privacy" value="200 m blur · on" onPress={() => setSub('privacy')} />
           <Row
@@ -1244,6 +1251,164 @@ function formatJoined(creationTime?: string): string | null {
   const d = new Date(creationTime);
   if (Number.isNaN(d.getTime())) return null;
   return `Joined ${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
+}
+
+// ProfileScreen — claim a handle + flip the public toggle. PRD §10 #1
+// answer: we shipped the web profile. Handle is the URL slug at
+// runstamp.app/u/<handle>. Defaults off so existing users don't get
+// their data published without consent.
+function ProfileScreen({ back }: { back: () => void }) {
+  const c = useColors();
+  const { me, save } = useAccount();
+  const [handleInput, setHandleInput] = useState(me?.handle ?? '');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedHandle, setSavedHandle] = useState<string | null>(me?.handle ?? null);
+
+  // Sync the input when /v1/me lands or refreshes.
+  useEffect(() => {
+    setHandleInput(me?.handle ?? '');
+    setSavedHandle(me?.handle ?? null);
+  }, [me?.handle]);
+
+  const claim = useCallback(async () => {
+    const next = handleInput.trim().toLowerCase();
+    if (next === (savedHandle ?? '')) return;
+    setPending(true);
+    setError(null);
+    try {
+      await save({ handle: next });
+      setSavedHandle(next || null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(false);
+    }
+  }, [handleInput, savedHandle, save]);
+
+  const togglePublic = useCallback(async (next: boolean) => {
+    if (!me?.handle) {
+      // Can't publish without a handle — the toggle's disabled in UI but
+      // guard here too.
+      return;
+    }
+    setError(null);
+    try {
+      await save({ profilePublic: next });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [me?.handle, save]);
+
+  const publicUrl = savedHandle ? `runstamp.app/u/${savedHandle}` : null;
+  const canPublish = !!savedHandle;
+  const isPublic = !!me?.profilePublic && canPublish;
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: c.paper }} contentContainerStyle={{ paddingBottom: 120 }}>
+      <SubHeader back={back} title="PUBLIC PROFILE" />
+      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
+        <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.5, color: c.ink }}>
+          A page at <TText variant="serifItalic" style={{ fontSize: 28, color: c.ink }}>runstamp.app</TText>.
+        </TText>
+        <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, lineHeight: 18 }}>
+          Claim a handle and you get a public album at <TText variant="mono" style={{ fontSize: 13, color: c.ink2 }}>runstamp.app/u/yourhandle</TText> — your stamps + countries + cities. No login required to view. Off by default; flip the switch when you want it.
+        </TText>
+      </View>
+
+      <View style={{ paddingHorizontal: 14, paddingTop: 20 }}>
+        <Card style={{ backgroundColor: c.paper2 }}>
+          <Eyebrow style={{ color: c.ink3, marginBottom: 6 }}>HANDLE</Eyebrow>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TText variant="mono" style={{ fontSize: 14, color: c.ink3 }}>runstamp.app/u/</TText>
+            <TextInput
+              style={{
+                flex: 1,
+                fontFamily: FONT.mono,
+                fontSize: 16,
+                color: c.ink,
+                paddingVertical: 8,
+                paddingHorizontal: 10,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: c.line,
+                backgroundColor: c.paper,
+              }}
+              placeholder="gilla"
+              placeholderTextColor={c.ink3}
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={handleInput}
+              onChangeText={(t) => setHandleInput(t.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+              maxLength={30}
+            />
+          </View>
+          <Pressable
+            onPress={claim}
+            disabled={pending || handleInput === (savedHandle ?? '')}
+            style={({ pressed }) => ({
+              marginTop: 10,
+              paddingVertical: 10,
+              borderRadius: 10,
+              backgroundColor: c.ink,
+              alignItems: 'center',
+              opacity: pressed || pending || handleInput === (savedHandle ?? '') ? 0.6 : 1,
+            })}
+          >
+            <TText style={{ color: c.paper, fontSize: 13, fontWeight: '500' }}>
+              {pending ? 'Saving…' : savedHandle ? 'Update handle' : 'Claim handle'}
+            </TText>
+          </Pressable>
+          {error && (
+            <TText style={{ fontSize: 11, color: c.warn ?? '#c34a2c', marginTop: 8 }}>{error}</TText>
+          )}
+          <TText style={{ fontSize: 11, color: c.ink3, marginTop: 8, lineHeight: 16 }}>
+            3–30 characters · lowercase letters, numbers, dashes, underscores.
+          </TText>
+        </Card>
+      </View>
+
+      {canPublish && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
+          <Card padded={false} style={{ backgroundColor: c.paper2 }}>
+            <Toggle
+              label="Public"
+              sub="Anyone with the URL can view your album"
+              value={isPublic}
+              onChange={togglePublic}
+              isLast
+            />
+          </Card>
+        </View>
+      )}
+
+      {isPublic && publicUrl && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 14 }}>
+          <Card style={{ backgroundColor: c.ink }}>
+            <Eyebrow style={{ color: c.accent }}>YOUR URL</Eyebrow>
+            <TText variant="mono" style={{ fontSize: 15, color: c.paper, marginTop: 6 }}>
+              {publicUrl}
+            </TText>
+            <Pressable
+              onPress={() => {
+                Share.share({ message: `https://${publicUrl}` }).catch(() => undefined);
+              }}
+              style={({ pressed }) => ({
+                marginTop: 12,
+                paddingVertical: 10,
+                borderRadius: 10,
+                backgroundColor: c.accent,
+                alignItems: 'center',
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <TText style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>Share my profile</TText>
+            </Pressable>
+          </Card>
+        </View>
+      )}
+    </ScrollView>
+  );
 }
 
 

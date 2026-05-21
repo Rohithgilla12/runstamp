@@ -17,6 +17,9 @@ export interface MeResponse {
   uiTileStyle?: string;
   uiOnboarded?: boolean;
   uiDefaultSurface?: string;
+  /** Public-profile fields. Both opt-in. */
+  handle?: string;
+  profilePublic: boolean;
   hasStrava: boolean;
 }
 
@@ -32,6 +35,9 @@ export interface ProfilePatch {
   uiTileStyle?: string;
   uiOnboarded?: boolean;
   uiDefaultSurface?: '9:16' | '1:1' | '4:5';
+  /** Empty string clears the handle. */
+  handle?: string;
+  profilePublic?: boolean;
 }
 
 export function getMe(idToken: string | null): Promise<MeResponse> {

@@ -1,0 +1,376 @@
+---
+// runstamp.app/u/<handle> — public profile page.
+//
+// Static SPA shell. _redirects rewrites /u/* → /u/index.html (200) so any
+// handle URL serves this file. Client-side script extracts the handle
+// from window.location.pathname, hits /v1/profiles/<handle>, and either
+// populates the page or shows a quiet 404 state.
+//
+// Brand vocabulary lives in Base.astro's design tokens. No server-side
+// data fetch — keeping the Astro project static-output simpler and means
+// CDN cache hits for the shell across every profile.
+
+import Base from "../../layouts/Base.astro";
+
+// Default OG image — the runtime script swaps it for a per-profile image
+// once a real OG image renderer ships. For now, the static brand OG keeps
+// link previews on-brand.
+const title = "A runner's album · Runstamp";
+const description = "A public stamp album on Runstamp — every city, every PB, every run.";
+---
+
+<Base title={title} description={description} canonicalPath="/u/">
+  <main class="profile-root">
+    <a class="profile-back" href="/">← Runstamp</a>
+
+    <div data-state="loading" id="profile">
+      <p class="profile-loading eyebrow">Loading…</p>
+    </div>
+
+    <!-- Empty / 404 state. Hidden until the fetch decides. -->
+    <div class="profile-missing" id="profile-missing" hidden>
+      <p class="eyebrow">404 · NOT FOUND</p>
+      <h1>This album isn't public.</h1>
+      <p class="profile-missing-body">
+        Either the handle doesn't exist, or its owner hasn't made the profile
+        public. Profiles are off by default on Runstamp.
+      </p>
+      <a class="profile-cta" href="/">Open Runstamp</a>
+    </div>
+
+    <!-- The populated state. Hidden until fetch lands. -->
+    <article class="profile-card" id="profile-card" hidden>
+      <header class="profile-header">
+        <p class="eyebrow" id="profile-handle-eyebrow">@—</p>
+        <h1 class="profile-name" id="profile-name">—</h1>
+        <p class="profile-tagline" id="profile-tagline"></p>
+      </header>
+
+      <section class="profile-totals" id="profile-totals">
+        <!-- Populated by script. -->
+      </section>
+
+      <section class="profile-section" id="profile-stamps-section" hidden>
+        <p class="eyebrow">STAMPS</p>
+        <div class="profile-stamps-grid" id="profile-stamps-grid"></div>
+      </section>
+
+      <section class="profile-section" id="profile-cities-section" hidden>
+        <p class="eyebrow">PASSPORT</p>
+        <ol class="profile-cities" id="profile-cities"></ol>
+      </section>
+
+      <footer class="profile-footer">
+        <p class="profile-footer-line">
+          A page on <a href="/">Runstamp</a> — free, open source, collect a stamp for every run.
+        </p>
+      </footer>
+    </article>
+  </main>
+</Base>
+
+<style>
+  .profile-root {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-16);
+    min-height: 100vh;
+  }
+  .profile-back {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-decoration: none;
+    margin-bottom: var(--space-12);
+  }
+  .profile-back:hover { color: var(--solar); }
+
+  .profile-loading {
+    color: var(--ink-3);
+    text-align: center;
+    padding: var(--space-16) 0;
+  }
+
+  .profile-missing {
+    text-align: center;
+    padding: var(--space-12) var(--space-4);
+  }
+  .profile-missing h1 {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin: var(--space-3) 0 var(--space-3);
+  }
+  .profile-missing-body {
+    color: var(--ink-3);
+    max-width: 36ch;
+    margin: 0 auto var(--space-8);
+    line-height: 1.5;
+  }
+  .profile-cta {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.7em 1.4em;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .profile-header {
+    padding-bottom: var(--space-6);
+    border-bottom: 1px dashed var(--line);
+  }
+  .profile-name {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 6vw, 3.5rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-top: var(--space-2);
+  }
+  .profile-name em {
+    font-style: italic;
+    color: var(--solar);
+  }
+  .profile-tagline {
+    color: var(--ink-3);
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .profile-totals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-6) 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .profile-totals .tally-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .profile-totals .tally-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    margin-top: var(--space-1);
+  }
+  .profile-totals .tally-unit {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    margin-left: 0.2em;
+  }
+
+  .profile-section {
+    padding: var(--space-8) 0;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .profile-stamps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+  .stamp-badge {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1.5px solid var(--solar);
+    background: color-mix(in oklab, var(--solar) 8%, var(--paper));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--solar-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px;
+    line-height: 1.05;
+    overflow: hidden;
+  }
+  .stamp-badge.rare    { border-color: var(--ink); color: var(--ink); }
+  .stamp-badge.mythic  { border-color: var(--moss); color: var(--moss); background: color-mix(in oklab, var(--moss) 6%, var(--paper)); }
+
+  .profile-cities {
+    margin-top: var(--space-4);
+    list-style: none;
+    counter-reset: city;
+  }
+  .profile-cities li {
+    counter-increment: city;
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--line-2);
+  }
+  .profile-cities li:first-child { border-top: 0; }
+  .profile-cities li::before {
+    content: counter(city, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  .city-name  { font-size: var(--text-base); color: var(--ink); }
+  .city-meta  { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-3); }
+
+  .profile-footer {
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+    text-align: center;
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .profile-footer a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); }
+  .profile-footer a:hover { text-decoration-color: var(--solar); }
+</style>
+
+<script is:inline>
+  // Tile-friendly: this script runs on every /u/<handle> request after the
+  // CDN serves the static shell. Keep it dependency-free and small.
+  (function () {
+    const API_BASE = "https://runstamp-api.gilla.fun";
+
+    // Stamp catalogue → tier mapping. Light enough to inline; if it grows
+    // we'll fetch a static JSON from the same CDN. Tier values must match
+    // apps/api/internal/stamps catalog ids.
+    const STAMP_TIERS = {
+      // Add ids over time as new mythic / rare stamps ship. Anything
+      // unknown defaults to common (silver), which is the safe baseline.
+      sub_3_45_marathon:    "rare",
+      sub_4_marathon:       "rare",
+      sub_2_half:           "rare",
+      sub_50_10k:           "rare",
+      boston_qualifier:     "mythic",
+      sub_3_marathon:       "mythic",
+      every_continent:      "mythic",
+      "1000km_year":        "rare",
+      "5000km_year":        "mythic",
+    };
+
+    function tierFor(stampId) {
+      return STAMP_TIERS[stampId] || "common";
+    }
+
+    function nameFromStampId(id) {
+      // No catalogue lookup on the web yet; humanise the id so the grid
+      // reads as "Sub-3:45 Marathon" instead of "sub_3_45_marathon".
+      return id
+        .replace(/_/g, " ")
+        .replace(/\b(\d+)k\b/gi, "$1K")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    function pathHandle() {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      // /u/<handle>[/...] — take the first segment after /u/.
+      const idx = parts.indexOf("u");
+      return idx >= 0 ? parts[idx + 1] || null : null;
+    }
+
+    function show(id) { const el = document.getElementById(id); if (el) el.hidden = false; }
+    function hide(id) { const el = document.getElementById(id); if (el) el.hidden = true; }
+    function setText(id, t) { const el = document.getElementById(id); if (el) el.textContent = t; }
+
+    function renderTotals(t) {
+      const el = document.getElementById("profile-totals");
+      if (!el) return;
+      const cells = [
+        { label: "STAMPS",     value: t.stamps != null ? t.stamps : 0 },
+        { label: "DISTANCE",   value: Math.round(t.distanceKm).toLocaleString(), unit: "km" },
+        { label: "COUNTRIES",  value: t.countries },
+        { label: "RUNS",       value: t.runs },
+      ];
+      el.innerHTML = cells.map((c) => `
+        <div>
+          <div class="tally-label">${c.label}</div>
+          <div class="tally-value">${c.value}${c.unit ? `<span class="tally-unit">${c.unit}</span>` : ""}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderStamps(stamps) {
+      const section = document.getElementById("profile-stamps-section");
+      const grid = document.getElementById("profile-stamps-grid");
+      if (!grid || !section) return;
+      if (!stamps || stamps.length === 0) { section.hidden = true; return; }
+      grid.innerHTML = stamps.slice(0, 60).map((s) => {
+        const tier = tierFor(s.stampId);
+        const name = nameFromStampId(s.stampId);
+        return `<div class="stamp-badge ${tier}" title="${name}">${name}</div>`;
+      }).join("");
+      section.hidden = false;
+    }
+
+    function renderCities(cities) {
+      const section = document.getElementById("profile-cities-section");
+      const list = document.getElementById("profile-cities");
+      if (!list || !section) return;
+      if (!cities || cities.length === 0) { section.hidden = true; return; }
+      list.innerHTML = cities.slice(0, 40).map((c) => `
+        <li>
+          <div class="city-name">${c.city}</div>
+          <div class="city-meta">${c.country || "—"} · ${c.runs}</div>
+        </li>
+      `).join("");
+      section.hidden = false;
+    }
+
+    async function load() {
+      const handle = pathHandle();
+      if (!handle) {
+        hide("profile");
+        show("profile-missing");
+        return;
+      }
+
+      try {
+        const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`);
+        if (!r.ok) {
+          hide("profile");
+          show("profile-missing");
+          return;
+        }
+        const data = await r.json();
+        const totals = data.totals || {};
+        const tWithStamps = Object.assign({}, totals, { stamps: (data.stamps || []).length });
+
+        setText("profile-handle-eyebrow", `@${data.handle}`);
+        const displayName = data.displayName && data.displayName.trim() ? data.displayName : data.handle;
+        const nameEl = document.getElementById("profile-name");
+        if (nameEl) {
+          nameEl.innerHTML = `${displayName}<em>.</em>`;
+        }
+        const tagline = `${totals.cities || 0} cities · ${totals.countries || 0} countries · ${Math.round(totals.distanceKm || 0).toLocaleString()} km lifetime`;
+        setText("profile-tagline", tagline);
+        renderTotals(tWithStamps);
+        renderStamps(data.stamps);
+        renderCities(data.cities);
+
+        // Tighten the document title so shares carry the handle.
+        document.title = `${displayName} on Runstamp`;
+
+        hide("profile");
+        show("profile-card");
+      } catch (e) {
+        hide("profile");
+        show("profile-missing");
+      }
+    }
+
+    load();
+  })();
+</script>

@@ -1,0 +1,4 @@
+# SPA-style rewrite for the /u/<handle> profile pages — serve the same shell
+# regardless of the handle, then the page's client-side script reads the URL
+# path and fetches the matching profile from the API.
+/u/*  /u/index.html  200

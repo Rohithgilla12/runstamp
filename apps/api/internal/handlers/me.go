@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type meResponse struct {
@@ -26,6 +29,8 @@ type meResponse struct {
 	UITileStyle      *string `json:"uiTileStyle,omitempty"`
 	UIOnboarded      *bool   `json:"uiOnboarded,omitempty"`
 	UIDefaultSurface *string `json:"uiDefaultSurface,omitempty"`
+	Handle           *string `json:"handle,omitempty"`
+	ProfilePublic    bool    `json:"profilePublic"`
 	HasStrava        bool    `json:"hasStrava"`
 }
 
@@ -53,6 +58,8 @@ func toMeResponse(u *users.User, hasStrava bool) meResponse {
 		UITileStyle:      u.UITileStyle,
 		UIOnboarded:      u.UIOnboarded,
 		UIDefaultSurface: u.UIDefaultSurface,
+		Handle:           u.Handle,
+		ProfilePublic:    u.ProfilePublic,
 		HasStrava:        hasStrava,
 	}
 }
@@ -100,6 +107,37 @@ type patchMeRequest struct {
 	UITileStyle      *string `json:"uiTileStyle"`
 	UIOnboarded      *bool   `json:"uiOnboarded"`
 	UIDefaultSurface *string `json:"uiDefaultSurface"`
+	// Empty string clears the claimed handle (rare — mostly handled as "user
+	// wants to switch handles"). Any other value is validated below.
+	Handle        *string `json:"handle"`
+	ProfilePublic *bool   `json:"profilePublic"`
+}
+
+// Handle validation: 3–30 chars, ASCII alphanumeric + dash + underscore,
+// must start and end with alphanumeric. Reserved words protect the URL
+// space at runstamp.app/u/<handle> from being shadowed by app routes.
+var validHandleRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{1,28}[a-z0-9]$`)
+
+var reservedHandles = map[string]bool{
+	"admin": true, "api": true, "app": true, "auth": true, "u": true,
+	"www":   true, "settings": true, "about": true, "help": true, "support": true,
+	"login": true, "logout": true, "signup": true, "signin": true, "signout": true,
+	"runstamp": true, "stamp": true, "stamps": true, "profile": true, "profiles": true,
+	"new":   true, "edit": true, "delete": true, "share": true, "shares": true,
+	"static": true, "assets": true, "public": true, "private": true,
+}
+
+func validateHandle(h string) error {
+	if h == "" {
+		return nil // explicit clear
+	}
+	if !validHandleRe.MatchString(h) {
+		return errors.New("handle must be 3-30 chars, lowercase alphanumerics, dashes or underscores, starting + ending alphanumeric")
+	}
+	if reservedHandles[h] {
+		return errors.New("that handle is reserved")
+	}
+	return nil
 }
 
 // Whitelists keep the column values to known good ones so a stale or
@@ -189,6 +227,16 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "uiDefaultSurface must be one of 9:16, 1:1, 4:5")
 			return
 		}
+		// Handle is case-folded to lowercase before validation + persistence.
+		// We never round-trip mixed case so the unique index does its job.
+		if req.Handle != nil {
+			normalised := strings.ToLower(strings.TrimSpace(*req.Handle))
+			if err := validateHandle(normalised); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			req.Handle = &normalised
+		}
 		user, err := repo.FindByFirebaseUID(r.Context(), vt.UID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to load user")
@@ -210,8 +258,17 @@ func PatchMe(repo *users.Repo) http.HandlerFunc {
 			UITileStyle:      req.UITileStyle,
 			UIOnboarded:      req.UIOnboarded,
 			UIDefaultSurface: req.UIDefaultSurface,
+			Handle:           req.Handle,
+			ProfilePublic:    req.ProfilePublic,
 		})
 		if err != nil {
+			// Handle collision → 409 Conflict so the mobile client can show
+			// "that handle is taken" instead of a generic 500.
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				writeError(w, http.StatusConflict, "that handle is taken")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "failed to update profile")
 			return
 		}

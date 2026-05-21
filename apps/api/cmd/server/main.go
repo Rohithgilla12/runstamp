@@ -282,6 +282,15 @@ func main() {
 		waitlistHandler := waitlist.NewHandler(waitlistRepo, cfg.WaitlistIPSalt, log)
 		r.Route("/waitlist", waitlistHandler.Routes)
 
+		// Public profiles — no auth. The profile_public flag is the gate.
+		profilesHandler := &handlers.ProfilesHandler{
+			Pool:   pool,
+			Users:  usersRepo,
+			Stamps: stampsRepo,
+			Log:    log,
+		}
+		r.Get("/profiles/{handle}", profilesHandler.Get)
+
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))
 			r.Get("/me", handlers.Me(usersRepo))
