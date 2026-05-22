@@ -92,19 +92,23 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
   const profile = await fetchProfile(handle);
   const html = ogCardHtml(handle, profile);
 
+  // Buffer the PNG into memory before responding. workers-og returns a
+  // streaming body; teeing it for both "return to client" and "put in
+  // cache" sometimes leaves one side empty. A 1200×630 PNG is ~50–200 KB,
+  // so the memory cost is negligible and the behaviour is deterministic.
   const png = new ImageResponse(html, {
     width: 1200,
     height: 630,
     format: "png",
   });
+  const buf = await png.arrayBuffer();
 
-  const headers = new Headers(png.headers);
-  headers.set("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
-  headers.set("Content-Type", "image/png");
-  const final = new Response(png.body, { status: png.status, headers });
-
-  ctx.waitUntil(cache.put(cacheKey, final.clone()));
-  return final;
+  const headers = new Headers({
+    "Content-Type": "image/png",
+    "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+  });
+  ctx.waitUntil(cache.put(cacheKey, new Response(buf, { status: 200, headers })));
+  return new Response(buf, { status: 200, headers });
 }
 
 function sanitizeHandle(s: string): string | null {
