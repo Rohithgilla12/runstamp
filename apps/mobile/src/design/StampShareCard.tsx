@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, Pattern, Rect, LinearGradient, Stop, Line, G } from 'react-native-svg';
 import type { StampTier } from '../data/sample';
 import type { CatalogStamp } from '../state/useStamps';
 import { TText } from './typography';
@@ -78,6 +78,14 @@ export function StampShareCard({
           paddingVertical: pad * 0.85,
         }}
       >
+        <Embellishments
+          tier={stamp.tier}
+          width={paperW}
+          height={paperH}
+          ink={palette.ink}
+          foil={palette.foil}
+        />
+
         {/* Top plate */}
         <View>
           <TText
@@ -217,6 +225,120 @@ export function StampShareCard({
           bottomText={activityCity || country}
         />
       </View>
+    </View>
+  );
+}
+
+// ── Embellishments ───────────────────────────────────────────────────────
+
+function Embellishments({
+  tier,
+  width,
+  height,
+  ink,
+  foil,
+}: {
+  tier: StampTier;
+  width: number;
+  height: number;
+  ink: string;
+  foil?: string;
+}) {
+  const isRare = tier === 'rare';
+  const isMythic = tier === 'mythic';
+  const hasHalftone = tier === 'common' || isRare;
+  
+  // Outer frame for Rare/Mythic
+  const inset = 8;
+  const frameW = width - inset * 2;
+  const frameH = height - inset * 2;
+
+  // Foil ticks for Mythic
+  const ticks = [];
+  if (isMythic && foil) {
+    const tickCount = 24;
+    for (let i = 0; i < tickCount; i++) {
+      // Very basic radial approximation for a rectangle perimeter
+      // We'll distribute them around the perimeter inset by 4px
+      const tickLength = 5;
+      const p = i / tickCount;
+      let x, y, angle;
+      if (p < 0.25) { x = inset/2; y = inset/2 + (p / 0.25) * (height - inset); angle = 0; }
+      else if (p < 0.5) { x = inset/2 + ((p - 0.25) / 0.25) * (width - inset); y = height - inset/2; angle = 90; }
+      else if (p < 0.75) { x = width - inset/2; y = height - inset/2 - ((p - 0.5) / 0.25) * (height - inset); angle = 0; }
+      else { x = width - inset/2 - ((p - 0.75) / 0.25) * (width - inset); y = inset/2; angle = 90; }
+      
+      ticks.push(
+        <G key={i} transform={`translate(${x}, ${y}) rotate(${angle})`} opacity={0.85}>
+          <Line x1={-tickLength/2} y1={0} x2={tickLength/2} y2={0} stroke={foil} strokeWidth={2} />
+        </G>
+      );
+    }
+  }
+
+  return (
+    <View style={{ position: 'absolute', top: 0, left: 0, width, height }} pointerEvents="none">
+      <Svg width="100%" height="100%">
+        <Defs>
+          <Pattern id="halftone" width={8} height={8} patternUnits="userSpaceOnUse">
+            <Circle cx={4} cy={4} r={1.2} fill={ink} opacity={isRare ? 0.14 : 0.08} />
+          </Pattern>
+          <Pattern id="papergrain" width={24} height={24} patternUnits="userSpaceOnUse">
+            {/* Simple procedural grain using a few dots */}
+            <Circle cx={2} cy={2} r={0.8} fill={ink} opacity={0.06} />
+            <Circle cx={14} cy={6} r={1} fill={ink} opacity={0.04} />
+            <Circle cx={6} cy={18} r={0.6} fill={ink} opacity={0.05} />
+            <Circle cx={20} cy={14} r={0.9} fill={ink} opacity={0.07} />
+          </Pattern>
+          <LinearGradient id="shimmer" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={foil || ink} stopOpacity="0" />
+            <Stop offset="0.4" stopColor={foil || ink} stopOpacity="0.12" />
+            <Stop offset="0.5" stopColor="#f3e0a8" stopOpacity="0.15" />
+            <Stop offset="0.6" stopColor="#3c6e8c" stopOpacity="0.12" />
+            <Stop offset="1" stopColor={foil || ink} stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+
+        {/* Universal Paper Grain */}
+        <Rect width="100%" height="100%" fill="url(#papergrain)" />
+
+        {/* Halftone for Common/Rare */}
+        {hasHalftone && <Rect width="100%" height="100%" fill="url(#halftone)" />}
+
+        {/* Embellished Inner Border for Rare/Mythic */}
+        {(isRare || isMythic) && (
+          <>
+            <Rect
+              x={inset}
+              y={inset}
+              width={frameW}
+              height={frameH}
+              fill="none"
+              stroke={ink}
+              strokeWidth={1}
+              opacity={0.8}
+            />
+            <Rect
+              x={inset + 2}
+              y={inset + 2}
+              width={frameW - 4}
+              height={frameH - 4}
+              fill="none"
+              stroke={ink}
+              strokeWidth={0.5}
+              opacity={0.6}
+            />
+          </>
+        )}
+
+        {/* Mythic Foil Ticks */}
+        {isMythic && ticks}
+
+        {/* Mythic Shimmer Band */}
+        {isMythic && (
+          <Rect width="100%" height="100%" fill="url(#shimmer)" />
+        )}
+      </Svg>
     </View>
   );
 }
