@@ -73,9 +73,82 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </svg>
       </header>
 
-      <!-- Tally strip. Big mono numerals, no chrome. -->
-      <section class="tally" id="profile-totals" aria-label="Lifetime totals">
-        <!-- Populated by script. -->
+      <!-- Year ledger — "2026 so far" annual-report panel. Hides if empty. -->
+      <section class="year-ledger" id="profile-year-section" hidden>
+        <div class="year-rule" aria-hidden="true"></div>
+        <div class="year-head">
+          <p class="eyebrow">YEAR TO DATE</p>
+          <p class="year-stamp" id="year-stamp">2026</p>
+        </div>
+        <div class="year-body">
+          <p class="year-distance" id="year-distance">0</p>
+          <p class="year-unit">KILOMETRES</p>
+        </div>
+        <p class="year-footnote" id="year-footnote"></p>
+        <div class="year-rule" aria-hidden="true"></div>
+      </section>
+
+      <!-- LIFETIME tally. Renamed eyebrow only — same 4-cell strip. -->
+      <section class="profile-section profile-section--tight">
+        <header class="section-header">
+          <p class="eyebrow">LIFETIME</p>
+          <p class="section-count">all-time totals</p>
+        </header>
+        <div class="tally" id="profile-totals" aria-label="Lifetime totals">
+          <!-- Populated by script. -->
+        </div>
+      </section>
+
+      <!-- Personal bests — perforated postage-stamp rectangles. -->
+      <section class="profile-section" id="profile-pbs-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">PERSONAL BESTS</p>
+          <p class="section-count">best full run · ±5% of distance</p>
+        </header>
+        <div class="pb-grid" id="profile-pbs-grid"></div>
+      </section>
+
+      <!-- Weekly bars — receipt-tape chart for the last 26 weeks. -->
+      <section class="profile-section" id="profile-weekly-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">THE LAST 26 WEEKS</p>
+          <p class="section-count" id="profile-weekly-max"></p>
+        </header>
+        <div class="weekly-wrap">
+          <svg class="weekly-svg" id="profile-weekly-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="weekly-axis">
+          <span id="profile-weekly-start">—</span>
+          <span>This week</span>
+        </div>
+      </section>
+
+      <!-- Calendar heatmap — 52×7 moss grid for the last 12 months. -->
+      <section class="profile-section" id="profile-heatmap-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">THE LAST 12 MONTHS</p>
+          <p class="section-count" id="profile-heatmap-summary">darker = farther</p>
+        </header>
+        <div class="heatmap-wrap">
+          <svg class="heatmap-svg" id="profile-heatmap-svg" aria-hidden="true"></svg>
+        </div>
+      </section>
+
+      <!-- Highlights — table-of-contents ledger lines. -->
+      <section class="profile-section" id="profile-highlights-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">FROM THE ALBUM</p>
+        </header>
+        <ul class="highlight-list" id="profile-highlights-list"></ul>
+      </section>
+
+      <!-- Country breakdown — passport totals with hairline bars. -->
+      <section class="profile-section" id="profile-countries-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">BY COUNTRY</p>
+          <p class="section-count">distance by country</p>
+        </header>
+        <ol class="country-list" id="profile-countries-list"></ol>
       </section>
 
       <!-- Stamps grid. Each cell is an actual SVG postmark badge. -->
@@ -108,7 +181,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
   </main>
 </Base>
 
-<style>
+<style is:global>
+  /* All selectors here are global because the inline <script> injects
+     elements (stamps, PB cards, highlight rows, country rows, etc.) at
+     runtime — those don't carry Astro's data-astro-cid attribute, so
+     scoped selectors wouldn't match them. */
   .profile-root {
     max-width: 760px;
     margin: 0 auto;
@@ -251,7 +328,6 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 1px;
-    margin-top: var(--space-8);
     background: var(--line);
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
@@ -365,6 +441,244 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     font-feature-settings: "tnum" 1;
   }
 
+  .profile-section--tight { padding-top: var(--space-8); }
+
+  /* ── Year ledger ──────────────────────────────────────────────── */
+  .year-ledger {
+    margin-top: var(--space-12);
+    background: var(--paper-2);
+    padding: var(--space-8) clamp(1.25rem, 4vw, 2.5rem) var(--space-6);
+    display: grid;
+    gap: var(--space-4);
+  }
+  .year-rule {
+    height: 1px;
+    background-image: linear-gradient(to right, var(--ink-3) 0 4px, transparent 4px 8px);
+    background-size: 8px 1px;
+    background-repeat: repeat-x;
+    opacity: 0.55;
+  }
+  .year-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .year-stamp {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    color: var(--ink);
+    line-height: 1;
+  }
+  .year-body { padding: var(--space-2) 0; }
+  .year-distance {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: clamp(3.5rem, 12vw, 6rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    font-feature-settings: "tnum" 1;
+  }
+  .year-unit {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    margin-top: var(--space-2);
+  }
+  .year-footnote {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Personal bests ───────────────────────────────────────────── */
+  .pb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-4);
+  }
+  .pb-stamp {
+    aspect-ratio: 5 / 7;
+    display: block;
+    width: 100%;
+  }
+  .pb-stamp svg { display: block; width: 100%; height: 100%; }
+
+  /* ── Weekly bars ──────────────────────────────────────────────── */
+  .weekly-wrap {
+    position: relative;
+    width: 100%;
+    height: 120px;
+  }
+  .weekly-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .weekly-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  /* ── Calendar heatmap ─────────────────────────────────────────── */
+  .heatmap-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .heatmap-svg {
+    display: block;
+    width: 100%;
+    min-width: 520px;
+    height: auto;
+  }
+
+  /* ── Highlights ───────────────────────────────────────────────── */
+  .highlight-list {
+    list-style: none;
+    display: grid;
+    gap: var(--space-3);
+  }
+  .highlight-row {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+  .highlight-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+  .highlight-leader {
+    height: 1px;
+    align-self: end;
+    margin-bottom: 0.4em;
+    background-image: radial-gradient(circle, var(--ink-3) 0.6px, transparent 0.8px);
+    background-size: 5px 1px;
+    background-repeat: repeat-x;
+    background-position: left bottom;
+    opacity: 0.55;
+  }
+  .highlight-value {
+    font-size: var(--text-base);
+    color: var(--ink);
+    text-align: right;
+    font-feature-settings: "tnum" 1;
+    white-space: nowrap;
+  }
+  .highlight-value .num {
+    font-family: var(--font-mono);
+    color: var(--ink);
+  }
+  .highlight-value .place {
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--ink);
+  }
+  .highlight-value .date {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+  }
+  .highlight-value .sep {
+    color: var(--ink-3);
+    margin: 0 0.5em;
+    font-family: var(--font-mono);
+  }
+  @media (max-width: 540px) {
+    .highlight-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+    .highlight-leader { display: none; }
+    .highlight-value { text-align: left; }
+  }
+
+  /* ── Country breakdown ────────────────────────────────────────── */
+  .country-list {
+    list-style: none;
+    display: grid;
+    gap: var(--space-3);
+    counter-reset: country;
+  }
+  .country-row {
+    counter-increment: country;
+    display: grid;
+    grid-template-columns: 28px 1fr max-content;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-top: 1px dashed var(--line);
+  }
+  .country-row:first-child { border-top: 0; }
+  .country-row::before {
+    content: counter(country, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
+  }
+  .country-mid {
+    display: grid;
+    grid-template-columns: minmax(0, 180px) 1fr;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .country-name {
+    font-size: var(--text-base);
+    color: var(--ink);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .country-bar-lane {
+    height: 4px;
+    background: var(--line-2);
+    width: 100%;
+  }
+  .country-bar {
+    height: 100%;
+    background: var(--ink);
+  }
+  .country-stats {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+    font-feature-settings: "tnum" 1;
+    text-align: right;
+  }
+  .country-stats .runs {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+    margin-left: 0.4em;
+  }
+  .country-more {
+    font-family: var(--font-mono);
+    font-style: italic;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    padding: var(--space-2) 0 0 calc(28px + var(--space-3));
+  }
+  @media (max-width: 540px) {
+    .country-row { grid-template-columns: 24px 1fr; row-gap: var(--space-1); }
+    .country-mid { grid-column: 2; grid-template-columns: 1fr; gap: var(--space-2); }
+    .country-stats { grid-column: 2; text-align: left; }
+  }
+
   /* ── Footer ────────────────────────────────────────────────────── */
   .profile-footer {
     margin-top: var(--space-16);
@@ -413,6 +727,32 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       rare:   { ring: "#14110d", text: "#14110d", bg:   "rgba(20,17,13,0.05)",  label: "RARE"   },
       mythic: { ring: "#4a6b3a", text: "#2c4124", bg:   "rgba(74,107,58,0.07)", label: "MYTHIC" },
     };
+
+    // Palette literals — used inside SVG attributes where CSS var() is
+    // unreliable across browsers. Mirrors the --paper / --ink / --solar /
+    // --moss tokens in Base.astro for the light theme (the landing app is
+    // light-only).
+    const PALETTE = {
+      paper:  "#f3ede2",
+      paper2: "#ebe3d3",
+      paper3: "#e2d8c4",
+      ink:    "#14110d",
+      ink3:   "#75695a",
+      solar:  "#e85d2f",
+      moss:   "#4a6b3a",
+      line:   "rgba(20,17,13,0.10)",
+    };
+
+    // Pre-mixed moss intensities for the heatmap. color-mix in oklch
+    // against paper-2 gives perceptually-uniform steps; baking the values
+    // in keeps it Safari-safe inside an SVG fill attribute.
+    const HEATMAP_TINTS = [
+      "#ebe3d3", // 0 km — paper-2 (rest day still has presence)
+      "#bfc6a9", // <5 km
+      "#94a880", // <10 km
+      "#6a8b5a", // <20 km
+      "#4a6b3a", // 20+ km
+    ];
 
     // Two-letter ISO-like code for the postmark country band. We have the
     // full country name; collapse to 3 chars max for the rim text.
@@ -554,6 +894,341 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       return cities.reduce((best, c) => (!best || c.runs > best.runs ? c : best), null);
     }
 
+    // ── Year ledger ────────────────────────────────────────────────
+    function renderYearLedger(ytd) {
+      const section = document.getElementById("profile-year-section");
+      if (!section) return;
+      if (!ytd || !ytd.runs) { section.hidden = true; return; }
+      setText("year-stamp", String(ytd.year));
+      setText("year-distance", Math.round(ytd.distanceKm).toLocaleString());
+      const parts = [`${ytd.runs} ${ytd.runs === 1 ? "run" : "runs"}`];
+      if (ytd.cities) parts.push(`${ytd.cities} ${ytd.cities === 1 ? "city" : "cities"}`);
+      if (ytd.elevationM > 0) parts.push(`${formatElevation(ytd.elevationM)} climbed`);
+      setText("year-footnote", parts.join(" · "));
+      section.hidden = false;
+    }
+
+    function formatElevation(m) {
+      if (m >= 1000) return `${(m / 1000).toFixed(1)}k m`;
+      return `${Math.round(m)} m`;
+    }
+
+    // ── Personal bests ─────────────────────────────────────────────
+    const PB_SLOTS = [
+      { key: "5k",       label: "5K",       distance: "5K" },
+      { key: "10k",      label: "10K",      distance: "10K" },
+      { key: "half",     label: "HALF",     distance: "HALF" },
+      { key: "marathon", label: "MARATHON", distance: "MARA" },
+    ];
+
+    function renderPBs(pbs) {
+      const section = document.getElementById("profile-pbs-section");
+      const grid = document.getElementById("profile-pbs-grid");
+      if (!section || !grid) return;
+      if (!pbs) { section.hidden = true; return; }
+      const anyFilled = PB_SLOTS.some((s) => pbs[s.key]);
+      if (!anyFilled) { section.hidden = true; return; }
+      grid.innerHTML = PB_SLOTS.map((s) => pbStampSVG(s, pbs[s.key])).join("");
+      section.hidden = false;
+    }
+
+    function pbStampSVG(slot, pb) {
+      const filled = !!pb;
+      const stripFill = filled ? PALETTE.solar : PALETTE.paper3;
+      const stripText = filled ? PALETTE.paper : PALETTE.ink3;
+      const timeStr = filled ? formatPBTime(pb.timeSeconds) : "—:—";
+      const placeLine = filled
+        ? `${pb.city ? escapeAttr(pb.city) + " · " : ""}${formatPBDate(pb.date)}`
+        : "Not stamped yet";
+
+      // SVG postage stamp with perforated edges. The mask carves holes
+      // through the stamp's outline so the inside paper colour shows
+      // through as bite marks.
+      const idSuffix = Math.random().toString(36).slice(2, 8);
+      const perfs = perforationCircles(idSuffix);
+      return `
+<div class="pb-stamp" role="img" aria-label="${escapeAttr(slot.label)} personal best ${escapeAttr(timeStr)}">
+  <svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <mask id="perf-${idSuffix}">
+        <rect x="0" y="0" width="100" height="140" fill="#fff"/>
+        ${perfs}
+      </mask>
+    </defs>
+    <g mask="url(#perf-${idSuffix})">
+      <rect x="2" y="2" width="96" height="136" fill="${PALETTE.paper}" stroke="${PALETTE.ink}" stroke-width="0.8"/>
+      <rect x="2" y="2" width="96" height="22" fill="${stripFill}"/>
+    </g>
+    <text x="8" y="16" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="1.2" fill="${stripText}">${escapeAttr(slot.distance)}</text>
+    <text x="92" y="16" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="6" letter-spacing="1.2" fill="${stripText}">BEST</text>
+    <text x="50" y="78" text-anchor="middle" font-family="Instrument Serif, serif" font-style="italic" font-size="22" fill="${PALETTE.ink}">${escapeAttr(timeStr)}</text>
+    <line x1="22" y1="92" x2="78" y2="92" stroke="${PALETTE.ink}" stroke-opacity="0.18" stroke-width="0.5" stroke-dasharray="2 2"/>
+    <text x="50" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" letter-spacing="0.6" fill="${PALETTE.ink3}">${escapeAttr(placeLine)}</text>
+  </svg>
+</div>`;
+    }
+
+    function perforationCircles(idSuffix) {
+      // 13 bites along the top/bottom, 18 along the sides — proportional
+      // to a 100×140 viewBox so the stamp reads as actual postage.
+      const out = [];
+      const r = 1.6;
+      const topCount = 13;
+      for (let i = 0; i < topCount; i++) {
+        const x = (i + 0.5) * (100 / topCount);
+        out.push(`<circle cx="${x.toFixed(2)}" cy="2" r="${r}" fill="#000"/>`);
+        out.push(`<circle cx="${x.toFixed(2)}" cy="138" r="${r}" fill="#000"/>`);
+      }
+      const sideCount = 18;
+      for (let i = 0; i < sideCount; i++) {
+        const y = (i + 0.5) * (140 / sideCount);
+        out.push(`<circle cx="2" cy="${y.toFixed(2)}" r="${r}" fill="#000"/>`);
+        out.push(`<circle cx="98" cy="${y.toFixed(2)}" r="${r}" fill="#000"/>`);
+      }
+      return out.join("");
+    }
+
+    function formatPBTime(seconds) {
+      const s = Math.max(0, Math.round(seconds));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+      return `${m}:${String(sec).padStart(2, "0")}`;
+    }
+
+    function formatPBDate(isoDate) {
+      // "2026-03-04" → "04/03/26" — postal short, DD/MM/YY.
+      const parts = isoDate.split("-");
+      if (parts.length !== 3) return isoDate;
+      return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
+    }
+
+    // ── Weekly bars ────────────────────────────────────────────────
+    function renderWeekly(weekly) {
+      const section = document.getElementById("profile-weekly-section");
+      const svg = document.getElementById("profile-weekly-svg");
+      if (!section || !svg) return;
+      if (!weekly || weekly.length === 0) { section.hidden = true; return; }
+      const total = weekly.reduce((s, w) => s + (w.distanceKm || 0), 0);
+      if (total === 0) { section.hidden = true; return; }
+
+      const max = Math.max(...weekly.map((w) => w.distanceKm || 0));
+      // SVG is 600 wide, 120 tall. Reserve 10px top + 6px bottom (baseline).
+      const W = 600;
+      const H = 120;
+      const top = 10;
+      const baseY = H - 6;
+      const usable = baseY - top;
+      const slot = W / weekly.length;
+      const barW = Math.min(10, Math.max(3, slot * 0.55));
+
+      // Find the most-recent max week for the single solar pop.
+      let maxIdx = 0;
+      for (let i = 0; i < weekly.length; i++) {
+        if ((weekly[i].distanceKm || 0) >= (weekly[maxIdx].distanceKm || 0)) maxIdx = i;
+      }
+
+      const bars = weekly.map((w, i) => {
+        const x = i * slot + (slot - barW) / 2;
+        const km = w.distanceKm || 0;
+        const h = max > 0 ? Math.max(1, (km / max) * usable) : 1;
+        const y = baseY - h;
+        const fill = i === maxIdx && km > 0 ? PALETTE.solar : PALETTE.ink;
+        const title = `${w.weekStart} · ${km.toFixed(1)} km · ${w.runs} ${w.runs === 1 ? "run" : "runs"}`;
+        return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}"><title>${escapeAttr(title)}</title></rect>`;
+      }).join("");
+
+      const baseline = `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="${PALETTE.line}" stroke-width="1" stroke-dasharray="3 3"/>`;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars + baseline;
+
+      setText("profile-weekly-max", `${Math.round(max).toLocaleString()} km · max week`);
+      setText("profile-weekly-start", formatMonthYear(weekly[0].weekStart));
+      section.hidden = false;
+    }
+
+    function formatMonthYear(isoDate) {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const parts = isoDate.split("-");
+      if (parts.length !== 3) return isoDate;
+      const m = parseInt(parts[1], 10);
+      const y = parts[0].slice(2);
+      return `${months[m - 1] || ""} '${y}`;
+    }
+
+    // ── Calendar heatmap ───────────────────────────────────────────
+    function renderHeatmap(cal) {
+      const section = document.getElementById("profile-heatmap-section");
+      const svg = document.getElementById("profile-heatmap-svg");
+      if (!section || !svg) return;
+      if (!cal || cal.length === 0) { section.hidden = true; return; }
+
+      // Build a date → {km, runs} index.
+      const byDate = new Map();
+      for (const d of cal) byDate.set(d.date, d);
+
+      // The grid runs from "today's column" back 52 columns. Each column
+      // is a 7-day week starting on Monday. Day rows: Mon, Tue, ..., Sun.
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      // ISO Monday of this week (UTC).
+      const thisMonday = new Date(today);
+      const dow = (today.getUTCDay() + 6) % 7; // 0 = Mon, 6 = Sun
+      thisMonday.setUTCDate(thisMonday.getUTCDate() - dow);
+
+      const cols = 52;
+      const rows = 7;
+      const cell = 11;
+      const gap = 3;
+      const padLeft = 22; // room for day-of-week labels
+      const padTop = 4;
+      const padBottom = 18; // room for month labels
+      const W = padLeft + cols * (cell + gap);
+      const H = padTop + rows * (cell + gap) + padBottom;
+
+      const cells = [];
+      const monthLabels = [];
+      let lastMonth = -1;
+      for (let c = 0; c < cols; c++) {
+        const colMonday = new Date(thisMonday);
+        colMonday.setUTCDate(colMonday.getUTCDate() - 7 * (cols - 1 - c));
+        // Month label only when this column's Monday starts a new month.
+        const m = colMonday.getUTCMonth();
+        if (m !== lastMonth) {
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          monthLabels.push(`<text x="${padLeft + c * (cell + gap)}" y="${H - 6}" font-family="JetBrains Mono, monospace" font-size="9" fill="${PALETTE.ink3}">${months[m]}</text>`);
+          lastMonth = m;
+        }
+        for (let r = 0; r < rows; r++) {
+          const d = new Date(colMonday);
+          d.setUTCDate(d.getUTCDate() + r);
+          // Don't draw cells in the future.
+          if (d > today) continue;
+          const iso = d.toISOString().slice(0, 10);
+          const entry = byDate.get(iso);
+          const km = entry ? entry.distanceKm : 0;
+          const fill = heatmapFill(km);
+          const x = padLeft + c * (cell + gap);
+          const y = padTop + r * (cell + gap);
+          const isToday = iso === today.toISOString().slice(0, 10);
+          const stroke = isToday ? ` stroke="${PALETTE.solar}" stroke-width="1.2"` : "";
+          const title = entry
+            ? `${iso} · ${entry.runs} ${entry.runs === 1 ? "run" : "runs"} · ${km.toFixed(1)} km`
+            : `${iso} · rest`;
+          cells.push(`<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${fill}"${stroke}><title>${title}</title></rect>`);
+        }
+      }
+
+      // Day-of-week labels (only on rows we want — M, W, F, S).
+      const dayLabels = [];
+      const labelMap = { 0: "M", 2: "W", 4: "F", 6: "S" };
+      for (const r in labelMap) {
+        const y = padTop + parseInt(r, 10) * (cell + gap) + cell - 2;
+        dayLabels.push(`<text x="0" y="${y}" font-family="JetBrains Mono, monospace" font-size="9" fill="${PALETTE.ink3}">${labelMap[r]}</text>`);
+      }
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      svg.innerHTML = dayLabels.join("") + cells.join("") + monthLabels.join("");
+
+      const ranDays = cal.length;
+      const totalKm = cal.reduce((s, d) => s + (d.distanceKm || 0), 0);
+      setText("profile-heatmap-summary", `${ranDays} ${ranDays === 1 ? "day" : "days"} · ${Math.round(totalKm).toLocaleString()} km · darker = farther`);
+      section.hidden = false;
+    }
+
+    function heatmapFill(km) {
+      // Moss-on-paper-2 buckets — pre-mixed in HEATMAP_TINTS because SVG
+      // fill attributes don't reliably accept color-mix() across browsers.
+      if (km <= 0) return HEATMAP_TINTS[0];
+      if (km < 5)  return HEATMAP_TINTS[1];
+      if (km < 10) return HEATMAP_TINTS[2];
+      if (km < 20) return HEATMAP_TINTS[3];
+      return HEATMAP_TINTS[4];
+    }
+
+    // ── Highlights ─────────────────────────────────────────────────
+    function renderHighlights(h) {
+      const section = document.getElementById("profile-highlights-section");
+      const list = document.getElementById("profile-highlights-list");
+      if (!section || !list) return;
+      if (!h) { section.hidden = true; return; }
+      const rows = [];
+      if (h.longestRun) {
+        rows.push(highlightRow("LONGEST RUN", [
+          { c: "num", t: `${h.longestRun.distanceKm.toFixed(1)} km` },
+          h.longestRun.city ? { c: "place", t: h.longestRun.city } : null,
+          { c: "date", t: formatPBDate(h.longestRun.date) },
+        ]));
+      }
+      if (h.fastestPace) {
+        rows.push(highlightRow("FASTEST PACE", [
+          { c: "num", t: `${formatPace(h.fastestPace.paceSecondsPerKm)}/km` },
+          h.fastestPace.city ? { c: "place", t: h.fastestPace.city } : null,
+          { c: "date", t: formatPBDate(h.fastestPace.date) },
+        ]));
+      }
+      if (h.biggestWeek) {
+        rows.push(highlightRow("BIGGEST WEEK", [
+          { c: "num", t: `${Math.round(h.biggestWeek.distanceKm)} km` },
+          { c: "place", t: `${h.biggestWeek.runs} runs` },
+          { c: "date", t: `week of ${formatPBDate(h.biggestWeek.weekStart)}` },
+        ]));
+      }
+      if (h.highestClimb) {
+        rows.push(highlightRow("HIGHEST CLIMB", [
+          { c: "num", t: `${Math.round(h.highestClimb.elevationM)} m` },
+          h.highestClimb.city ? { c: "place", t: h.highestClimb.city } : null,
+          { c: "date", t: formatPBDate(h.highestClimb.date) },
+        ]));
+      }
+      if (rows.length === 0) { section.hidden = true; return; }
+      list.innerHTML = rows.join("");
+      section.hidden = false;
+    }
+
+    function highlightRow(label, fragments) {
+      const value = fragments
+        .filter(Boolean)
+        .map((f) => `<span class="${f.c}">${escapeAttr(f.t)}</span>`)
+        .join('<span class="sep">·</span>');
+      return `
+<li class="highlight-row">
+  <span class="highlight-label">${escapeAttr(label)}</span>
+  <span class="highlight-leader" aria-hidden="true"></span>
+  <span class="highlight-value">${value}</span>
+</li>`;
+    }
+
+    function formatPace(secondsPerKm) {
+      const s = Math.max(0, Math.round(secondsPerKm));
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}:${String(sec).padStart(2, "0")}`;
+    }
+
+    // ── Country breakdown ──────────────────────────────────────────
+    function renderCountries(countries) {
+      const section = document.getElementById("profile-countries-section");
+      const list = document.getElementById("profile-countries-list");
+      if (!section || !list) return;
+      if (!countries || countries.length === 0) { section.hidden = true; return; }
+      const max = Math.max(...countries.map((c) => c.distanceKm || 0));
+      list.innerHTML = countries.map((c) => {
+        const pct = max > 0 ? Math.min(100, (c.distanceKm / max) * 100) : 0;
+        return `
+<li class="country-row">
+  <div class="country-mid">
+    <span class="country-name">${escapeAttr(c.country)}</span>
+    <div class="country-bar-lane"><div class="country-bar" style="width:${pct.toFixed(1)}%"></div></div>
+  </div>
+  <div class="country-stats">${Math.round(c.distanceKm).toLocaleString()} km<span class="runs">${c.runs}×</span></div>
+</li>`;
+      }).join("");
+      section.hidden = false;
+    }
+
     async function load() {
       const handle = pathHandle();
       if (!handle) {
@@ -604,6 +1279,12 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         }
 
         renderTotals(totalsWithStamps);
+        renderYearLedger(data.yearToDate);
+        renderPBs(data.personalBests);
+        renderWeekly(data.weekly);
+        renderHeatmap(data.calendar);
+        renderHighlights(data.highlights);
+        renderCountries(data.countries);
         renderStamps(data.stamps);
         renderCities(data.cities);
 
