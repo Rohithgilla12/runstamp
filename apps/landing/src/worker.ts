@@ -229,9 +229,9 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
       : `a runner's album on Runstamp`;
 
   return `
-<div style="display:flex; flex-direction:column; width:100%; height:100%; background:${PAPER};">
+<div style="display:flex; flex-direction:column; width:1200px; height:630px; background:${PAPER};">
   <!-- Ink hero panel — postcard. -->
-  <div style="display:flex; width:100%; height:380px; background:${INK}; padding:54px 72px; align-items:center; justify-content:space-between;">
+  <div style="display:flex; width:1200px; height:380px; background:${INK}; padding:54px 72px; align-items:center; justify-content:space-between;">
     <div style="display:flex; flex-direction:column; max-width:760px;">
       <div style="display:flex; font-family:monospace; font-size:18px; color:${SOLAR}; letter-spacing:6px;">@${esc(handle)}</div>
       <div style="display:flex; margin-top:14px;">
@@ -243,7 +243,7 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
   </div>
 
   <!-- Paper strip — four big stats. -->
-  <div style="display:flex; flex:1; padding:40px 72px; justify-content:space-between; align-items:flex-start;">
+  <div style="display:flex; width:1200px; flex:1; padding:40px 72px; justify-content:space-between; align-items:flex-start;">
     ${statBlock("STAMPS", stampsCount, "")}
     ${statBlock("DISTANCE", lifetimeKm, " km")}
     ${statBlock("RUNS", lifetimeRuns, "")}
@@ -251,7 +251,7 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
   </div>
 
   <!-- Cancellation rule along the bottom. -->
-  <div style="display:flex; width:100%; height:8px; background:${SOLAR}; opacity:0.85;"></div>
+  <div style="display:flex; width:1200px; height:8px; background:${SOLAR}; opacity:0.85;"></div>
 </div>`;
 }
 
