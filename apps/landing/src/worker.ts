@@ -44,23 +44,37 @@ export default {
     // index without that round-trip. window.location on the client still
     // carries the original /u/<handle> path so the page script can read it.
     if (url.pathname.startsWith("/u/") && url.pathname !== "/u/") {
-      const handle = url.pathname.slice(3).replace(/\/$/, "");
+      const rawHandle = url.pathname.slice(3).replace(/\/$/, "");
+      const handle = sanitizeHandle(rawHandle) ?? rawHandle;
+
+      // Parallel: fetch the SPA shell + the profile JSON. We need the
+      // profile to set per-handle og:title / og:description; ~50ms extra
+      // worst-case, amortized by Cloudflare's HTTP cache on the API call.
       const rewritten = new URL(req.url);
       rewritten.pathname = "/u/";
-      const proxied = await env.ASSETS.fetch(new Request(rewritten, req));
+      const [proxied, profile] = await Promise.all([
+        env.ASSETS.fetch(new Request(rewritten, req)),
+        fetchProfile(handle),
+      ]);
 
       const headers = new Headers(proxied.headers);
       headers.delete("location");
 
-      // Rewrite the og:image / twitter:image meta tags so social previews
-      // point at the per-handle PNG instead of the static /og.svg fallback.
-      const ogUrl = `${SITE_BASE}/u/${encodeURIComponent(handle)}/og.png`;
+      const meta = buildMeta(handle, profile);
       const rewriter = new HTMLRewriter()
-        .on('meta[property="og:image"]', new MetaContentSetter(ogUrl))
-        .on('meta[name="twitter:image"]', new MetaContentSetter(ogUrl))
+        .on("title", new TextSetter(meta.title))
+        .on('meta[name="description"]', new MetaContentSetter(meta.description))
+        .on('meta[property="og:title"]', new MetaContentSetter(meta.title))
+        .on('meta[property="og:description"]', new MetaContentSetter(meta.description))
+        .on('meta[property="og:url"]', new MetaContentSetter(meta.canonical))
+        .on('meta[property="og:image"]', new MetaContentSetter(meta.ogImage))
+        .on('meta[name="twitter:title"]', new MetaContentSetter(meta.title))
+        .on('meta[name="twitter:description"]', new MetaContentSetter(meta.description))
+        .on('meta[name="twitter:image"]', new MetaContentSetter(meta.ogImage))
+        .on('meta[name="twitter:card"]', new MetaContentSetter("summary_large_image"))
         .on('meta[property="og:image:width"]', new MetaContentSetter("1200"))
         .on('meta[property="og:image:height"]', new MetaContentSetter("630"))
-        .on('meta[name="twitter:card"]', new MetaContentSetter("summary_large_image"));
+        .on('link[rel="canonical"]', new HrefSetter(meta.canonical));
 
       return rewriter.transform(new Response(proxied.body, { status: 200, headers }));
     }
@@ -74,6 +88,52 @@ class MetaContentSetter {
   element(el: Element) {
     el.setAttribute("content", this.value);
   }
+}
+
+class HrefSetter {
+  constructor(private value: string) {}
+  element(el: Element) {
+    el.setAttribute("href", this.value);
+  }
+}
+
+class TextSetter {
+  constructor(private value: string) {}
+  element(el: Element) {
+    el.setInnerContent(this.value);
+  }
+}
+
+interface MetaBundle {
+  title: string;
+  description: string;
+  canonical: string;
+  ogImage: string;
+}
+
+function buildMeta(handle: string, p: PublicProfile | null): MetaBundle {
+  const canonical = `${SITE_BASE}/u/${handle}`;
+  const ogImage = `${SITE_BASE}/u/${encodeURIComponent(handle)}/og.png`;
+  const displayName = p?.displayName?.trim() || `@${handle}`;
+  const t = p?.totals;
+  const ytd = p?.yearToDate;
+  const stampsCount = p?.stamps?.length ?? 0;
+
+  // Title is the runner. Description is the brag — try YTD first since
+  // that's the strongest signal, fall back to lifetime totals, fall back
+  // to generic if the profile fetch failed.
+  const title = p ? `${displayName} on Runstamp` : `@${handle} on Runstamp`;
+
+  let description: string;
+  if (ytd && ytd.distanceKm > 0) {
+    description = `${Math.round(ytd.distanceKm).toLocaleString()} km in ${ytd.year} · ${t?.runs ?? 0} runs · ${stampsCount} stamps · ${t?.cities ?? 0} cities, ${t?.countries ?? 0} countries.`;
+  } else if (t && t.runs > 0) {
+    description = `${t.runs} runs · ${Math.round(t.distanceKm).toLocaleString()} km · ${stampsCount} stamps · ${t.cities} cities, ${t.countries} countries.`;
+  } else {
+    description = "A public stamp album on Runstamp — every city, every PB, every run.";
+  }
+
+  return { title, description, canonical, ogImage };
 }
 
 async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<Response> {
@@ -204,22 +264,21 @@ function statBlock(label: string, value: string, unit: string): string {
 }
 
 function postmarkSvg(city: { city: string; country?: string } | null): string {
-  const cityText = city?.city ? city.city.slice(0, 14).toUpperCase() : handleWordmark();
+  // Satori doesn't support SVG <text> nodes — build the postmark as
+  // nested HTML divs with border-radius:50% acting as concentric rings,
+  // and put the city name as a positioned div in the middle.
+  const cityText = city?.city ? city.city.slice(0, 14).toUpperCase() : "RUNSTAMP";
   return `
-<div style="display:flex; width:240px; height:240px;">
-  <svg width="240" height="240" viewBox="0 0 240 240" style="transform: rotate(-6deg);">
-    <circle cx="120" cy="120" r="110" fill="none" stroke="${SOLAR}" stroke-width="2.4" stroke-dasharray="4 4" opacity="0.9"/>
-    <circle cx="120" cy="120" r="96" fill="none" stroke="${SOLAR}" stroke-width="1.6" opacity="0.7"/>
-    <line x1="22" y1="116" x2="218" y2="116" stroke="${SOLAR}" stroke-width="1.4" opacity="0.55"/>
-    <line x1="22" y1="124" x2="218" y2="124" stroke="${SOLAR}" stroke-width="1.4" opacity="0.55"/>
-    <text x="120" y="102" text-anchor="middle" font-family="serif" font-style="italic" font-size="26" fill="${PAPER}">${esc(cityText)}</text>
-    <text x="120" y="156" text-anchor="middle" font-family="monospace" font-size="12" letter-spacing="3" fill="rgba(243,237,226,0.6)">RUNSTAMP</text>
-  </svg>
+<div style="display:flex; width:240px; height:240px; align-items:center; justify-content:center; position:relative;">
+  <div style="display:flex; width:220px; height:220px; border-radius:9999px; border:2px dashed ${SOLAR}; opacity:0.9; position:absolute;"></div>
+  <div style="display:flex; width:192px; height:192px; border-radius:9999px; border:1px solid ${SOLAR}; opacity:0.7; position:absolute;"></div>
+  <div style="display:flex; width:192px; height:1px; background:${SOLAR}; opacity:0.55; position:absolute; transform:translateY(-4px);"></div>
+  <div style="display:flex; width:192px; height:1px; background:${SOLAR}; opacity:0.55; position:absolute; transform:translateY(4px);"></div>
+  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative;">
+    <div style="display:flex; font-family:serif; font-style:italic; font-size:26px; color:${PAPER};">${esc(cityText)}</div>
+    <div style="display:flex; margin-top:14px; font-family:monospace; font-size:12px; letter-spacing:3px; color:rgba(243,237,226,0.6);">RUNSTAMP</div>
+  </div>
 </div>`;
-}
-
-function handleWordmark(): string {
-  return "RUNSTAMP";
 }
 
 type CityEntry = NonNullable<PublicProfile["cities"]>[number];
