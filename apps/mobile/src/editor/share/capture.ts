@@ -5,7 +5,7 @@ import type { RefObject } from 'react';
 import type { View } from 'react-native';
 
 interface CaptureArgs {
-  canvasRef: RefObject<View>;
+  canvasRef: RefObject<View | null>;
   background: Background;
   live: LiveStreams;
   canvasW: number;
