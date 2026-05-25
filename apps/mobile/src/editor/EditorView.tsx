@@ -4,7 +4,7 @@ import { TText } from '../design/typography';
 import { useColors } from '../design/theme';
 import type { RootStackProps } from '../nav/types';
 
-// Placeholder. Replaced in Task 22 with the real new editor.
+// Placeholder. Replaced with the real new editor implementation.
 export function EditorView(_props: RootStackProps<'Editor'>) {
   const c = useColors();
   return (
