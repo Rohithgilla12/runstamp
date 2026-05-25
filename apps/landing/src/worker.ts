@@ -19,6 +19,7 @@ interface Env {
 
 const API_BASE = "https://runstamp-api.gilla.fun";
 const SITE_BASE = "https://runstamp.gilla.fun";
+const CACHE_VERSION = "2";
 
 // Palette literals — must match the design tokens in Base.astro.
 const PAPER = "#f3ede2";
@@ -142,7 +143,10 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
     return new Response("bad handle", { status: 400 });
   }
 
-  const cacheKey = new Request(`${SITE_BASE}/u/${handle}/og.png`);
+  // Bump CACHE_VERSION to invalidate stale renders after a layout change.
+  // Cache lives at Cloudflare's edge with up to 1h s-maxage, so without
+  // this, old PNGs survive deploys until TTL expiry.
+  const cacheKey = new Request(`${SITE_BASE}/u/${handle}/og.png?v=${CACHE_VERSION}`);
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
