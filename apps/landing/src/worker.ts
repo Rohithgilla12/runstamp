@@ -19,7 +19,7 @@ interface Env {
 
 const API_BASE = "https://runstamp-api.gilla.fun";
 const SITE_BASE = "https://runstamp.gilla.fun";
-const CACHE_VERSION = "2";
+const CACHE_VERSION = "3";
 
 // Palette literals — must match the design tokens in Base.astro.
 const PAPER = "#f3ede2";
@@ -120,18 +120,29 @@ function buildMeta(handle: string, p: PublicProfile | null): MetaBundle {
   const ytd = p?.yearToDate;
   const stampsCount = p?.stamps?.length ?? 0;
 
-  // Title is the runner. Description is the brag — try YTD first since
-  // that's the strongest signal, fall back to lifetime totals, fall back
-  // to generic if the profile fetch failed.
-  const title = p ? `${displayName} on Runstamp` : `@${handle} on Runstamp`;
-
-  let description: string;
-  if (ytd && ytd.distanceKm > 0) {
-    description = `${Math.round(ytd.distanceKm).toLocaleString()} km in ${ytd.year} · ${t?.runs ?? 0} runs · ${stampsCount} stamps · ${t?.cities ?? 0} cities, ${t?.countries ?? 0} countries.`;
-  } else if (t && t.runs > 0) {
-    description = `${t.runs} runs · ${Math.round(t.distanceKm).toLocaleString()} km · ${stampsCount} stamps · ${t.cities} cities, ${t.countries} countries.`;
+  // Title aims for ~50–60 chars — long enough for unfurlers to render
+  // confidently, short enough to not get truncated. Append the headline
+  // stat when we have it; otherwise fall back to a neutral framing.
+  let title: string;
+  if (t && t.runs > 0) {
+    const km = Math.round(t.distanceKm).toLocaleString();
+    title = `${displayName} — ${km} km, ${t.runs} runs, ${stampsCount} stamps · Runstamp`;
   } else {
-    description = "A public stamp album on Runstamp — every city, every PB, every run.";
+    title = `${displayName}'s runner album on Runstamp — collect a stamp for every run`;
+  }
+
+  // Description aims for ~110–160 chars. YTD if available, then lifetime
+  // context, then the brand line so unfurlers always get something rich.
+  let description: string;
+  if (ytd && ytd.distanceKm > 0 && t) {
+    const ytdKm = Math.round(ytd.distanceKm).toLocaleString();
+    const lifeKm = Math.round(t.distanceKm).toLocaleString();
+    description = `${ytdKm} km in ${ytd.year} so far. Lifetime: ${lifeKm} km across ${t.runs} runs in ${t.cities} cities, ${t.countries} countries — ${stampsCount} stamps earned.`;
+  } else if (t && t.runs > 0) {
+    const km = Math.round(t.distanceKm).toLocaleString();
+    description = `A public stamp album: ${km} km across ${t.runs} runs in ${t.cities} cities, ${t.countries} countries. ${stampsCount} stamps earned. Read the full album on Runstamp.`;
+  } else {
+    description = "A public stamp album on Runstamp — every city, every PB, every run. Collect a stamp for every run; share the album when you want to flaunt.";
   }
 
   return { title, description, canonical, ogImage };
@@ -247,11 +258,17 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
   </div>
 
   <!-- Paper strip — four big stats. -->
-  <div style="display:flex; width:1200px; flex:1; padding:40px 72px; justify-content:space-between; align-items:flex-start;">
+  <div style="display:flex; width:1200px; flex:1; padding:40px 72px 20px 72px; justify-content:space-between; align-items:flex-start;">
     ${statBlock("STAMPS", stampsCount, "")}
     ${statBlock("DISTANCE", lifetimeKm, " km")}
     ${statBlock("RUNS", lifetimeRuns, "")}
     ${statBlock(yearLabel, yearKm, " km")}
+  </div>
+
+  <!-- CTA strip — postal address line + action. -->
+  <div style="display:flex; width:1200px; padding:0 72px 18px 72px; justify-content:space-between; align-items:center;">
+    <div style="display:flex; font-family:monospace; font-size:18px; color:${INK3}; letter-spacing:3px;">RUNSTAMP.GILLA.FUN / U / ${esc(handle.toUpperCase())}</div>
+    <div style="display:flex; font-family:monospace; font-size:18px; color:${SOLAR}; letter-spacing:3px;">READ THE ALBUM →</div>
   </div>
 
   <!-- Cancellation rule along the bottom. -->
