@@ -137,7 +137,7 @@ function buildMeta(handle: string, p: PublicProfile | null): MetaBundle {
   if (ytd && ytd.distanceKm > 0 && t) {
     const ytdKm = Math.round(ytd.distanceKm).toLocaleString();
     const lifeKm = Math.round(t.distanceKm).toLocaleString();
-    description = `${ytdKm} km in ${ytd.year} so far. Lifetime: ${lifeKm} km across ${t.runs} runs in ${t.cities} cities, ${t.countries} countries — ${stampsCount} stamps earned.`;
+    description = `${ytdKm} km in ${ytd.year} so far. Lifetime: ${lifeKm} km across ${t.runs} runs in ${t.cities} cities, ${t.countries} countries, with ${stampsCount} stamps earned. Read the album on Runstamp.`;
   } else if (t && t.runs > 0) {
     const km = Math.round(t.distanceKm).toLocaleString();
     description = `A public stamp album: ${km} km across ${t.runs} runs in ${t.cities} cities, ${t.countries} countries. ${stampsCount} stamps earned. Read the full album on Runstamp.`;
