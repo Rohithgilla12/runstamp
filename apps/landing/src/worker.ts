@@ -82,33 +82,37 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
     return new Response("bad handle", { status: 400 });
   }
 
-  // Cache the rendered PNG. Stale-while-revalidate keeps shares snappy
-  // even when profile stats just changed.
   const cacheKey = new Request(`${SITE_BASE}/u/${handle}/og.png`);
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const profile = await fetchProfile(handle);
-  const html = ogCardHtml(handle, profile);
+  try {
+    const profile = await fetchProfile(handle);
+    const html = ogCardHtml(handle, profile);
 
-  // Buffer the PNG into memory before responding. workers-og returns a
-  // streaming body; teeing it for both "return to client" and "put in
-  // cache" sometimes leaves one side empty. A 1200×630 PNG is ~50–200 KB,
-  // so the memory cost is negligible and the behaviour is deterministic.
-  const png = new ImageResponse(html, {
-    width: 1200,
-    height: 630,
-    format: "png",
-  });
-  const buf = await png.arrayBuffer();
+    // workers-og returns a streaming body. Returning the body directly
+    // works, but consuming it twice (once for cache.put, once for the
+    // response) leaves one side empty. Buffer to ArrayBuffer once.
+    const png = new ImageResponse(html, { width: 1200, height: 630, format: "png" });
+    const buf = await png.arrayBuffer();
 
-  const headers = new Headers({
-    "Content-Type": "image/png",
-    "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
-  });
-  ctx.waitUntil(cache.put(cacheKey, new Response(buf, { status: 200, headers })));
-  return new Response(buf, { status: 200, headers });
+    const headers = new Headers({
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+    });
+    ctx.waitUntil(cache.put(cacheKey, new Response(buf, { status: 200, headers })));
+    return new Response(buf, { status: 200, headers });
+  } catch (err) {
+    // Surface the failure rather than letting Cloudflare wrap it in a
+    // generic 1101. Useful for live debugging; the static /og.svg keeps
+    // unfurlers happy because Base.astro's default points to it.
+    const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    return new Response(`og render failed: ${msg}`, {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
 }
 
 function sanitizeHandle(s: string): string | null {
