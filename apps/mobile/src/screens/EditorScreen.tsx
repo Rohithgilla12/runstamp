@@ -33,6 +33,7 @@ import { DateStampTemplate } from '../design/templates/DateStampTemplate';
 import { HalftoneTemplate } from '../design/templates/HalftoneTemplate';
 import { CyanotypeTemplate } from '../design/templates/CyanotypeTemplate';
 import { RisoTemplate } from '../design/templates/RisoTemplate';
+import { EditorView } from '../editor/EditorView';
 import type { RootStackProps } from '../nav/types';
 
 type Surface = '9:16' | '1:1' | '4:5';
@@ -280,6 +281,10 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const displayRun = realRoute && realRoute.length > 1
     ? { ...run, route: realRoute }
     : run;
+
+  if (process.env.EXPO_PUBLIC_NEW_EDITOR === '1') {
+    return <EditorView route={route} navigation={navigation} />;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.paper }}>
