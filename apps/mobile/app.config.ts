@@ -82,7 +82,10 @@ const config: ExpoConfig = {
       UIBackgroundModes: ['fetch', 'remote-notification'],
       // Only standard crypto (HTTPS / Apple Sign-In) — skips the App Store Connect
       // export-compliance prompt on every TestFlight upload.
-      ITSAppUsesNonExemptEncryption: false
+      ITSAppUsesNonExemptEncryption: false,
+      // Needed so `react-native-share` can canOpenURL the instagram-stories
+      // and instagram schemes for the IG Stories direct-share flow.
+      LSApplicationQueriesSchemes: ['instagram-stories', 'instagram']
     }
   },
   android: {
@@ -155,7 +158,10 @@ const config: ExpoConfig = {
     // Liquid Glass automatically) and BottomNavigationView on Android.
     // Required plugin entry so the autolinking picks up the iOS pod and
     // the Android module.
-    'react-native-bottom-tabs'
+    'react-native-bottom-tabs',
+    // Adds <queries><package android:name="com.instagram.android" /></queries>
+    // to AndroidManifest so the IG Stories share intent resolves on Android 11+.
+    './plugins/withInstagramQueries'
   ],
   // ONLY public values. Firebase no longer lives here — the plist is the
   // source of truth. The web client id is public per Google's OAuth model.

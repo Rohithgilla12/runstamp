@@ -75,3 +75,7 @@ apps/mobile/*.apk
 /STRAVA_QUOTA.md
 /docs/
 /design/helios-run/chats/
+
+# Agent scratch dirs (Serena symbol cache, Superpowers brainstorm sessions).
+/.serena/
+/.superpowers/
