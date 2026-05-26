@@ -154,6 +154,20 @@ export function Delta({ value, format }: { value: number; format?: (v: number) =
   );
 }
 
+export function SectionHeader({ title, right }: { title: string; right?: React.ReactNode }) {
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <TText variant="serif" style={{ fontSize: 22, lineHeight: 24, letterSpacing: -0.3 }}>{title}</TText>
+      {right}
+    </View>
+  );
+}
+
+export function Sep() {
+  const c = useColors();
+  return <TText style={{ fontSize: 11, color: c.ink3 }}>·</TText>;
+}
+
 export function Chip({
   children,
   style

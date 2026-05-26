@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { FilterChip } from '../design/FilterChip';
-import { useColors } from '../design/theme';
-import { Eyebrow, TText } from '../design/typography';
+import { FilterChip } from '../../design/FilterChip';
+import { useColors } from '../../design/theme';
+import { Eyebrow, TText } from '../../design/typography';
 
 export interface Filters {
   minKm: number;
