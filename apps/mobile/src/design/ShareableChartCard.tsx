@@ -9,6 +9,7 @@ import { Icon } from './Icon';
 import { RunstampMark } from './RunstampMark';
 import { ChartInfoButton } from './charts/ChartInfoButton';
 import { VideoExportModal } from '../screens/share/VideoExportModal';
+import { shareExportedVideo } from '../services/videoExport';
 
 interface Props {
   /** Headline at the top of the captured card. */
@@ -170,10 +171,7 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage, ex
           onComplete={async (uri) => {
             setVideoExporting(false);
             try {
-              await Share.share({
-                url: uri,
-                message: shareMessage ?? `My ${title.toLowerCase()} via Runstamp`,
-              });
+              await shareExportedVideo(uri, shareMessage ?? `My ${title.toLowerCase()} via Runstamp`);
             } catch (e) {
               Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
             }

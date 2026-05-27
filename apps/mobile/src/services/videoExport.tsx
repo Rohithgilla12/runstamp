@@ -24,6 +24,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
+import RNShare from 'react-native-share';
 import {
   addFrame,
   cancelEncoding,
@@ -115,6 +116,29 @@ export const VideoExportRenderer = forwardRef<VideoExportRendererHandle, Rendere
     );
   },
 );
+
+/**
+ * Opens the OS share sheet for the encoded MP4. Uses react-native-share
+ * (already in the project for the IG Stories editor flow) because RN's
+ * built-in Share.share is unreliable with video file URIs on iOS — the
+ * share sheet often silently fails to present or rejects file:// schemes
+ * for MP4 type.
+ *
+ * Adds a short delay so the caller's export-progress modal has time to
+ * fully dismiss before we try to present another modal. Without it, iOS
+ * drops the second presentation while it's still tearing down the first
+ * and the user sees nothing happen at all.
+ */
+export async function shareExportedVideo(uri: string, message: string): Promise<void> {
+  // Modal dismiss animation is ~250–300ms on iOS; 400ms is a safe cover.
+  await new Promise<void>((resolve) => setTimeout(resolve, 400));
+  await RNShare.open({
+    url: uri,
+    type: 'video/mp4',
+    failOnCancel: false,
+    message,
+  });
+}
 
 export interface EncodeOptions {
   renderer: VideoExportRendererHandle;

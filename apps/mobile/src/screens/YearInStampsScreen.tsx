@@ -7,7 +7,6 @@ import {
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
-  Share,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +27,7 @@ import { StampBadge } from '../design/StampBadge';
 import { RouteMap } from '../design/RouteMap';
 import { YearInStampsCard, YIS_CARD_HEIGHT, YIS_CARD_WIDTH } from '../design/YearInStampsCard';
 import { VideoExportModal } from './share/VideoExportModal';
+import { shareExportedVideo } from '../services/videoExport';
 import { useActivities } from '../state/useActivities';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useAppState } from '../state/AppState';
@@ -194,7 +194,7 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
           onComplete={async (uri) => {
             setVideoExporting(false);
             try {
-              await Share.share({ url: uri, message: `My ${year} in stamps via Runstamp` });
+              await shareExportedVideo(uri, `My ${year} in stamps via Runstamp`);
             } catch (e) {
               Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
             }

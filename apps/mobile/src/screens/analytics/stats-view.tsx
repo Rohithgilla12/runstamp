@@ -39,6 +39,7 @@ import { WeeklyBars } from '../../design/charts/WeeklyBars';
 import { PERIOD_SHARE_HEIGHT, PERIOD_SHARE_WIDTH, PeriodShareCard, type PeriodSummary } from '../../design/PeriodShareCard';
 import { CHART_SHARE_FRAME_HEIGHT, CHART_SHARE_FRAME_WIDTH, ChartShareFrame } from '../../design/ChartShareFrame';
 import { VideoExportModal } from '../share/VideoExportModal';
+import { shareExportedVideo } from '../../services/videoExport';
 import { Icon } from '../../design/Icon';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
@@ -462,7 +463,7 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
             setVideoExporting(false);
             try {
               const distLabel = `${fmtDist(shareSummary.totalKm, units)} ${distUnit(units)}`;
-              await Share.share({ url: uri, message: `${shareSummary.label}: ${distLabel} via Runstamp` });
+              await shareExportedVideo(uri, `${shareSummary.label}: ${distLabel} via Runstamp`);
             } catch (e) {
               Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
             }
