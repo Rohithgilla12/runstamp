@@ -145,7 +145,18 @@ export interface EncodeOptions {
   width: number;
   height: number;
   fps: number;
+  /** Duration of the reveal animation (progress sweeping 0 → 1). */
   durationSec: number;
+  /**
+   * Hold-at-end duration in seconds. After the reveal finishes, the video
+   * stays on the final frame for this long before muxing closes the file.
+   * Universal share-video polish — lets the viewer's eye absorb the final
+   * state instead of cutting on the last reveal frame. Default 0.5s.
+   *
+   * Hold frames re-use the last captured PNG (no extra captureRef calls),
+   * so this is nearly free — only the muxer has more frames to write.
+   */
+  holdSec?: number;
   /** Frame progress callback for UI. Fires after each frame is captured. */
   onProgress?: (capturedFrames: number, totalFrames: number) => void;
   /** Phase callback. Fires once when we move from frame capture to muxing. */
@@ -155,19 +166,31 @@ export interface EncodeOptions {
 }
 
 /**
- * Walks `durationSec * fps` frames, captures each via captureRef, and
+ * Walks the reveal frames (`durationSec * fps`) plus optional hold frames
+ * (`holdSec * fps`) at the final state, captures each via captureRef, and
  * feeds them to the native encoder. Returns the final MP4's file:// URI.
+ *
+ * Hold frames reuse the last captured PNG path — no extra captureRef
+ * calls during the hold, so the only cost is muxer write time.
  *
  * If `shouldCancel()` returns true between frames, the encode is aborted
  * and the partial file is deleted. Throws on any encoder error.
  */
 export async function encodeChartVideo(options: EncodeOptions): Promise<string> {
-  const { renderer, width, height, fps, durationSec, onProgress, onPhase, shouldCancel } = options;
+  const { renderer, width, height, fps, durationSec, holdSec = 0.5, onProgress, onPhase, shouldCancel } = options;
 
-  const totalFrames = Math.max(1, Math.round(fps * durationSec));
+  const revealFrames = Math.max(1, Math.round(fps * durationSec));
+  const holdFrames = Math.max(0, Math.round(fps * holdSec));
+  const totalFrames = revealFrames + holdFrames;
   onPhase?.('capturing');
 
   const { sessionId } = await startEncoding({ width, height, fps });
+
+  // Remembers the PNG of the final reveal frame so we can feed it to the
+  // encoder repeatedly during the hold without re-capturing identical
+  // pixels. captureRef is the slow part of the loop; this skips it for
+  // ~15 frames on the typical 3s reveal + 0.5s hold setup.
+  let lastFramePath: string | null = null;
 
   try {
     for (let i = 0; i < totalFrames; i++) {
@@ -176,24 +199,28 @@ export async function encodeChartVideo(options: EncodeOptions): Promise<string> 
         throw new Error('cancelled');
       }
 
-      // Last frame lands exactly at progress=1; first at 0.
-      const progress = totalFrames === 1 ? 1 : i / (totalFrames - 1);
-      await renderer.setProgress(progress);
+      const inReveal = i < revealFrames;
 
-      const pngPath = await captureRef(renderer.viewRef, {
-        format: 'png',
-        result: 'tmpfile',
-        width,
-        height,
-      });
+      if (inReveal) {
+        // Reveal frames sweep progress 0..1 across `revealFrames` steps.
+        const progress = revealFrames === 1 ? 1 : i / (revealFrames - 1);
+        await renderer.setProgress(progress);
 
-      await addFrame(sessionId, pngPath, i);
+        lastFramePath = await captureRef(renderer.viewRef, {
+          format: 'png',
+          result: 'tmpfile',
+          width,
+          height,
+        });
+      }
 
-      // captureRef writes to OS temp dir and the OS will reap stale files
-      // eventually, but explicitly cleaning up keeps the cache from
-      // growing during long sessions. Best-effort — ignore failures.
-      // We don't have expo-file-system; captureRef's tmpfile lives in
-      // platform tmp, which the OS clears periodically.
+      if (!lastFramePath) {
+        // Defensive — shouldn't happen because i=0 is always a reveal
+        // frame (revealFrames >= 1), but TypeScript doesn't know that.
+        throw new Error('encoder lost reveal frame');
+      }
+
+      await addFrame(sessionId, lastFramePath, i);
 
       onProgress?.(i + 1, totalFrames);
     }
