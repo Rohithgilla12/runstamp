@@ -57,10 +57,16 @@ interface RendererProps {
  * Mounts the chart off-screen (left: -10000) so it doesn't flash in the UI
  * while we drive its progress prop frame-by-frame. Exposes setProgress as
  * an imperative ref so the encoder service can await each commit.
+ *
+ * State carries a monotonic `version` alongside `progress` so that calling
+ * setProgress(0) on the first frame (when the initial state is also 0)
+ * still forces a re-render. Otherwise React bails out on Object.is(0, 0),
+ * the post-render effect never fires, and the awaited Promise hangs —
+ * which manifests as the export modal stuck at "0 / N FRAMES" forever.
  */
 export const VideoExportRenderer = forwardRef<VideoExportRendererHandle, RendererProps>(
   function VideoExportRenderer({ renderFrame, width, height }, ref) {
-    const [progress, setProgress] = useState(0);
+    const [state, setState] = useState({ progress: 0, version: 0 });
     const viewRef = useRef<View | null>(null);
     const pendingResolveRef = useRef<(() => void) | null>(null);
 
@@ -69,8 +75,13 @@ export const VideoExportRenderer = forwardRef<VideoExportRendererHandle, Rendere
       () => ({
         setProgress: (p: number) => {
           return new Promise<void>((resolve) => {
+            // Resolve any prior unresolved call first — protects against
+            // overlapping setProgress invocations (shouldn't happen in
+            // the normal serial loop, but cheap insurance).
+            const prior = pendingResolveRef.current;
+            if (prior) prior();
             pendingResolveRef.current = resolve;
-            setProgress(p);
+            setState((prev) => ({ progress: p, version: prev.version + 1 }));
           });
         },
         viewRef,
@@ -83,13 +94,14 @@ export const VideoExportRenderer = forwardRef<VideoExportRendererHandle, Rendere
       if (!resolve) return;
       // Two rAF ticks: first to commit React's render to native, second
       // to let the SVG renderer paint before captureRef snapshots it.
-      requestAnimationFrame(() => {
+      const id = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           pendingResolveRef.current = null;
           resolve();
         });
       });
-    }, [progress]);
+      return () => cancelAnimationFrame(id);
+    }, [state.version]);
 
     return (
       <View
@@ -98,7 +110,7 @@ export const VideoExportRenderer = forwardRef<VideoExportRendererHandle, Rendere
         pointerEvents="none"
         style={{ position: 'absolute', left: -10000, top: 0, width, height }}
       >
-        {renderFrame(progress)}
+        {renderFrame(state.progress)}
       </View>
     );
   },
