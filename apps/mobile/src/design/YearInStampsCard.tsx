@@ -1,9 +1,10 @@
 // YearInStampsCard
 //
 // 9:16 shareable summary of a year's running + stamps collection. Sized at
-// 360 × 640 logical units (captureRef renders at device pixel ratio for
-// 1080 × 1920 native Stories output). Mirrors PeriodShareCard's pattern:
-// off-screen render, capture-ref to PNG or to the video pipeline.
+// 360 × 640 logical units (multiplied at the call site via `scale` for
+// high-density video export — scale=3 lands at 1080×1920 native Stories
+// output). Mirrors PeriodShareCard's pattern: off-screen render,
+// capture-ref to PNG or to the video pipeline.
 //
 // Reveal animation (when progress is set):
 //   0–25%   year title fades in + reveals
@@ -47,15 +48,18 @@ interface Props {
   units: 'km' | 'mi';
   /** 0..1 reveal progress. Undefined = static (full card). */
   progress?: number;
+  /** Linear scale for every spatial dimension. Defaults to 1. */
+  scale?: number;
 }
 
-const W = YIS_CARD_WIDTH;
-const H = YIS_CARD_HEIGHT;
-const PAD = 28;
-
-export function YearInStampsCard({ year, stats, earnedThisYear, units, progress }: Props) {
+export function YearInStampsCard({ year, stats, earnedThisYear, units, progress, scale = 1 }: Props) {
   const c = useColors();
+  const s = scale;
   const revealing = progress !== undefined;
+
+  const W = YIS_CARD_WIDTH * s;
+  const H = YIS_CARD_HEIGHT * s;
+  const PAD = 28 * s;
 
   // Three reveal phases, hand-tuned so a ~3-second video paces through
   // them legibly without dwell-time imbalance.
@@ -83,24 +87,24 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress 
     <View style={{ width: W, height: H, backgroundColor: c.paper, padding: PAD, position: 'relative' }}>
       {/* Top motif row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Postmark year={year} />
-        <Eyebrow style={{ color: c.ink3, fontSize: 10, letterSpacing: 1.4 }}>YEAR IN STAMPS</Eyebrow>
+        <Postmark year={year} scale={s} />
+        <Eyebrow style={{ color: c.ink3, fontSize: 10 * s, letterSpacing: 1.4 * s }}>YEAR IN STAMPS</Eyebrow>
       </View>
 
       {/* Year title — the focal point. Fades in over the first quarter. */}
-      <View style={{ marginTop: 36, opacity: titleT }}>
-        <Eyebrow style={{ color: c.accent, fontSize: 11, letterSpacing: 1.6 }}>{stats.totalRuns > 0 ? 'STAMPED' : 'IDLE'}</Eyebrow>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 }}>
+      <View style={{ marginTop: 36 * s, opacity: titleT }}>
+        <Eyebrow style={{ color: c.accent, fontSize: 11 * s, letterSpacing: 1.6 * s }}>{stats.totalRuns > 0 ? 'STAMPED' : 'IDLE'}</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 * s }}>
           <TText
             variant="monoMedium"
-            style={{ fontSize: 96, lineHeight: 100, letterSpacing: -3, color: c.ink }}
+            style={{ fontSize: 96 * s, lineHeight: 100 * s, letterSpacing: -3 * s, color: c.ink }}
           >
             {year}
           </TText>
         </View>
         <TText
           variant="serifItalic"
-          style={{ fontSize: 22, color: c.ink2, marginTop: 2, letterSpacing: -0.4 }}
+          style={{ fontSize: 22 * s, color: c.ink2, marginTop: 2 * s, letterSpacing: -0.4 * s }}
         >
           {stats.totalRuns > 0 ? 'One year of running.' : 'A quiet year.'}
         </TText>
@@ -108,52 +112,52 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress 
 
       {/* Tally — the three numbers that matter. Distance is the only one
           with the solar pop, per "one warm pop per surface." */}
-      <View style={{ marginTop: 32, opacity: tallyT }}>
+      <View style={{ marginTop: 32 * s, opacity: tallyT }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
           <TText
             variant="monoMedium"
-            style={{ fontSize: 52, lineHeight: 56, letterSpacing: -1.6, color: c.accent }}
+            style={{ fontSize: 52 * s, lineHeight: 56 * s, letterSpacing: -1.6 * s, color: c.accent }}
           >
             {distLabel}
           </TText>
           <TText
             variant="serifItalic"
-            style={{ fontSize: 22, color: c.ink2, marginLeft: 8 }}
+            style={{ fontSize: 22 * s, color: c.ink2, marginLeft: 8 * s }}
           >
             {distUnitLabel}
           </TText>
         </View>
-        <View style={{ flexDirection: 'row', gap: 24, marginTop: 14 }}>
-          <Tally label="RUNS" value={runsLabel} />
-          <Tally label={stats.countries > 0 ? 'COUNTRIES' : 'CITIES'} value={placesLabel} />
-          <Tally label="LONGEST" value={`${formatDist(stats.longestRunKm * (revealing ? tallyT : 1), units)} ${distUnitLabel}`} />
+        <View style={{ flexDirection: 'row', gap: 24 * s, marginTop: 14 * s }}>
+          <Tally label="RUNS" value={runsLabel} scale={s} />
+          <Tally label={stats.countries > 0 ? 'COUNTRIES' : 'CITIES'} value={placesLabel} scale={s} />
+          <Tally label="LONGEST" value={`${formatDist(stats.longestRunKm * (revealing ? tallyT : 1), units)} ${distUnitLabel}`} scale={s} />
         </View>
       </View>
 
       {/* Perforation divider — the postal-perf motif from .impeccable.md. */}
-      <View style={{ marginTop: 28 }}>
-        <Perforation tint={c.ink} />
+      <View style={{ marginTop: 28 * s }}>
+        <Perforation tint={c.ink} scale={s} />
       </View>
 
       {/* Stamps grid — staggered reveal across the back half. Empty state
           falls through to "no stamps yet" so the year is still complete. */}
-      <View style={{ marginTop: 20 }}>
-        <Eyebrow style={{ color: c.ink3, fontSize: 10, letterSpacing: 1.4, marginBottom: 12 }}>
+      <View style={{ marginTop: 20 * s }}>
+        <Eyebrow style={{ color: c.ink3, fontSize: 10 * s, letterSpacing: 1.4 * s, marginBottom: 12 * s }}>
           {stamps.length > 0 ? `${stamps.length} STAMPS EARNED` : 'NO STAMPS YET'}
         </Eyebrow>
         {stamps.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {stamps.map((s, i) => {
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 * s }}>
+            {stamps.map((stamp, i) => {
               const t = revealing ? staggeredT(stampsT, i, stamps.length) : 1;
               return (
-                <View key={s.id} style={{ opacity: t, transform: [{ scale: 0.85 + 0.15 * t }] }}>
-                  <StampBadge id={`yis-${s.id}`} name={s.name} tier={s.tier} earned size={56} />
+                <View key={stamp.id} style={{ opacity: t, transform: [{ scale: 0.85 + 0.15 * t }] }}>
+                  <StampBadge id={`yis-${stamp.id}`} name={stamp.name} tier={stamp.tier} earned size={56 * s} />
                 </View>
               );
             })}
           </View>
         ) : (
-          <TText style={{ fontSize: 13, color: c.ink3, lineHeight: 18 }}>
+          <TText style={{ fontSize: 13 * s, color: c.ink3, lineHeight: 18 * s }}>
             Connect a run source and the stamps catalogue starts marking the year.
           </TText>
         )}
@@ -165,7 +169,7 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress 
           position: 'absolute',
           left: PAD,
           right: PAD,
-          bottom: PAD - 4,
+          bottom: PAD - 4 * s,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -173,7 +177,7 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress 
         }}
       >
         <RunstampMark tone="ink" opacity={0.55} />
-        <TText variant="mono" style={{ fontSize: 10, color: c.ink3, letterSpacing: 1.4 }}>
+        <TText variant="mono" style={{ fontSize: 10 * s, color: c.ink3, letterSpacing: 1.4 * s }}>
           RUNSTAMP · {year}
         </TText>
       </View>
@@ -181,12 +185,12 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress 
   );
 }
 
-function Tally({ label, value }: { label: string; value: string }) {
+function Tally({ label, value, scale: s }: { label: string; value: string; scale: number }) {
   const c = useColors();
   return (
-    <View style={{ gap: 2 }}>
-      <Eyebrow style={{ color: c.ink3, fontSize: 9, letterSpacing: 1.2 }}>{label}</Eyebrow>
-      <TText variant="monoMedium" style={{ fontSize: 17, color: c.ink, letterSpacing: -0.2 }}>
+    <View style={{ gap: 2 * s }}>
+      <Eyebrow style={{ color: c.ink3, fontSize: 9 * s, letterSpacing: 1.2 * s }}>{label}</Eyebrow>
+      <TText variant="monoMedium" style={{ fontSize: 17 * s, color: c.ink, letterSpacing: -0.2 * s }}>
         {value}
       </TText>
     </View>
@@ -194,42 +198,41 @@ function Tally({ label, value }: { label: string; value: string }) {
 }
 
 // Postmark — same brand motif as PeriodShareCard. Centered year stamp
-// reads "Y'24 / Y'25 / Y'26" depending on year, so this card carries a
-// real "stamped this year" feel even before any badges land.
-function Postmark({ year }: { year: number }) {
+// reads "'24 / '25 / '26" depending on year.
+function Postmark({ year, scale: s }: { year: number; scale: number }) {
   const c = useColors();
-  const size = 44;
+  const size = 44 * s;
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Circle cx={size / 2} cy={size / 2} r={size / 2 - 1} stroke={c.ink} strokeWidth={1} fill="none" opacity={0.7} />
+      <Circle cx={size / 2} cy={size / 2} r={size / 2 - 1 * s} stroke={c.ink} strokeWidth={1 * s} fill="none" opacity={0.7} />
       <Circle
         cx={size / 2}
         cy={size / 2}
-        r={size / 2 - 4}
+        r={size / 2 - 4 * s}
         stroke={c.ink}
-        strokeWidth={0.5}
-        strokeDasharray="2 2"
+        strokeWidth={0.5 * s}
+        strokeDasharray={`${2 * s} ${2 * s}`}
         fill="none"
         opacity={0.55}
       />
       <SvgText
         x={size / 2}
-        y={size / 2 + 4}
+        y={size / 2 + 4 * s}
         textAnchor="middle"
-        fontSize={11}
+        fontSize={11 * s}
         fontWeight="600"
         fill={c.ink}
         opacity={0.85}
       >
         {`'${String(year).slice(-2)}`}
       </SvgText>
-      <Path d={`M${size / 2} 4 L${size / 2} 10`} stroke={c.ink} strokeWidth={0.5} opacity={0.5} />
-      <Path d={`M${size / 2} ${size - 10} L${size / 2} ${size - 4}`} stroke={c.ink} strokeWidth={0.5} opacity={0.5} />
+      <Path d={`M${size / 2} ${4 * s} L${size / 2} ${10 * s}`} stroke={c.ink} strokeWidth={0.5 * s} opacity={0.5} />
+      <Path d={`M${size / 2} ${size - 10 * s} L${size / 2} ${size - 4 * s}`} stroke={c.ink} strokeWidth={0.5 * s} opacity={0.5} />
     </Svg>
   );
 }
 
-function Perforation({ tint }: { tint: string }) {
+function Perforation({ tint, scale: s }: { tint: string; scale: number }) {
   const dots = 32;
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -237,9 +240,9 @@ function Perforation({ tint }: { tint: string }) {
         <View
           key={i}
           style={{
-            width: 2,
-            height: 2,
-            borderRadius: 1,
+            width: 2 * s,
+            height: 2 * s,
+            borderRadius: 1 * s,
             backgroundColor: tint,
             opacity: 0.2,
           }}

@@ -176,11 +176,13 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
       </View>
 
       {/* Gated — YearInStampsCard's stamp grid + animations would render
-          off-screen on every re-render of this screen if mounted always. */}
+          off-screen on every re-render of this screen if mounted always.
+          Scale=3 renders the card at 1080×1920 so Stories playback is
+          crisp instead of upscaling a 360×640 source. */}
       {videoExporting && (
         <VideoExportModal
           visible
-          dims={{ width: YIS_CARD_WIDTH, height: YIS_CARD_HEIGHT }}
+          dims={{ width: YIS_CARD_WIDTH * 3, height: YIS_CARD_HEIGHT * 3 }}
           renderFrame={(p) => (
             <YearInStampsCard
               year={year}
@@ -188,6 +190,7 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
               earnedThisYear={earnedThisYear}
               units={units}
               progress={p}
+              scale={3}
             />
           )}
           onCancel={() => setVideoExporting(false)}

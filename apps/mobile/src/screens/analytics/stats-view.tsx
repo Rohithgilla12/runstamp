@@ -342,12 +342,13 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
   const shareCardRef = useRef<View>(null);
   const [sharingSummary, setSharingSummary] = useState(false);
   const [videoExporting, setVideoExporting] = useState(false);
-  // The encoder records at the card's logical pt dimensions. captureRef
-  // on iOS auto-scales by the device pixel ratio for crisp text, so a
-  // 360×450 logical capture becomes ~1080×1350 native on a 3x device.
-  // The native encoder receives that resolution and matches it.
-  const VIDEO_W = PERIOD_SHARE_WIDTH;
-  const VIDEO_H = PERIOD_SHARE_HEIGHT;
+  // Render the export at 3x logical so iOS captureRef downsamples-with-detail
+  // to a crisp 1080×1350 MP4 for Stories (4:5). PeriodShareCard's scale prop
+  // multiplies every font/padding/SVG dim so text and the mini chart stay
+  // sharp instead of being bitmap-resampled.
+  const EXPORT_SCALE = 3;
+  const VIDEO_W = PERIOD_SHARE_WIDTH * EXPORT_SCALE;
+  const VIDEO_H = PERIOD_SHARE_HEIGHT * EXPORT_SCALE;
   const handleShareSummary = useCallback(async () => {
     if (sharingSummary || !shareCardRef.current) return;
     setSharingSummary(true);
@@ -457,7 +458,7 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
         <VideoExportModal
           visible
           dims={{ width: VIDEO_W, height: VIDEO_H }}
-          renderFrame={(p) => <PeriodShareCard summary={shareSummary} progress={p} />}
+          renderFrame={(p) => <PeriodShareCard summary={shareSummary} progress={p} scale={EXPORT_SCALE} />}
           onCancel={() => setVideoExporting(false)}
           onComplete={async (uri) => {
             setVideoExporting(false);
@@ -544,12 +545,13 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               title="Activity heatmap"
               subtitle={`${selectedYear} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
               explanation="One cell per day. Colour intensity scales with distance run that day. Reads like GitHub's contribution graph, except the streak that matters runs through your shoes."
-              videoDims={{ width: CHART_SHARE_FRAME_WIDTH, height: CHART_SHARE_FRAME_HEIGHT }}
+              videoDims={{ width: CHART_SHARE_FRAME_WIDTH * EXPORT_SCALE, height: CHART_SHARE_FRAME_HEIGHT * EXPORT_SCALE }}
               videoFrame={(p) => (
                 <ChartShareFrame
                   title={`${selectedYear}\nin one square.`}
                   subtitle={`${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
                   progress={p}
+                  scale={EXPORT_SCALE}
                   renderChart={(cp) => <HeatmapCalendar grid={heatmap} progress={cp} />}
                 />
               )}
@@ -705,12 +707,13 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               title="Cumulative distance"
               subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} across ${all.runs} runs`}
               explanation="Running total of every kilometre logged across your full history, month by month. The slope is your training rate; flat stretches are breaks or injuries."
-              videoDims={{ width: CHART_SHARE_FRAME_WIDTH, height: CHART_SHARE_FRAME_HEIGHT }}
+              videoDims={{ width: CHART_SHARE_FRAME_WIDTH * EXPORT_SCALE, height: CHART_SHARE_FRAME_HEIGHT * EXPORT_SCALE }}
               videoFrame={(p) => (
                 <ChartShareFrame
                   title="Every kilometre,\nstacked."
                   subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} · ${all.runs} runs`}
                   progress={p}
+                  scale={EXPORT_SCALE}
                   renderChart={(cp) => <CumulativeChart series={cumulative} progress={cp} />}
                 />
               )}
