@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  Alert,
   Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  Share,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +26,8 @@ import { SunMark } from '../design/SunMark';
 import { Icon } from '../design/Icon';
 import { StampBadge } from '../design/StampBadge';
 import { RouteMap } from '../design/RouteMap';
+import { YearInStampsCard, YIS_CARD_HEIGHT, YIS_CARD_WIDTH } from '../design/YearInStampsCard';
+import { VideoExportModal } from './share/VideoExportModal';
 import { useActivities } from '../state/useActivities';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useAppState } from '../state/AppState';
@@ -85,6 +89,8 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
     if (p !== page) setPage(p);
   };
 
+  const [videoExporting, setVideoExporting] = useState(false);
+
   const pages = useMemo(() => {
     const arr: PageKind[] = ['cover', 'tally', 'stamps', 'topRun', 'sealed'];
     return arr;
@@ -140,18 +146,57 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
         }}
       >
         <Eyebrow style={{ color: c.accent, letterSpacing: 1.4 }}>{year} · YEAR IN STAMPS</Eyebrow>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-          style={{
-            width: 34, height: 34, borderRadius: 17,
-            backgroundColor: 'rgba(243,237,226,0.10)',
-            alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <Icon.x size={15} color={c.paper} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={() => setVideoExporting(true)}
+            hitSlop={10}
+            accessibilityLabel="Export Year in Stamps as video"
+            disabled={videoExporting}
+            style={{
+              width: 34, height: 34, borderRadius: 17,
+              backgroundColor: 'rgba(232,93,47,0.85)',
+              alignItems: 'center', justifyContent: 'center',
+              opacity: videoExporting ? 0.5 : 1,
+            }}
+          >
+            <Icon.play size={13} color={c.paper} />
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={10}
+            style={{
+              width: 34, height: 34, borderRadius: 17,
+              backgroundColor: 'rgba(243,237,226,0.10)',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Icon.x size={15} color={c.paper} />
+          </Pressable>
+        </View>
       </View>
+
+      <VideoExportModal
+        visible={videoExporting}
+        dims={{ width: YIS_CARD_WIDTH, height: YIS_CARD_HEIGHT }}
+        renderFrame={(p) => (
+          <YearInStampsCard
+            year={year}
+            stats={stats}
+            earnedThisYear={earnedThisYear}
+            units={units}
+            progress={p}
+          />
+        )}
+        onCancel={() => setVideoExporting(false)}
+        onComplete={async (uri) => {
+          setVideoExporting(false);
+          try {
+            await Share.share({ url: uri, message: `My ${year} in stamps via Runstamp` });
+          } catch (e) {
+            Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+          }
+        }}
+      />
 
       {/* Vertical page indicator — right edge, mid-screen. */}
       <View

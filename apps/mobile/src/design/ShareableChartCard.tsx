@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, Share, View } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import { captureRef } from 'react-native-view-shot';
@@ -8,6 +8,7 @@ import { Card } from './atoms';
 import { Icon } from './Icon';
 import { RunstampMark } from './RunstampMark';
 import { ChartInfoButton } from './charts/ChartInfoButton';
+import { VideoExportModal } from '../screens/share/VideoExportModal';
 
 interface Props {
   /** Headline at the top of the captured card. */
@@ -26,6 +27,15 @@ interface Props {
    * title. Use for charts whose meaning isn't obvious from the title alone.
    */
   explanation?: string;
+  /**
+   * When provided, renders a second "video" button alongside the PNG
+   * share button. The callback gets a 0..1 progress and should return
+   * the share-frame node to render off-screen at `videoDims`. Typically
+   * wrapped in a <ChartShareFrame> for the 9:16 brand chrome.
+   */
+  videoFrame?: (chartProgress: number) => ReactNode;
+  /** Off-screen render dims for the video. Defaults to 360×640 (9:16). */
+  videoDims?: { width: number; height: number };
 }
 
 // Wraps any analytics chart in a card that can be captured + shared as a
@@ -35,10 +45,12 @@ interface Props {
 // The card includes a title row at the top, a "via Runstamp" mark at the
 // bottom, and the chart in between — so when a user posts a heatmap to
 // Stories it reads as its own thing, not a screenshot of a stats screen.
-export function ShareableChartCard({ title, subtitle, children, shareMessage, explanation }: Props) {
+export function ShareableChartCard({ title, subtitle, children, shareMessage, explanation, videoFrame, videoDims }: Props) {
   const c = useColors();
   const captureViewRef = useRef<View>(null);
   const [busy, setBusy] = useState(false);
+  const [videoExporting, setVideoExporting] = useState(false);
+  const resolvedVideoDims = videoDims ?? { width: 360, height: 640 };
 
   const onShare = useCallback(async () => {
     if (busy || !captureViewRef.current) return;
@@ -108,22 +120,61 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage, ex
         </Card>
       </View>
 
-      {/* Share button — positioned absolutely OUTSIDE the captureViewRef so
-          the icon never gets baked into the shared image. */}
-      <Pressable
-        onPress={onShare}
-        disabled={busy}
-        hitSlop={10}
-        style={({ pressed }) => ({
-          position: 'absolute', top: 14, right: 14,
-          width: 32, height: 32, borderRadius: 10,
-          alignItems: 'center', justifyContent: 'center',
-          backgroundColor: c.ink,
-          opacity: pressed || busy ? 0.6 : 0.85,
-        })}
-      >
-        <Icon.share size={14} color={c.paper} />
-      </Pressable>
+      {/* Share buttons — positioned absolutely OUTSIDE the captureViewRef so
+          they never get baked into the shared image. Two-button row when
+          a videoFrame is provided. */}
+      <View style={{ position: 'absolute', top: 14, right: 14, flexDirection: 'row', gap: 6 }}>
+        {videoFrame && (
+          <Pressable
+            onPress={() => setVideoExporting(true)}
+            disabled={busy || videoExporting}
+            hitSlop={10}
+            accessibilityLabel="Export as video"
+            style={({ pressed }) => ({
+              width: 32, height: 32, borderRadius: 10,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: c.accent,
+              opacity: pressed || videoExporting ? 0.6 : 0.95,
+            })}
+          >
+            <Icon.play size={13} color={c.paper} />
+          </Pressable>
+        )}
+        <Pressable
+          onPress={onShare}
+          disabled={busy || videoExporting}
+          hitSlop={10}
+          accessibilityLabel="Share as image"
+          style={({ pressed }) => ({
+            width: 32, height: 32, borderRadius: 10,
+            alignItems: 'center', justifyContent: 'center',
+            backgroundColor: c.ink,
+            opacity: pressed || busy ? 0.6 : 0.85,
+          })}
+        >
+          <Icon.share size={14} color={c.paper} />
+        </Pressable>
+      </View>
+
+      {videoFrame && (
+        <VideoExportModal
+          visible={videoExporting}
+          dims={resolvedVideoDims}
+          renderFrame={videoFrame}
+          onCancel={() => setVideoExporting(false)}
+          onComplete={async (uri) => {
+            setVideoExporting(false);
+            try {
+              await Share.share({
+                url: uri,
+                message: shareMessage ?? `My ${title.toLowerCase()} via Runstamp`,
+              });
+            } catch (e) {
+              Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+            }
+          }}
+        />
+      )}
     </View>
   );
 }

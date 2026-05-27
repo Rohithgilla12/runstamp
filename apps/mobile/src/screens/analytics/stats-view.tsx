@@ -37,6 +37,7 @@ import { CumulativeChart } from '../../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../../design/charts/MonthCalendarDots';
 import { WeeklyBars } from '../../design/charts/WeeklyBars';
 import { PERIOD_SHARE_HEIGHT, PERIOD_SHARE_WIDTH, PeriodShareCard, type PeriodSummary } from '../../design/PeriodShareCard';
+import { CHART_SHARE_FRAME_HEIGHT, CHART_SHARE_FRAME_WIDTH, ChartShareFrame } from '../../design/ChartShareFrame';
 import { VideoExportModal } from '../share/VideoExportModal';
 import { Icon } from '../../design/Icon';
 import { useColors } from '../../design/theme';
@@ -537,6 +538,15 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               title="Activity heatmap"
               subtitle={`${selectedYear} · ${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
               explanation="One cell per day. Colour intensity scales with distance run that day. Reads like GitHub's contribution graph, except the streak that matters runs through your shoes."
+              videoDims={{ width: CHART_SHARE_FRAME_WIDTH, height: CHART_SHARE_FRAME_HEIGHT }}
+              videoFrame={(p) => (
+                <ChartShareFrame
+                  title={`${selectedYear}\nin one square.`}
+                  subtitle={`${scoped.runs} runs · ${fmtDist(scoped.totalKm, units)} ${distUnit(units)}`}
+                  progress={p}
+                  renderChart={(cp) => <HeatmapCalendar grid={heatmap} progress={cp} />}
+                />
+              )}
             >
               <HeatmapCalendar grid={heatmap} ghost={comparePeriod ? (heatmapB ?? undefined) : undefined} />
             </ShareableChartCard>
@@ -689,6 +699,15 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               title="Cumulative distance"
               subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} across ${all.runs} runs`}
               explanation="Running total of every kilometre logged across your full history, month by month. The slope is your training rate; flat stretches are breaks or injuries."
+              videoDims={{ width: CHART_SHARE_FRAME_WIDTH, height: CHART_SHARE_FRAME_HEIGHT }}
+              videoFrame={(p) => (
+                <ChartShareFrame
+                  title="Every kilometre,\nstacked."
+                  subtitle={`Lifetime · ${fmtDist(all.totalKm, units)} ${distUnit(units)} · ${all.runs} runs`}
+                  progress={p}
+                  renderChart={(cp) => <CumulativeChart series={cumulative} progress={cp} />}
+                />
+              )}
             >
               <CumulativeChart series={cumulative} />
             </ShareableChartCard>
