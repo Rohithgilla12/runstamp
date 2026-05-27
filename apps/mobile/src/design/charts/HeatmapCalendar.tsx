@@ -4,11 +4,14 @@ import Svg, { Rect, G, Text as SvgText } from 'react-native-svg';
 import type { HeatmapGrid, HeatmapDay } from '../../analytics/heatmap';
 import { useColors } from '../theme';
 import { TText } from '../typography';
+import { staggeredT } from './reveal';
 
 interface Props {
   grid: HeatmapGrid;
   ghost?: HeatmapGrid;
   onSelectDay?: (day: HeatmapDay) => void;
+  /** 0..1 reveal progress. Undefined = static (current behavior). */
+  progress?: number;
 }
 
 const LEFT = 14;
@@ -17,9 +20,14 @@ const GAP = 1.5;
 const FALLBACK_W = 320;
 const WEEKDAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
 
-export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
+export function HeatmapCalendar({ grid, ghost, onSelectDay, progress }: Props) {
   const c = useColors();
   const [layoutW, setLayoutW] = useState(0);
+  const revealing = progress !== undefined;
+  // Total cell count for staggering. Cells reveal in their natural week-by-week
+  // column-major order, which reads chronologically since heatmap weeks are
+  // built from Jan 1 → Dec 31.
+  const totalCells = grid.weeks.reduce((a, w) => a + w.length, 0);
 
   const numWeeks = grid.weeks.length;
   const containerW = layoutW > 0 ? layoutW : FALLBACK_W;
@@ -78,19 +86,24 @@ export function HeatmapCalendar({ grid, ghost, onSelectDay }: Props) {
       )}
       {grid.weeks.map((week, wi) => (
         <G key={wi}>
-          {week.map((day, di) => (
-            <Rect
-              key={di}
-              x={LEFT + wi * step}
-              y={TOP + di * step}
-              width={cell}
-              height={cell}
-              rx={Math.min(2, cell * 0.25)}
-              fill={day.inFuture ? 'transparent' : fillFor(day.bucket)}
-              stroke={day.inFuture ? c.line2 : 'transparent'}
-              strokeDasharray={day.inFuture ? '1 1' : undefined}
-            />
-          ))}
+          {week.map((day, di) => {
+            const cellIndex = wi * 7 + di;
+            const t = revealing ? staggeredT(progress, cellIndex, totalCells, 0.18) : 1;
+            return (
+              <Rect
+                key={di}
+                x={LEFT + wi * step}
+                y={TOP + di * step}
+                width={cell}
+                height={cell}
+                rx={Math.min(2, cell * 0.25)}
+                fill={day.inFuture ? 'transparent' : fillFor(day.bucket)}
+                stroke={day.inFuture ? c.line2 : 'transparent'}
+                strokeDasharray={day.inFuture ? '1 1' : undefined}
+                opacity={revealing ? t : 1}
+              />
+            );
+          })}
         </G>
       ))}
       {ghost?.weeks.map((week, wi) => (

@@ -18,6 +18,7 @@ import Svg, { Circle, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useColors } from './theme';
 import { TText, Eyebrow } from './typography';
 import { RunstampMark } from './RunstampMark';
+import { easeInOut, staggeredT } from './charts/reveal';
 
 export const PERIOD_SHARE_WIDTH = 360;
 export const PERIOD_SHARE_HEIGHT = 450;
@@ -40,6 +41,12 @@ export interface PeriodSummary {
 
 interface Props {
   summary: PeriodSummary;
+  /**
+   * 0..1 reveal progress. Undefined = static (current behavior, used in
+   * still-PNG capture). When set, headline numbers tick up, mini-bars
+   * stagger-rise, supporting stats fade in late. Drives video export.
+   */
+  progress?: number;
 }
 
 const W = PERIOD_SHARE_WIDTH;
@@ -47,12 +54,27 @@ const H = PERIOD_SHARE_HEIGHT;
 const PAD = 26;
 const MINI_H = 70;
 
-export function PeriodShareCard({ summary }: Props) {
+export function PeriodShareCard({ summary, progress }: Props) {
   const c = useColors();
-  const distLabel = formatDist(summary.totalKm, summary.units);
+  const revealing = progress !== undefined;
+
+  // During reveal: headline number counts up over the first 60% of the
+  // animation, supporting stats fade in 50–80%, mini-bars stagger across
+  // 40–100%. Eased so it doesn't feel mechanical at the endpoints.
+  const headlineT = revealing ? easeInOut(clamp01(progress / 0.6)) : 1;
+  const statsT = revealing ? clamp01((progress - 0.5) / 0.3) : 1;
+  const miniProgress = revealing ? clamp01((progress - 0.4) / 0.6) : undefined;
+
+  const animatedKm = summary.totalKm * headlineT;
+  const animatedRuns = Math.round(summary.runs * headlineT);
+  const animatedSec = summary.totalSec * headlineT;
+  const animatedLongest = summary.longestKm * headlineT;
+
+  const distLabel = formatDist(revealing ? animatedKm : summary.totalKm, summary.units);
   const distUnit = summary.units === 'mi' ? 'mi' : 'km';
-  const longestLabel = formatDist(summary.longestKm, summary.units);
-  const durLabel = formatDuration(summary.totalSec);
+  const longestLabel = formatDist(revealing ? animatedLongest : summary.longestKm, summary.units);
+  const durLabel = formatDuration(revealing ? animatedSec : summary.totalSec);
+  const runsValue = revealing ? String(animatedRuns) : String(summary.runs);
 
   return (
     <View style={{ width: W, height: H, backgroundColor: c.paper, padding: PAD, position: 'relative' }}>
@@ -83,13 +105,13 @@ export function PeriodShareCard({ summary }: Props) {
       </View>
 
       {/* Supporting stats — runs · time. Streak gets the solar pop. */}
-      <View style={{ marginTop: 14, flexDirection: 'row', gap: 18 }}>
-        <Stat label="RUNS" value={String(summary.runs)} />
+      <View style={{ marginTop: 14, flexDirection: 'row', gap: 18, opacity: statsT }}>
+        <Stat label="RUNS" value={runsValue} />
         <Stat label="TIME" value={durLabel} />
         <Stat label="LONGEST" value={`${longestLabel} ${distUnit}`} />
       </View>
       {summary.streakDays > 1 && (
-        <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: statsT }}>
           <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.accent }} />
           <TText variant="mono" style={{ fontSize: 11, color: c.accent, letterSpacing: 0.5 }}>
             {summary.streakDays}-DAY STREAK
@@ -100,7 +122,7 @@ export function PeriodShareCard({ summary }: Props) {
       {/* Mini chart — chronological bars, normalized to the peak. Always 70pt
           tall so the card composition is stable across scopes. */}
       <View style={{ position: 'absolute', left: PAD, right: PAD, bottom: 52 }}>
-        <MiniBars values={summary.miniBars} accent={c.accent} ink={c.ink} />
+        <MiniBars values={summary.miniBars} accent={c.accent} ink={c.ink} progress={miniProgress} />
         <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
           <Eyebrow style={{ color: c.ink3, fontSize: 9, letterSpacing: 1.2 }}>
             {summary.miniCaption.toUpperCase()}
@@ -134,7 +156,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniBars({ values, accent, ink }: { values: number[]; accent: string; ink: string }) {
+function MiniBars({ values, accent, ink, progress }: { values: number[]; accent: string; ink: string; progress?: number }) {
   const width = W - PAD * 2;
   const height = MINI_H;
   if (values.length === 0) {
@@ -145,11 +167,13 @@ function MiniBars({ values, accent, ink }: { values: number[]; accent: string; i
   const barW = Math.max(2, (width - gap * (values.length - 1)) / values.length);
   // Solar pop only on the peak bar — "one warm pop per surface."
   const peakIdx = values.indexOf(max);
+  const revealing = progress !== undefined;
   return (
     <Svg width={width} height={height}>
       <Rect x={0} y={height - 1} width={width} height={1} fill={ink} opacity={0.15} />
       {values.map((v, i) => {
-        const h = Math.max(2, (v / max) * (height - 6));
+        const scale = revealing ? staggeredT(progress, i, values.length) : 1;
+        const h = Math.max(2, (v / max) * (height - 6) * scale);
         const x = i * (barW + gap);
         const y = height - h - 1;
         const isPeak = i === peakIdx && v > 0;
@@ -168,6 +192,10 @@ function MiniBars({ values, accent, ink }: { values: number[]; accent: string; i
       })}
     </Svg>
   );
+}
+
+function clamp01(x: number): number {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
 // Postmark circle — a quiet brand motif that reads as "stamped" without

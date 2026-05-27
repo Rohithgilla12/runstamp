@@ -4,10 +4,13 @@ import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { useColors } from '../theme';
 import { ChartTooltip } from './ChartTooltip';
 import { LegendChip, LegendRow } from './ChartLegend';
+import { staggeredT } from './reveal';
 
 interface Props {
   values: number[];
   compare?: number[];
+  /** 0..1 reveal progress. Undefined = static. */
+  progress?: number;
 }
 
 const W = 320;
@@ -17,12 +20,14 @@ const RIGHT = 8;
 const TOP = 8;
 const BOTTOM = 22;
 
-export function WeeklyBars({ values, compare }: Props) {
+export function WeeklyBars({ values, compare, progress }: Props) {
   const c = useColors();
   const max = Math.max(1, ...values, ...(compare ?? []));
   const slot = (W - LEFT - RIGHT) / Math.max(1, values.length);
   const barW = compare ? slot * 0.34 : slot * 0.55;
   const innerH = H - TOP - BOTTOM;
+  const revealing = progress !== undefined;
+  const scaleFor = (i: number) => (revealing ? staggeredT(progress, i, values.length) : 1);
 
   // For the tooltip pin: top of the primary bar at index i.
   const yTop = (i: number) => TOP + (innerH - (values[i] / max) * innerH);
@@ -38,12 +43,12 @@ export function WeeklyBars({ values, compare }: Props) {
       <View style={{ width: W, height: H }}>
         <Svg width={W} height={H}>
           {values.map((v, i) => {
-            const h = (v / max) * innerH;
+            const h = (v / max) * innerH * scaleFor(i);
             const x = LEFT + i * slot + slot / 2 - (compare ? barW + 1 : barW / 2);
             return <Rect key={`a${i}`} x={x} y={TOP + (innerH - h)} width={barW} height={h} rx={1.5} fill={c.accent} />;
           })}
           {compare?.map((v, i) => {
-            const h = (v / max) * innerH;
+            const h = (v / max) * innerH * scaleFor(i);
             const x = LEFT + i * slot + slot / 2 + 1;
             return (
               <Rect key={`b${i}`} x={x} y={TOP + (innerH - h)} width={barW} height={h} rx={1.5} fill="none" stroke={c.ink2} strokeWidth={1} />

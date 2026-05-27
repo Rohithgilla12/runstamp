@@ -6,18 +6,22 @@ import { useColors } from '../theme';
 import { TText } from '../typography';
 import { ChartTooltip } from './ChartTooltip';
 import { LegendChip, LegendRow } from './ChartLegend';
+import { pathDrawOffset } from './reveal';
 
 interface Props {
   series: MonthlyPoint[];
   compare?: MonthlyPoint[];
+  /** 0..1 reveal progress. Undefined = static. */
+  progress?: number;
 }
 
 const W = 320;
 const H = 150;
 const PAD = 14;
 
-export function CumulativeChart({ series, compare }: Props) {
+export function CumulativeChart({ series, compare, progress }: Props) {
   const c = useColors();
+  const revealing = progress !== undefined;
 
   if (series.length === 0) {
     return (
@@ -41,6 +45,33 @@ export function CumulativeChart({ series, compare }: Props) {
   const last = series[series.length - 1]!;
   const first = series[0]!;
 
+  // Polyline length for the stroke-dash trick. Summed per-segment so reveal
+  // pace matches the visual path length (a chart that climbs steeply has a
+  // longer geometric path; this draws it proportionally).
+  let pathLen = 0;
+  for (let i = 1; i < series.length; i++) {
+    const dx = step;
+    const dy = y(series[i].cumulativeKm) - y(series[i - 1].cumulativeKm);
+    pathLen += Math.sqrt(dx * dx + dy * dy);
+  }
+  const dashOffset = revealing ? pathDrawOffset(pathLen, progress) : 0;
+  // The current head of the line during reveal — used to clip the area
+  // fill and pin the dot so they don't overshoot the drawn line.
+  const drawnTip = revealing ? Math.max(0, Math.min(series.length - 1, progress * (series.length - 1))) : series.length - 1;
+  const tipIdx = Math.floor(drawnTip);
+  const tipFrac = drawnTip - tipIdx;
+  const tipX = PAD + (tipIdx + tipFrac) * step;
+  const tipY = tipIdx + 1 < series.length
+    ? y(series[tipIdx].cumulativeKm) + tipFrac * (y(series[tipIdx + 1].cumulativeKm) - y(series[tipIdx].cumulativeKm))
+    : y(series[tipIdx].cumulativeKm);
+  // Area-fill path clipped to the current tip. When not revealing, this
+  // matches the original full-area shape.
+  const areaPath = revealing
+    ? buildPath(series.slice(0, tipIdx + 1)) +
+      (tipIdx + 1 < series.length ? ` L${tipX.toFixed(1)} ${tipY.toFixed(1)}` : '') +
+      ` L${tipX.toFixed(1)} ${H - PAD} L${PAD} ${H - PAD}Z`
+    : `${da} L${PAD + (series.length - 1) * step} ${H - PAD} L${PAD} ${H - PAD}Z`;
+
   return (
     <View>
       {/* Legend — only when comparing, since otherwise a single accent line
@@ -58,9 +89,17 @@ export function CumulativeChart({ series, compare }: Props) {
             <Line key={i} x1={PAD} y1={PAD + (H - PAD * 2) * p} x2={W - PAD} y2={PAD + (H - PAD * 2) * p} stroke={c.line2} />
           ))}
           {compare && db ? <Path d={db} fill="none" stroke={c.ink2} strokeWidth={1.5} strokeDasharray="3 3" /> : null}
-          <Path d={`${da} L${PAD + (series.length - 1) * step} ${H - PAD} L${PAD} ${H - PAD}Z`} fill={c.accent} opacity={0.1} />
-          <Path d={da} fill="none" stroke={c.accent} strokeWidth={2} strokeLinecap="round" />
-          <Circle cx={PAD + (series.length - 1) * step} cy={y(last.cumulativeKm)} r={4} fill={c.accent} />
+          <Path d={areaPath} fill={c.accent} opacity={0.1} />
+          <Path
+            d={da}
+            fill="none"
+            stroke={c.accent}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeDasharray={revealing ? `${pathLen} ${pathLen}` : undefined}
+            strokeDashoffset={revealing ? dashOffset : undefined}
+          />
+          <Circle cx={revealing ? tipX : PAD + (series.length - 1) * step} cy={revealing ? tipY : y(last.cumulativeKm)} r={4} fill={c.accent} opacity={revealing && progress < 0.05 ? 0 : 1} />
         </Svg>
         <ChartTooltip
           series={series}
