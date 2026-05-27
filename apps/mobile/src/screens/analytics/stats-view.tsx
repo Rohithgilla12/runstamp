@@ -36,7 +36,8 @@ import { DailyBars } from '../../design/charts/DailyBars';
 import { CumulativeChart } from '../../design/charts/CumulativeChart';
 import { MonthCalendarDots } from '../../design/charts/MonthCalendarDots';
 import { WeeklyBars } from '../../design/charts/WeeklyBars';
-import { PeriodShareCard, type PeriodSummary } from '../../design/PeriodShareCard';
+import { PERIOD_SHARE_HEIGHT, PERIOD_SHARE_WIDTH, PeriodShareCard, type PeriodSummary } from '../../design/PeriodShareCard';
+import { VideoExportModal } from '../share/VideoExportModal';
 import { Icon } from '../../design/Icon';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
@@ -338,6 +339,13 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
 
   const shareCardRef = useRef<View>(null);
   const [sharingSummary, setSharingSummary] = useState(false);
+  const [videoExporting, setVideoExporting] = useState(false);
+  // The encoder records at the card's logical pt dimensions. captureRef
+  // on iOS auto-scales by the device pixel ratio for crisp text, so a
+  // 360×450 logical capture becomes ~1080×1350 native on a 3x device.
+  // The native encoder receives that resolution and matches it.
+  const VIDEO_W = PERIOD_SHARE_WIDTH;
+  const VIDEO_H = PERIOD_SHARE_HEIGHT;
   const handleShareSummary = useCallback(async () => {
     if (sharingSummary || !shareCardRef.current) return;
     setSharingSummary(true);
@@ -398,32 +406,63 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
       ) : scope !== 'all' ? <ScopedHero scope={scope} agg={scoped} year={selectedYear} month={selectedMonth} week={selectedWeek} /> : <LifetimeHero agg={all} />}
 
       {scoped.runs > 0 && (
-        <Pressable
-          onPress={handleShareSummary}
-          disabled={sharingSummary}
-          style={({ pressed }) => [{
-            marginTop: 14, padding: 12, borderRadius: 12,
-            backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-            opacity: pressed || sharingSummary ? 0.6 : 1,
-          }]}
-        >
-          {sharingSummary ? (
-            <ActivityIndicator size="small" color={c.ink2} />
-          ) : (
-            <Icon.share size={14} color={c.ink2} />
-          )}
-          <View style={{ flex: 1 }}>
-            <TText style={{ fontSize: 13, color: c.ink, fontWeight: '500' }}>
-              Share {shareSummary.scope === 'all' ? 'lifetime' : shareSummary.label.toLowerCase()}
-            </TText>
-            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2, letterSpacing: 0.4 }}>
-              {fmtDist(shareSummary.totalKm, units)} {distUnit(units)} · {shareSummary.runs} RUNS
-            </TText>
-          </View>
-          <TText variant="mono" style={{ fontSize: 13, color: c.ink2 }}>→</TText>
-        </Pressable>
+        <View style={{ flexDirection: 'row', marginTop: 14, gap: 8 }}>
+          <Pressable
+            onPress={handleShareSummary}
+            disabled={sharingSummary || videoExporting}
+            style={({ pressed }) => [{
+              flex: 1, padding: 12, borderRadius: 12,
+              backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              opacity: pressed || sharingSummary ? 0.6 : 1,
+            }]}
+          >
+            {sharingSummary ? (
+              <ActivityIndicator size="small" color={c.ink2} />
+            ) : (
+              <Icon.share size={14} color={c.ink2} />
+            )}
+            <View style={{ flex: 1 }}>
+              <TText style={{ fontSize: 13, color: c.ink, fontWeight: '500' }}>
+                Share {shareSummary.scope === 'all' ? 'lifetime' : shareSummary.label.toLowerCase()}
+              </TText>
+              <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2, letterSpacing: 0.4 }}>
+                {fmtDist(shareSummary.totalKm, units)} {distUnit(units)} · {shareSummary.runs} RUNS
+              </TText>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => setVideoExporting(true)}
+            disabled={sharingSummary || videoExporting}
+            accessibilityLabel="Export as video"
+            style={({ pressed }) => [{
+              paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12,
+              backgroundColor: c.ink, borderWidth: 1, borderColor: c.ink,
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              opacity: pressed || videoExporting ? 0.6 : 1,
+            }]}
+          >
+            <Icon.play size={13} color={c.paper} />
+            <TText style={{ fontSize: 13, color: c.paper, fontWeight: '500' }}>Video</TText>
+          </Pressable>
+        </View>
       )}
+
+      <VideoExportModal
+        visible={videoExporting}
+        dims={{ width: VIDEO_W, height: VIDEO_H }}
+        renderFrame={(p) => <PeriodShareCard summary={shareSummary} progress={p} />}
+        onCancel={() => setVideoExporting(false)}
+        onComplete={async (uri) => {
+          setVideoExporting(false);
+          try {
+            const distLabel = `${fmtDist(shareSummary.totalKm, units)} ${distUnit(units)}`;
+            await Share.share({ url: uri, message: `${shareSummary.label}: ${distLabel} via Runstamp` });
+          } catch (e) {
+            Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+          }
+        }}
+      />
 
       {/* Off-screen render of the share card. position:absolute + left:-10000
           keeps it out of layout flow and invisible to the user, but it's

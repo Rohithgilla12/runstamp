@@ -11,7 +11,7 @@
 import { requireNativeModule } from 'expo-modules-core';
 
 interface NativeRunstampVideoEncoder {
-  startEncoding(options: StartOptions): Promise<{ sessionId: string }>;
+  startEncoding(options: StartOptions): Promise<{ sessionId: string; outputPath: string }>;
   addFrame(sessionId: string, pngPath: string, frameIndex: number): Promise<void>;
   finishEncoding(sessionId: string): Promise<{ uri: string }>;
   cancelEncoding(sessionId: string): Promise<void>;
@@ -24,15 +24,32 @@ export interface StartOptions {
   height: number;
   /** Frames per second. Presentation timestamps are computed as frameIndex / fps. */
   fps: number;
-  /** Absolute file path where the MP4 will be written. Parent dir must exist. */
+  /**
+   * Absolute file path where the MP4 will be written. When omitted, the
+   * native side picks a unique path in the platform's app cache dir
+   * (NSTemporaryDirectory on iOS, context.cacheDir on Android) and
+   * returns it on the resolved promise.
+   */
+  outputPath?: string;
+}
+
+export interface EncodingHandle {
+  /** Opaque session id used by addFrame / finishEncoding / cancelEncoding. */
+  sessionId: string;
+  /** Resolved absolute output path. Set even when caller omitted outputPath. */
   outputPath: string;
 }
 
 const native = requireNativeModule<NativeRunstampVideoEncoder>('RunstampVideoEncoder');
 
-export async function startEncoding(options: StartOptions): Promise<string> {
-  const { sessionId } = await native.startEncoding(options);
-  return sessionId;
+export async function startEncoding(options: StartOptions): Promise<EncodingHandle> {
+  const { sessionId, outputPath } = await native.startEncoding({
+    width: options.width,
+    height: options.height,
+    fps: options.fps,
+    outputPath: options.outputPath ?? '',
+  });
+  return { sessionId, outputPath };
 }
 
 export async function addFrame(sessionId: string, pngPath: string, frameIndex: number): Promise<void> {

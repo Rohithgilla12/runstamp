@@ -36,6 +36,9 @@ internal class StartOptions : Record {
   @Field var width: Int = 1080
   @Field var height: Int = 1920
   @Field var fps: Int = 30
+  // Optional absolute file path for the MP4 output. When empty, the module
+  // generates a unique path in the app's cache dir. The actual path used
+  // is returned from startEncoding so callers can hand it off downstream.
   @Field var outputPath: String = ""
 }
 
@@ -50,10 +53,17 @@ class RunstampVideoEncoderModule : Module() {
 
     AsyncFunction("startEncoding") { options: StartOptions ->
       val sessionId = UUID.randomUUID().toString()
+      val resolvedPath: String = if (options.outputPath.isEmpty()) {
+        val cacheDir = appContext.reactContext?.cacheDir
+          ?: throw EncoderException("no-cache-dir", "Could not resolve cache dir for output path")
+        File(cacheDir, "runstamp-export-$sessionId.mp4").absolutePath
+      } else {
+        options.outputPath
+      }
 
       // Stale output from a prior aborted run would make MediaMuxer constructor
       // throw "file already exists" on some Android versions. Clean it.
-      File(options.outputPath).delete()
+      File(resolvedPath).delete()
 
       val format = MediaFormat.createVideoFormat(
         MediaFormat.MIMETYPE_VIDEO_AVC, options.width, options.height
@@ -74,7 +84,7 @@ class RunstampVideoEncoderModule : Module() {
       codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
       codec.start()
 
-      val muxer = MediaMuxer(options.outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+      val muxer = MediaMuxer(resolvedPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
       sessions[sessionId] = EncodingSession(
         codec = codec,
@@ -82,10 +92,10 @@ class RunstampVideoEncoderModule : Module() {
         fps = options.fps,
         width = options.width,
         height = options.height,
-        outputPath = options.outputPath,
+        outputPath = resolvedPath,
       )
 
-      return@AsyncFunction mapOf("sessionId" to sessionId)
+      return@AsyncFunction mapOf("sessionId" to sessionId, "outputPath" to resolvedPath)
     }
 
     AsyncFunction("addFrame") { sessionId: String, pngPath: String, frameIndex: Int ->

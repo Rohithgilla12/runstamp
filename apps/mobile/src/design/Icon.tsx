@@ -196,5 +196,15 @@ export const Icon: IconSet = {
       </Svg>
     );
   },
-  x: stroke(<Path d="M6 6l12 12M18 6L6 18" />, 1.8)
+  x: stroke(<Path d="M6 6l12 12M18 6L6 18" />, 1.8),
+  // Filled-triangle play glyph. Solid (not stroked) so it reads at small
+  // sizes; consumers pass `color` for the fill to match the surrounding
+  // type. Used by the "Share video" affordance on share cards.
+  play: function Play({ size = 20, color = '#000' }: IconProps) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path d="M7 5l12 7-12 7V5z" fill={color} />
+      </Svg>
+    );
+  }
 };

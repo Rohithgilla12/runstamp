@@ -25,6 +25,11 @@ internal struct StartOptions: Record {
   @Field var width: Int = 1080
   @Field var height: Int = 1920
   @Field var fps: Int = 30
+  /**
+   Optional absolute file path for the MP4 output. When empty, the module
+   generates a unique path in NSTemporaryDirectory(). The actual path used
+   is returned from startEncoding so callers can hand it off downstream.
+   */
   @Field var outputPath: String = ""
 }
 
@@ -64,7 +69,14 @@ public class RunstampVideoEncoderModule: Module {
 
     AsyncFunction("startEncoding") { (options: StartOptions) -> [String: String] in
       let sessionId = UUID().uuidString
-      let outputURL = URL(fileURLWithPath: options.outputPath)
+      let resolvedPath: String
+      if options.outputPath.isEmpty {
+        let tmpDir = NSTemporaryDirectory() as NSString
+        resolvedPath = tmpDir.appendingPathComponent("runstamp-export-\(sessionId).mp4")
+      } else {
+        resolvedPath = options.outputPath
+      }
+      let outputURL = URL(fileURLWithPath: resolvedPath)
 
       // Stale output from a prior aborted run would make AVAssetWriter init
       // throw. Clean it first; ignore errors (the file may not exist).
@@ -129,7 +141,7 @@ public class RunstampVideoEncoderModule: Module {
       )
       self.setSession(sessionId, session)
 
-      return ["sessionId": sessionId]
+      return ["sessionId": sessionId, "outputPath": resolvedPath]
     }
 
     AsyncFunction("addFrame") { (sessionId: String, pngPath: String, frameIndex: Int) in
