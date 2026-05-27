@@ -449,21 +449,26 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
         </View>
       )}
 
-      <VideoExportModal
-        visible={videoExporting}
-        dims={{ width: VIDEO_W, height: VIDEO_H }}
-        renderFrame={(p) => <PeriodShareCard summary={shareSummary} progress={p} />}
-        onCancel={() => setVideoExporting(false)}
-        onComplete={async (uri) => {
-          setVideoExporting(false);
-          try {
-            const distLabel = `${fmtDist(shareSummary.totalKm, units)} ${distUnit(units)}`;
-            await Share.share({ url: uri, message: `${shareSummary.label}: ${distLabel} via Runstamp` });
-          } catch (e) {
-            Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
-          }
-        }}
-      />
+      {/* Gated on videoExporting — see note in ShareableChartCard. The
+          off-screen PeriodShareCard would otherwise paint on every
+          re-render of StatsView (scope changes, scroll, filter etc.). */}
+      {videoExporting && (
+        <VideoExportModal
+          visible
+          dims={{ width: VIDEO_W, height: VIDEO_H }}
+          renderFrame={(p) => <PeriodShareCard summary={shareSummary} progress={p} />}
+          onCancel={() => setVideoExporting(false)}
+          onComplete={async (uri) => {
+            setVideoExporting(false);
+            try {
+              const distLabel = `${fmtDist(shareSummary.totalKm, units)} ${distUnit(units)}`;
+              await Share.share({ url: uri, message: `${shareSummary.label}: ${distLabel} via Runstamp` });
+            } catch (e) {
+              Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+            }
+          }}
+        />
+      )}
 
       {/* Off-screen render of the share card. position:absolute + left:-10000
           keeps it out of layout flow and invisible to the user, but it's

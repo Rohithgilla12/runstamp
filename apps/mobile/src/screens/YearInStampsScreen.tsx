@@ -175,28 +175,32 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
         </View>
       </View>
 
-      <VideoExportModal
-        visible={videoExporting}
-        dims={{ width: YIS_CARD_WIDTH, height: YIS_CARD_HEIGHT }}
-        renderFrame={(p) => (
-          <YearInStampsCard
-            year={year}
-            stats={stats}
-            earnedThisYear={earnedThisYear}
-            units={units}
-            progress={p}
-          />
-        )}
-        onCancel={() => setVideoExporting(false)}
-        onComplete={async (uri) => {
-          setVideoExporting(false);
-          try {
-            await Share.share({ url: uri, message: `My ${year} in stamps via Runstamp` });
-          } catch (e) {
-            Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
-          }
-        }}
-      />
+      {/* Gated — YearInStampsCard's stamp grid + animations would render
+          off-screen on every re-render of this screen if mounted always. */}
+      {videoExporting && (
+        <VideoExportModal
+          visible
+          dims={{ width: YIS_CARD_WIDTH, height: YIS_CARD_HEIGHT }}
+          renderFrame={(p) => (
+            <YearInStampsCard
+              year={year}
+              stats={stats}
+              earnedThisYear={earnedThisYear}
+              units={units}
+              progress={p}
+            />
+          )}
+          onCancel={() => setVideoExporting(false)}
+          onComplete={async (uri) => {
+            setVideoExporting(false);
+            try {
+              await Share.share({ url: uri, message: `My ${year} in stamps via Runstamp` });
+            } catch (e) {
+              Alert.alert("Couldn’t share", e instanceof Error ? e.message : String(e));
+            }
+          }}
+        />
+      )}
 
       {/* Vertical page indicator — right edge, mid-screen. */}
       <View

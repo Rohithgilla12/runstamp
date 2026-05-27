@@ -156,9 +156,14 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage, ex
         </Pressable>
       </View>
 
-      {videoFrame && (
+      {/* Only mount when actively exporting. Without this gate, the
+          off-screen VideoExportRenderer inside the modal renders the
+          full chart-share frame (incl. 365-cell heatmaps, full SVG
+          paths, stamp grids) on every parent render — pegs the GPU
+          and heats the device even when the user is just browsing. */}
+      {videoFrame && videoExporting && (
         <VideoExportModal
-          visible={videoExporting}
+          visible
           dims={resolvedVideoDims}
           renderFrame={videoFrame}
           onCancel={() => setVideoExporting(false)}
