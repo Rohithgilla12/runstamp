@@ -1,0 +1,7 @@
+{
+  "name": "runstamp-video-encoder",
+  "version": "0.1.0",
+  "description": "Native MP4 encoder for Runstamp share-card videos. Wraps AVAssetWriter (iOS) and MediaCodec+MediaMuxer (Android) behind a small Expo Modules API.",
+  "main": "index.ts",
+  "private": true
+}
