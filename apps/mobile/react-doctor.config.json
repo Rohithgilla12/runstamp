@@ -1,0 +1,11 @@
+{
+  "textComponents": ["TText", "Eyebrow"],
+  "rawTextWrapperComponents": ["Button"],
+  "rules": {
+    "react-doctor/no-inline-exhaustive-style": "off",
+    "react-doctor/design-no-em-dash-in-jsx-text": "off",
+    "react-doctor/no-tiny-text": "off",
+    "react-doctor/no-wide-letter-spacing": "off",
+    "react-doctor/jsx-pascal-case": "off"
+  }
+}
