@@ -1,7 +1,13 @@
 import React from 'react';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import { simplifyPath } from '../analytics/simplifyPath';
 import { useColors } from './theme';
 import type { Palette } from './theme';
+
+// Sub-pixel vertices in a value-series line are invisible but still cost an SVG
+// node per point on every render. Collapse them while keeping spikes (RDP keeps
+// high-deviation points, so HR/pace peaks survive).
+const SERIES_SIMPLIFY_EPSILON = 0.6;
 
 export function Sparkline({
   data,
@@ -94,7 +100,11 @@ export function StreamChart({
   const range = max - min || 1;
   const step = (width - pad * 2) / (data.length - 1);
   const y = (v: number) => pad + (height - pad * 2) - ((v - min) / range) * (height - pad * 2);
-  const d = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${(pad + i * step).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  const pts = simplifyPath(
+    data.map((v, i) => ({ x: pad + i * step, y: y(v) })),
+    SERIES_SIMPLIFY_EPSILON,
+  );
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   return (
     <Svg width={width} height={height}>
       {[0.25, 0.5, 0.75].map((p, i) => (

@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import type { Point } from '../data/sample';
+import { simplifyPath } from '../analytics/simplifyPath';
 import { useColors, useTheme } from './theme';
 import { MapTilesLayer } from './MapTilesLayer';
 import { useAppState } from '../state/AppState';
@@ -62,6 +63,11 @@ const STYLES = {
   sat:   { bg: '#222'    },
 } as const;
 
+// Drop polyline vertices that sit within this many pixels of the simplified
+// line. Below ~1px the detail is sub-pixel; 0.75 keeps the route visually
+// identical while collapsing full-resolution GPS tracks to a light SVG path.
+const ROUTE_SIMPLIFY_EPSILON = 0.75;
+
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -98,10 +104,11 @@ export function RouteMap({
       const bb: BBox = { minLat, maxLat, minLng, maxLng };
       const z = pickZoom(bb, width, height);
       const { offsetX, offsetY } = centerOffsets(bb, z, width, height);
-      const canvasPts: { x: number; y: number }[] = new Array(rawLatLng.length);
+      const projected: { x: number; y: number }[] = new Array(rawLatLng.length);
       for (let i = 0; i < rawLatLng.length; i++) {
-        canvasPts[i] = projectToCanvas(rawLatLng[i][0], rawLatLng[i][1], z, offsetX, offsetY);
+        projected[i] = projectToCanvas(rawLatLng[i][0], rawLatLng[i][1], z, offsetX, offsetY);
       }
+      const canvasPts = simplifyPath(projected, ROUTE_SIMPLIFY_EPSILON);
       const segs: string[] = [];
       let len = 0;
       for (let i = 0; i < canvasPts.length; i++) {
@@ -135,13 +142,14 @@ export function RouteMap({
     const scale = Math.min((width - pad * 2) / rangeX, (height - pad * 2) / rangeY);
     const offX = (width - rangeX * scale) / 2 - minX * scale;
     const offY = (height - rangeY * scale) / 2 - minY * scale;
-    const canvasPts: { x: number; y: number }[] = new Array(points.length);
+    const projected: { x: number; y: number }[] = new Array(points.length);
     for (let i = 0; i < points.length; i++) {
-      canvasPts[i] = {
+      projected[i] = {
         x: points[i][0] * scale + offX,
         y: points[i][1] * scale + offY,
       };
     }
+    const canvasPts = simplifyPath(projected, ROUTE_SIMPLIFY_EPSILON);
     const segs: string[] = [];
     let len = 0;
     for (let i = 0; i < canvasPts.length; i++) {
