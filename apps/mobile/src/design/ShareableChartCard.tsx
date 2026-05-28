@@ -100,14 +100,6 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage, ex
                 </TText>
               )}
             </View>
-            {/* Share button — the only thing not inside the capture area
-                 would be ideal, but capture from the outer ref includes
-                 itself. We hide visually by making it transparent inside
-                 the capture; we paint it again outside via the absolute
-                 overlay below. Simpler: keep it inside; the share icon
-                 in a captured image is fine signal "this is shareable",
-                 actually we DON'T want it in the image. Solution: render
-                 the button OUTSIDE the captureViewRef. */}
           </View>
 
           {children}
