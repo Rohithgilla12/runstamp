@@ -341,7 +341,7 @@ export function DraggableSticker({
               width: 24, height: 24, borderRadius: 12,
               backgroundColor: c.accent,
               alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+              boxShadow: '0px 1px 4px rgba(0,0,0,0.25)',
             }}
           >
             <TText variant="mono" style={{ fontSize: 13, lineHeight: 13, color: '#f3ede2', fontWeight: '700' }}>×</TText>

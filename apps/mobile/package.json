@@ -9,6 +9,7 @@
     "android": "expo run:android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "doctor": "react-doctor . --verbose",
     "lint": "echo \"(lint not yet wired)\"",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -56,6 +57,7 @@
     "@babel/core": "^7.25.2",
     "@types/react": "~19.1.0",
     "@vitest/expect": "^4.1.6",
+    "react-doctor": "^0.2.9",
     "typescript": "~5.9.2",
     "vitest": "^3"
   }

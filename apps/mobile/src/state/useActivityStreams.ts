@@ -25,7 +25,7 @@ interface UseActivityStreamsState {
 export function useActivityStreams(activityId: string | null): UseActivityStreamsState {
   const { user, getIdToken } = useAuth();
   const { zones } = usePrivacyZones();
-  const [streams, setStreams] = useState<Record<StreamType, ActivityStream | undefined>>(emptyStreams());
+  const [streams, setStreams] = useState<Record<StreamType, ActivityStream | undefined>>(() => emptyStreams());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

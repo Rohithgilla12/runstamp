@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, TextInput, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { distUnit, fmtDist, fmtTime, type Activity, type ActivitySource } from '../data/sample';
 import { useAppState } from '../state/AppState';
@@ -92,6 +92,20 @@ export function ActivitiesScreen({ navigation }: RootStackProps<'Activities'>) {
     }
     return out;
   }, [filtered]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: ListItem }) =>
+      item.kind === 'header' ? (
+        <RunSectionHeader label={item.label} count={item.count} km={item.km} units={units} />
+      ) : (
+        <ActivityRow
+          activity={item.activity}
+          onOpen={() => navigation.navigate('Activity', { id: item.activity.id })}
+          onShare={() => navigation.navigate('Editor', { id: item.activity.id })}
+        />
+      ),
+    [units, navigation],
+  );
 
   const totals = useMemo(() => {
     let km = 0; let sec = 0;
@@ -242,29 +256,27 @@ export function ActivitiesScreen({ navigation }: RootStackProps<'Activities'>) {
             )}
           </View>
         }
-        renderItem={({ item }) => {
-          if (item.kind === 'header') {
-            return (
-              <View style={{
-                paddingTop: 18, paddingBottom: 8,
-                flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
-              }}>
-                <TText variant="serif" style={{ fontSize: 18, color: c.ink, letterSpacing: -0.2 }}>{item.label}</TText>
-                <Eyebrow style={{ color: c.ink3 }}>
-                  {item.count} {item.count === 1 ? 'RUN' : 'RUNS'} · {fmtDist(item.km, units)} {distUnit(units)}
-                </Eyebrow>
-              </View>
-            );
-          }
-          return (
-            <ActivityRow
-              activity={item.activity}
-              onOpen={() => navigation.navigate('Activity', { id: item.activity.id })}
-              onShare={() => navigation.navigate('Editor', { id: item.activity.id })}
-            />
-          );
-        }}
+        renderItem={renderItem}
       />
+    </View>
+  );
+}
+
+const HEADER_ROW: ViewStyle = {
+  paddingTop: 18, paddingBottom: 8,
+  flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+};
+
+function RunSectionHeader({ label, count, km, units }: {
+  label: string; count: number; km: number; units: Parameters<typeof distUnit>[0];
+}) {
+  const c = useColors();
+  return (
+    <View style={HEADER_ROW}>
+      <TText variant="serif" style={{ fontSize: 18, color: c.ink, letterSpacing: -0.2 }}>{label}</TText>
+      <Eyebrow style={{ color: c.ink3 }}>
+        {count} {count === 1 ? 'RUN' : 'RUNS'} · {fmtDist(km, units)} {distUnit(units)}
+      </Eyebrow>
     </View>
   );
 }
