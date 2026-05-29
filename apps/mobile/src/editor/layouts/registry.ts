@@ -1,5 +1,6 @@
 import type { Layout, LayoutId } from './types';
 import { THEMES } from './themes';
+import { FRAMES } from './frames';
 import { LAYOUT_META } from './registry.data';
 import { NoneScaffolding } from './scaffolding/NoneScaffolding';
 import { PostageScaffolding } from './scaffolding/PostageScaffolding';
@@ -36,6 +37,7 @@ export const LAYOUTS: Layout[] = LAYOUT_META.map((m) => ({
   name: m.name,
   Scaffolding: SCAFFOLDING_BY_ID[m.id],
   theme: THEMES[m.id],
+  frame: FRAMES[m.id],
   seed: m.seed,
 }));
 

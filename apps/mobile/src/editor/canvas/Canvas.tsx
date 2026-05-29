@@ -42,30 +42,46 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
 ) {
   const c = useColors();
   const Scaffolding = layout.Scaffolding;
+  // A framed layout composes the card as backdrop → contained (inset) map →
+  // scrim → decoration → stickers, so the map is a designed element rather than
+  // a full-bleed wash. No frame (the 'none' option) keeps the legacy full-bleed.
+  const f = layout.frame;
+  const inset = f?.inset ?? 0;
+  const bw = width - inset * 2;
+  const bh = height - inset * 2;
+  const mapStyle = f?.mapStyle ?? 'dark';
+  const mapOpacity = f?.mapOpacity ?? 1;
   return (
-    <View ref={ref} collapsable={false} style={{ width, height, borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, position: 'relative' }}>
-      {background === 'map' && (
-        <RouteMap points={run.route} rawLatLng={live.rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={4} animate={!frozen} />
-      )}
-      {background === 'photo' && (
-        photoUri ? (
-          <Image source={{ uri: photoUri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} resizeMode="cover" />
-        ) : (
-          <Pressable
-            onPress={frozen ? undefined : onTapPickPhoto}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#1a1714' }} />
-            {!frozen && (
-              <View style={{ alignItems: 'center', gap: 6 }}>
-                <Icon.cam size={28} color="rgba(243,237,226,0.55)" />
-                <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.55)' }}>TAP TO UPLOAD</TText>
-              </View>
-            )}
-          </Pressable>
-        )
-      )}
-      {background === 'solid' && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: c.accent }} />}
+    <View ref={ref} collapsable={false} style={{ width, height, borderRadius: 18, overflow: 'hidden', backgroundColor: f ? f.backdrop : c.ink, position: 'relative' }}>
+      <View style={{ position: 'absolute', top: inset, left: inset, width: bw, height: bh, borderRadius: f?.radius ?? 0, overflow: 'hidden' }}>
+        {background === 'map' && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: mapOpacity }}>
+            <RouteMap points={run.route} rawLatLng={live.rawLatLng} width={bw} height={bh} style={mapStyle} accent={c.accent} routeStrokeWidth={4} animate={!frozen} />
+          </View>
+        )}
+        {background === 'photo' && (
+          photoUri ? (
+            <Image source={{ uri: photoUri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} resizeMode="cover" />
+          ) : (
+            <Pressable
+              onPress={frozen ? undefined : onTapPickPhoto}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#1a1714' }} />
+              {!frozen && (
+                <View style={{ alignItems: 'center', gap: 6 }}>
+                  <Icon.cam size={28} color="rgba(243,237,226,0.55)" />
+                  <TText variant="mono" style={{ fontSize: 11, color: 'rgba(243,237,226,0.55)' }}>TAP TO UPLOAD</TText>
+                </View>
+              )}
+            </Pressable>
+          )
+        )}
+        {background === 'solid' && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: c.accent }} />}
+        {f && f.scrim !== 'transparent' && (
+          <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: f.scrim }} />
+        )}
+      </View>
 
       <Scaffolding width={width} height={height} surface="9:16" />
 

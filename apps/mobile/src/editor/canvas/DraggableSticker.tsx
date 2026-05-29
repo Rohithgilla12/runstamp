@@ -1,5 +1,5 @@
-import React, { memo, useCallback, useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
@@ -69,6 +69,10 @@ function DraggableStickerImpl({
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const startScale = useSharedValue(1);
+  // Measured box height so the sticker centres on its seed point (the box is
+  // anchored by its own centre, not a fixed 120×60 guess).
+  const [boxH, setBoxH] = useState(56);
+  const onBoxLayout = useCallback((e: LayoutChangeEvent) => setBoxH(e.nativeEvent.layout.height), []);
 
   const style = applyTheme(STICKER_DEFAULTS, theme);
 
@@ -118,14 +122,6 @@ function DraggableStickerImpl({
 
     return Gesture.Race(doubleTap, Gesture.Simultaneous(pan, pinch, tap));
   }, [canvasW, canvasH, onSelect, onScale, onRemove, persist, stickerId, tx, ty, scale, startX, startY, startScale]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: tx.value - 60 },
-      { translateY: ty.value - 30 },
-      { scale: scale.value }
-    ]
-  }));
 
   let body: React.ReactNode = null;
   let width = 120;
@@ -305,10 +301,21 @@ function DraggableStickerImpl({
       body = <TText style={{ color: style.text.color, fontSize: 12 }}>{sticker.key}</TText>;
   }
 
+  // Anchor the box by its own centre on the seed point — width is known here,
+  // height is measured via onLayout — so wide stickers no longer drift.
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: tx.value - width / 2 },
+      { translateY: ty.value - boxH / 2 },
+      { scale: scale.value },
+    ],
+  }), [width, boxH]);
+
   if (frozen) {
     return (
       <Animated.View
         pointerEvents="none"
+        onLayout={onBoxLayout}
         style={[
           {
             position: 'absolute',
@@ -329,7 +336,7 @@ function DraggableStickerImpl({
 
   return (
     <GestureDetector gesture={composed}>
-      <Animated.View style={[
+      <Animated.View onLayout={onBoxLayout} style={[
         {
           position: 'absolute',
           width,

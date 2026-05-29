@@ -60,11 +60,32 @@ export interface StickerSeed {
   scale?: number;
 }
 
+// How a layout composes its card: a paper/ink/themed backdrop with the
+// background image (map/photo) contained inside an inset frame — not bled to
+// the edges — so the scaffolding decoration and stat stickers read as a
+// designed artifact rather than "a map with boxes on it".
+export interface FrameSpec {
+  /** Fills the whole card behind everything (paper, ink, ecru, blue…). */
+  backdrop: string;
+  /** Inset of the contained background from the card edge, in px at the 9:16 preview. */
+  inset: number;
+  /** Corner radius of the contained background block. */
+  radius: number;
+  /** Map tile/route treatment for the contained background. */
+  mapStyle: 'light' | 'dark';
+  /** Opacity of the contained background — low lets the paper character lead. */
+  mapOpacity: number;
+  /** Overlay over the contained background for type contrast; 'transparent' = none. */
+  scrim: string;
+}
+
 export interface Layout {
   id: LayoutId;
   name: string;
   Scaffolding: Scaffolding;
   theme: StickerTheme;
+  /** Card composition. Absent = legacy full-bleed background (the 'none' option). */
+  frame?: FrameSpec;
   seed?: StickerSeed[];
 }
 
