@@ -33,6 +33,9 @@ import { DateStampTemplate } from '../design/templates/DateStampTemplate';
 import { HalftoneTemplate } from '../design/templates/HalftoneTemplate';
 import { CyanotypeTemplate } from '../design/templates/CyanotypeTemplate';
 import { RisoTemplate } from '../design/templates/RisoTemplate';
+import { TopographicTemplate } from '../design/templates/TopographicTemplate';
+import { SplitsLedgerTemplate } from '../design/templates/SplitsLedgerTemplate';
+import { CoordinatesTemplate } from '../design/templates/CoordinatesTemplate';
 import type { RootStackProps } from '../nav/types';
 
 type Surface = '9:16' | '1:1' | '4:5';
@@ -50,7 +53,10 @@ type Template =
   | 'datestamp'
   | 'halftone'
   | 'cyanotype'
-  | 'riso';
+  | 'riso'
+  | 'topographic'
+  | 'splits'
+  | 'coordinates';
 type TabKey = 'templates' | 'photo' | 'stats' | 'export';
 
 const CANVAS_PADDING = 24;
@@ -395,6 +401,18 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ width: canvasW, height: canvasH }}>
               <RisoTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
+          ) : template === 'topographic' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <TopographicTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+            </View>
+          ) : template === 'splits' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <SplitsLedgerTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+            </View>
+          ) : template === 'coordinates' ? (
+            <View style={{ width: canvasW, height: canvasH }}>
+              <CoordinatesTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+            </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
             width: canvasW, height: canvasH, borderRadius: 18, overflow: 'hidden',
@@ -489,6 +507,9 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 ['halftone',  'Halftone'],
                 ['cyanotype', 'Cyanotype'],
                 ['riso',      'Riso'],
+                ['topographic', 'Topographic'],
+                ['splits',    'Splits'],
+                ['coordinates', 'Coordinates'],
               ] as const).map(([t, label]) => {
                 const active = template === t;
                 // Everything in the list ships — keep the "SOON" affordance
