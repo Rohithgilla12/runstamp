@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { Image, InteractionManager, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { Canvas } from '../canvas/Canvas';
@@ -21,7 +21,7 @@ interface Props {
   live: LiveStreams;
 }
 
-export function LayoutThumbnail({ run, layout, background, photoUri, live }: Props) {
+export const LayoutThumbnail = memo(function LayoutThumbnail({ run, layout, background, photoUri, live }: Props) {
   const ref = useRef<View>(null);
   const key = cacheKey(run.id, layout.id);
   const [uri, setUri] = useState<string | null>(cache.get(key) ?? null);
@@ -76,4 +76,4 @@ export function LayoutThumbnail({ run, layout, background, photoUri, live }: Pro
       />
     </View>
   );
-}
+});

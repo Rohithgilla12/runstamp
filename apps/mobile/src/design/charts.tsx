@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { simplifyPath } from '../analytics/simplifyPath';
 import { useColors } from './theme';
@@ -82,7 +82,7 @@ export function BarChart<T extends Record<string, any>>({
   );
 }
 
-export function StreamChart({
+export const StreamChart = memo(function StreamChart({
   data,
   width = 358,
   height = 160,
@@ -114,7 +114,7 @@ export function StreamChart({
       <Path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
-}
+});
 
 export function heatColor(v: number, c: Palette): string {
   if (v === 0) return c.line2;

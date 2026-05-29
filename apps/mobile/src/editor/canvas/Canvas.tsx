@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, memo } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useColors } from '../../design/theme';
 import { Icon } from '../../design/Icon';
@@ -35,7 +35,7 @@ interface Props {
   hideWatermark?: boolean;
 }
 
-export const Canvas = forwardRef<View, Props>(function Canvas(
+export const Canvas = memo(forwardRef<View, Props>(function Canvas(
   { run, layout, width, height, background, photoUri, stickers, live, selected,
     onSelect, onMove, onScale, onRemove, onTapPickPhoto, frozen, hideWatermark },
   ref,
@@ -45,7 +45,7 @@ export const Canvas = forwardRef<View, Props>(function Canvas(
   return (
     <View ref={ref} collapsable={false} style={{ width, height, borderRadius: 18, overflow: 'hidden', backgroundColor: c.ink, position: 'relative' }}>
       {background === 'map' && (
-        <RouteMap points={run.route} rawLatLng={live.rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={4} />
+        <RouteMap points={run.route} rawLatLng={live.rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={4} animate={!frozen} />
       )}
       {background === 'photo' && (
         photoUri ? (
@@ -89,10 +89,10 @@ export const Canvas = forwardRef<View, Props>(function Canvas(
           liveSplits={live.splits}
           theme={layout.theme}
           isSelected={selected === s.id}
-          onSelect={() => onSelect(s.id)}
-          onMove={(x, y) => onMove(s.id, x, y)}
-          onScale={(sc) => onScale(s.id, sc)}
-          onRemove={() => onRemove(s.id)}
+          onSelect={onSelect}
+          onMove={onMove}
+          onScale={onScale}
+          onRemove={onRemove}
           frozen={frozen}
         />
       ))}
@@ -100,4 +100,4 @@ export const Canvas = forwardRef<View, Props>(function Canvas(
       <Pressable onPress={() => onSelect(null)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents={selected ? 'auto' : 'box-none'} />
     </View>
   );
-});
+}));

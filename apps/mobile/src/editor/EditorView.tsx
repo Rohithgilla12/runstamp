@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,7 +29,10 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
   const { defaultSurface, tileStyle } = useAppState();
   const id = route.params?.id;
   const { activities, loading } = useActivities();
-  const run = id ? activities.find((a) => a.id === id) : activities[0];
+  const run = useMemo(
+    () => (id ? activities.find((a) => a.id === id) : activities[0]),
+    [activities, id],
+  );
   const { route: realRoute, rawLatLng, streams } = useActivityStreams(run?.id ?? null);
   const { splits } = useActivityDetail(run?.id ?? null);
   const live: LiveStreams = useMemo(() => {
@@ -55,52 +58,48 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
   const [tmpSize, setTmpSize] = useState<number | null>(null);
   const canvasRef = useRef<View>(null);
 
-  const layout = layoutById(layoutId) ?? LAYOUTS[0];
+  const layout = useMemo(() => layoutById(layoutId) ?? LAYOUTS[0], [layoutId]);
 
-  const screenW = Dimensions.get('window').width;
-  const canvasW = Math.min(screenW - CANVAS_PADDING * 2, 400);
-  const ratio = surface === '9:16' ? 16 / 9 : surface === '1:1' ? 1 : 5 / 4;
-  const canvasH = canvasW * ratio;
+  const { width: windowWidth } = useWindowDimensions();
+  const { canvasW, canvasH } = useMemo(() => {
+    const w = Math.min(windowWidth - CANVAS_PADDING * 2, 400);
+    const ratio = surface === '9:16' ? 16 / 9 : surface === '1:1' ? 1 : 5 / 4;
+    return { canvasW: w, canvasH: w * ratio };
+  }, [windowWidth, surface]);
 
-  if (!run) {
-    return (
-      <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 8, alignItems: 'center', justifyContent: 'center' }}>
-        <Eyebrow style={{ color: c.ink3 }}>{loading ? 'LOADING…' : 'NO RUN'}</Eyebrow>
-      </View>
-    );
-  }
-
-  const toggleSticker = (key: StickerKey) => {
+  const toggleSticker = useCallback((key: StickerKey) => {
     setStickers((cur) => {
       const existing = cur.find((s) => s.key === key);
       if (existing) return cur.filter((s) => s.key !== key);
       return [...cur, { id: `s-${key}-${Date.now()}`, key, x: 0.5, y: 0.5, scale: 1 }];
     });
-  };
-  const moveSticker = (id: string, x: number, y: number) =>
-    setStickers((cur) => cur.map((s) => (s.id === id ? { ...s, x, y } : s)));
-  const scaleSticker = (id: string, scale: number) =>
-    setStickers((cur) => cur.map((s) => (s.id === id ? { ...s, scale } : s)));
-  const removeSticker = (id: string) =>
-    setStickers((cur) => cur.filter((s) => s.id !== id));
+  }, []);
+  const moveSticker = useCallback((id: string, x: number, y: number) =>
+    setStickers((cur) => cur.map((s) => (s.id === id ? { ...s, x, y } : s))), []);
+  const scaleSticker = useCallback((id: string, scale: number) =>
+    setStickers((cur) => cur.map((s) => (s.id === id ? { ...s, scale } : s))), []);
+  const removeSticker = useCallback((id: string) =>
+    setStickers((cur) => cur.filter((s) => s.id !== id)), []);
 
-  const onPickLayout = (nextId: LayoutId) => {
+  const onPickLayout = useCallback((nextId: LayoutId) => {
     setLayoutId(nextId);
-    if (stickers.length === 0) {
+    // Seed the layout's default stickers only onto an empty canvas — read
+    // current stickers via the updater so this stays a stable callback.
+    setStickers((cur) => {
+      if (cur.length !== 0) return cur;
       const next = layoutById(nextId);
-      if (next?.seed?.length) {
-        setStickers(next.seed.map((s, i) => ({
-          id: `s-${nextId}-${s.key}-${i}-${Date.now()}`,
-          key: s.key,
-          x: s.x,
-          y: s.y,
-          scale: s.scale ?? 1,
-        })));
-      }
-    }
-  };
+      if (!next?.seed?.length) return cur;
+      return next.seed.map((s, i) => ({
+        id: `s-${nextId}-${s.key}-${i}-${Date.now()}`,
+        key: s.key,
+        x: s.x,
+        y: s.y,
+        scale: s.scale ?? 1,
+      }));
+    });
+  }, []);
 
-  const pickPhoto = async () => {
+  const pickPhoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -112,9 +111,9 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
       setPhotoUri(result.assets[0].uri);
       setBg('photo');
     }
-  };
+  }, []);
 
-  const onSaveAndShare = async () => {
+  const onSaveAndShare = useCallback(async () => {
     if (!canvasRef.current || exporting) return;
     setSelected(null);
     setExporting(true);
@@ -133,7 +132,15 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
     } finally {
       setExporting(false);
     }
-  };
+  }, [exporting, bg, live, canvasW, canvasH, tileStyle]);
+
+  if (!run) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 8, alignItems: 'center', justifyContent: 'center' }}>
+        <Eyebrow style={{ color: c.ink3 }}>{loading ? 'LOADING…' : 'NO RUN'}</Eyebrow>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.paper }}>

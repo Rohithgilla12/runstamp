@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -36,15 +36,15 @@ interface DraggableStickerProps {
   liveRoute: Point[] | null;
   liveSplits: Split[] | null;
   isSelected: boolean;
-  onSelect: () => void;
-  onMove: (x: number, y: number) => void;
-  onScale: (scale: number) => void;
-  onRemove: () => void;
+  onSelect: (id: string) => void;
+  onMove: (id: string, x: number, y: number) => void;
+  onScale: (id: string, scale: number) => void;
+  onRemove: (id: string) => void;
   theme: StickerTheme;
   frozen?: boolean;
 }
 
-export function DraggableSticker({
+function DraggableStickerImpl({
   sticker,
   run,
   canvasW,
@@ -72,42 +72,52 @@ export function DraggableSticker({
 
   const style = applyTheme(STICKER_DEFAULTS, theme);
 
-  const persist = (xPx: number, yPx: number) => {
-    onMove(xPx / canvasW, yPx / canvasH);
-  };
+  const stickerId = sticker.id;
 
-  const pan = Gesture.Pan()
-    .onStart(() => {
-      startX.value = tx.value;
-      startY.value = ty.value;
-      runOnJS(onSelect)();
-    })
-    .onUpdate((e) => {
-      tx.value = Math.max(20, Math.min(canvasW - 20, startX.value + e.translationX));
-      ty.value = Math.max(20, Math.min(canvasH - 20, startY.value + e.translationY));
-    })
-    .onEnd(() => {
-      runOnJS(persist)(tx.value, ty.value);
-    });
+  const persist = useCallback(
+    (xPx: number, yPx: number) => {
+      onMove(stickerId, xPx / canvasW, yPx / canvasH);
+    },
+    [onMove, stickerId, canvasW, canvasH],
+  );
 
-  const pinch = Gesture.Pinch()
-    .onStart(() => {
-      startScale.value = scale.value;
-      runOnJS(onSelect)();
-    })
-    .onUpdate((e) => {
-      scale.value = Math.max(0.5, Math.min(2.2, startScale.value * e.scale));
-    })
-    .onEnd(() => {
-      runOnJS(onScale)(scale.value);
-    });
+  // Gestures and the worklet closures are rebuilt only when geometry or the
+  // (now stable) callbacks change — not on every parent re-render, which would
+  // otherwise force GestureDetector to reconfigure mid-interaction.
+  const composed = useMemo(() => {
+    const pan = Gesture.Pan()
+      .onStart(() => {
+        startX.value = tx.value;
+        startY.value = ty.value;
+        runOnJS(onSelect)(stickerId);
+      })
+      .onUpdate((e) => {
+        tx.value = Math.max(20, Math.min(canvasW - 20, startX.value + e.translationX));
+        ty.value = Math.max(20, Math.min(canvasH - 20, startY.value + e.translationY));
+      })
+      .onEnd(() => {
+        runOnJS(persist)(tx.value, ty.value);
+      });
 
-  const tap = Gesture.Tap().onEnd(() => runOnJS(onSelect)());
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => runOnJS(onRemove)());
+    const pinch = Gesture.Pinch()
+      .onStart(() => {
+        startScale.value = scale.value;
+        runOnJS(onSelect)(stickerId);
+      })
+      .onUpdate((e) => {
+        scale.value = Math.max(0.5, Math.min(2.2, startScale.value * e.scale));
+      })
+      .onEnd(() => {
+        runOnJS(onScale)(stickerId, scale.value);
+      });
 
-  const composed = Gesture.Race(doubleTap, Gesture.Simultaneous(pan, pinch, tap));
+    const tap = Gesture.Tap().onEnd(() => runOnJS(onSelect)(stickerId));
+    const doubleTap = Gesture.Tap()
+      .numberOfTaps(2)
+      .onEnd(() => runOnJS(onRemove)(stickerId));
+
+    return Gesture.Race(doubleTap, Gesture.Simultaneous(pan, pinch, tap));
+  }, [canvasW, canvasH, onSelect, onScale, onRemove, persist, stickerId, tx, ty, scale, startX, startY, startScale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -334,7 +344,7 @@ export function DraggableSticker({
         {body}
         {isSelected && (
           <Pressable
-            onPress={onRemove}
+            onPress={() => onRemove(stickerId)}
             hitSlop={12}
             style={{
               position: 'absolute', top: -10, right: -10,
@@ -351,3 +361,5 @@ export function DraggableSticker({
     </GestureDetector>
   );
 }
+
+export const DraggableSticker = memo(DraggableStickerImpl);

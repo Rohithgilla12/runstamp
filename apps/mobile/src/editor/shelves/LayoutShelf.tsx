@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';
@@ -15,7 +15,7 @@ interface Props {
   onSelect: (id: LayoutId) => void;
 }
 
-export function LayoutShelf({ run, live, background, photoUri, activeId, onSelect }: Props) {
+export const LayoutShelf = memo(function LayoutShelf({ run, live, background, photoUri, activeId, onSelect }: Props) {
   const c = useColors();
   const activeName = LAYOUTS.find((l) => l.id === activeId)?.name ?? '';
   return (
@@ -44,4 +44,4 @@ export function LayoutShelf({ run, live, background, photoUri, activeId, onSelec
       </ScrollView>
     </View>
   );
-}
+});

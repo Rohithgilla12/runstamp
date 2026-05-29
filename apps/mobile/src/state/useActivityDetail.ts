@@ -4,7 +4,7 @@
 // fetch lands. Used by ActivityScreen and EditorScreen to surface splits
 // without paying the list-payload cost for every other run.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { canonicalizeActivity, getActivityDetail, type ApiActivityDetail } from '../services/activities';
 import type { Split } from '../data/sample';
 import { useAuth } from './AuthContext';
@@ -77,7 +77,10 @@ export function useActivityDetail(activityId: string | null): UseActivityDetailS
   // Normalise both to the mobile Split type the sticker + ActivityScreen
   // already read. Done here so the screens don't each carry a translation
   // layer.
-  const splits = detail?.splits != null ? normaliseSplits(detail.splits) : null;
+  const splits = useMemo(
+    () => (detail?.splits != null ? normaliseSplits(detail.splits) : null),
+    [detail],
+  );
 
   return { detail, splits, loading, error, refresh: fetchOnce, canonicalize };
 }

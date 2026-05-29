@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';
@@ -13,7 +13,7 @@ interface Props {
   onToggle: (key: StickerKey) => void;
 }
 
-export function StatsShelf({ run, live, stickers, onToggle }: Props) {
+export const StatsShelf = memo(function StatsShelf({ run, live, stickers, onToggle }: Props) {
   const c = useColors();
   const available = STICKER_LIBRARY.filter((s) =>
     stickerHasValue(s.key, run, live.hr, live.pace, live.route, live.splits),
@@ -48,4 +48,4 @@ export function StatsShelf({ run, live, stickers, onToggle }: Props) {
       </ScrollView>
     </View>
   );
-}
+});
