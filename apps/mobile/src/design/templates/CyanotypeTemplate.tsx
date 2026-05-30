@@ -57,7 +57,6 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
       {background === 'map' && (
         <View style={{ position: 'absolute', top: height * 0.18, left: 0, right: 0, height: height * 0.55, opacity: 0.85 }}>
           <RouteMap
-            points={run.route}
             rawLatLng={rawLatLng}
             width={width}
             height={height * 0.55}

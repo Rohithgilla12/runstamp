@@ -29,6 +29,7 @@ import { YearInStampsCard, YIS_CARD_HEIGHT, YIS_CARD_WIDTH } from '../design/Yea
 import { VideoExportModal } from './share/VideoExportModal';
 import { shareExportedVideo } from '../services/videoExport';
 import { useActivities } from '../state/useActivities';
+import { useActivityStreams } from '../state/useActivityStreams';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useAppState } from '../state/AppState';
 import type { Activity } from '../data/models';
@@ -528,6 +529,7 @@ function StampSlot({
 function TopRunPanel({ active, reduceMotion, stats, topRun, units }: PanelProps) {
   const c = useColors();
   const [mapKey, setMapKey] = useState(0);
+  const { route: topRoute, rawLatLng: topRawLatLng } = useActivityStreams(topRun?.id ?? null);
   // Bump RouteMap's key when this page becomes active so the ink-trace
   // animation re-plays. Cheaper than threading a "trigger" prop through.
   useEffect(() => {
@@ -584,8 +586,8 @@ function TopRunPanel({ active, reduceMotion, stats, topRun, units }: PanelProps)
         <View style={{ backgroundColor: c.ink }}>
           <RouteMap
             key={mapKey}
-            points={topRun.route}
-            rawLatLng={null}
+            points={topRoute ?? undefined}
+            rawLatLng={topRawLatLng}
             width={Dimensions.get('window').width - 56}
             height={180}
             style="dark"

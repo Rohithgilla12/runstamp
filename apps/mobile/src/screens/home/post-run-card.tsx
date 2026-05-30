@@ -42,7 +42,7 @@ export function PostRunCard({ run, onOpen, onShare }: { run: Activity; onOpen: (
               per-frame SVG path animation invalidates the bitmap cache that
               shouldRasterizeIOS just set up. Killing the animation here
               keeps the cache hot from frame 1. */}
-          <RouteMap points={realRoute ?? run.route} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} animate={false} />
+          <RouteMap points={realRoute ?? undefined} rawLatLng={realRawLatLng} width={362} height={POST_RUN_HEIGHT} style="dark" accent={c.accent} animate={false} />
         </View>
         <LinearGradient
           colors={['rgba(14,13,11,0.4)', 'rgba(14,13,11,0.1)', 'rgba(14,13,11,0.85)']}

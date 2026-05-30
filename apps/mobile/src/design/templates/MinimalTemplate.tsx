@@ -40,7 +40,7 @@ export function MinimalTemplate({ run, width, height, background, units = 'km', 
       {/* Background variants — kept extremely subtle so the type rules. */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.08 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
+          <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (

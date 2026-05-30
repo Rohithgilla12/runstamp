@@ -278,16 +278,6 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
     removeSticker(selected);
   };
 
-  // Templates and the bg=map background pulled run.route directly, which is
-  // the seeded synthetic loop from data/sample.ts — a pretty squiggle, but
-  // nothing to do with where the user actually ran. Swap in the real GPS
-  // route from the streams endpoint when we have one. Falls back to the
-  // synthetic for activities without route data (manual entries, indoor
-  // treadmill runs).
-  const displayRun = realRoute && realRoute.length > 1
-    ? { ...run, route: realRoute }
-    : run;
-
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.paper }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 36 }} showsVerticalScrollIndicator={false}>
@@ -356,63 +346,63 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostageTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'postmark' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PostmarkTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <PostmarkTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'boarding' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <BoardingPassTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <BoardingPassTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'passport' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <PassportTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <PassportTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'customs' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CustomsTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <CustomsTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'engraved' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <EngravedTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <EngravedTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'wax' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <WaxSealTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <WaxSealTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'minimal' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <MinimalTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <MinimalTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'datestamp' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <DateStampTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <DateStampTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'halftone' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <HalftoneTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <HalftoneTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'cyanotype' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CyanotypeTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <CyanotypeTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'riso' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <RisoTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <RisoTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'topographic' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <TopographicTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <TopographicTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'splits' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <SplitsLedgerTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <SplitsLedgerTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : template === 'coordinates' ? (
             <View style={{ width: canvasW, height: canvasH }}>
-              <CoordinatesTemplate run={displayRun} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
+              <CoordinatesTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
             </View>
           ) : (
           <Pressable onPress={() => setSelected(null)} style={{
@@ -420,7 +410,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             backgroundColor: c.ink, position: 'relative'
           }}>
             {/* Background layer */}
-            {bg === 'map' && <RouteMap points={displayRun.route} rawLatLng={realRawLatLng} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
+            {bg === 'map' && <RouteMap rawLatLng={realRawLatLng} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
             {bg === 'photo' && (
               photoUri ? (
                 <Image source={{ uri: photoUri }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" />
@@ -453,12 +443,12 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 between runs with different data shapes; only renders the ones
                 that have something honest to show. */}
             {stickers
-              .filter((s) => stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits))
+              .filter((s) => stickerHasValue(s.key, run, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits))
               .map((s) => (
                 <DraggableSticker
                   key={s.id}
                   sticker={s}
-                  run={displayRun}
+                  run={run}
                   canvasW={canvasW}
                   canvasH={canvasH}
                   liveHr={realHr ?? null}
@@ -570,7 +560,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {STICKER_LIBRARY.filter((s) =>
-                  stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
+                  stickerHasValue(s.key, run, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
                 ).map((s) => {
                   const placed = stickers.some((p) => p.key === s.key);
                   return (
@@ -588,7 +578,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
               </View>
               {(() => {
                 const hidden = STICKER_LIBRARY.filter((s) =>
-                  !stickerHasValue(s.key, displayRun, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
+                  !stickerHasValue(s.key, run, realHr ?? null, realPace ?? null, realRoute ?? null, realSplits),
                 );
                 if (hidden.length === 0) return null;
                 return (
@@ -963,10 +953,8 @@ function DraggableSticker({
       break;
     }
     case 'map': {
-      // Prefer the real GPS polyline; fall back to the seeded curve so the
-      // sticker still draws something for activities without streams (e.g.
-      // treadmill runs / Apple Health workouts without GPS).
-      const pts = (liveRoute && liveRoute.length > 1) ? liveRoute : run.route;
+      // Real GPS polyline only; undefined when routeless so RouteMap shows its honest empty state.
+      const pts = liveRoute && liveRoute.length > 1 ? liveRoute : undefined;
       width = 140;
       body = (
         <>

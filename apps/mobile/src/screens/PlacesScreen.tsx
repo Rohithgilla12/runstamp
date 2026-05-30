@@ -63,7 +63,7 @@ export function PlacesScreen(_props: TabProps<'Places'>) {
   );
   const totalKm = places.reduce((a, p) => a + p.km, 0);
   const ungeocoded = useMemo(
-    () => activities.filter((a) => (a.route?.length ?? 0) > 0 && !a.city?.trim()).length,
+    () => activities.filter((a) => typeof a.startLat === 'number' && !a.city?.trim()).length,
     [activities],
   );
   // Years a user has activities in — at most 6 most recent for the picker.

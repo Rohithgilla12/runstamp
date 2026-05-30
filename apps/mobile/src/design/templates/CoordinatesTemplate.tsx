@@ -179,7 +179,6 @@ export function CoordinatesTemplate({ run, width, height, background, units = 'k
             {/* Route drawn in a neutral paper tone, NOT solar — the crosshair
                 stays the single warm pop on the plate. */}
             <RouteMap
-              points={run.route}
               rawLatLng={rawLatLng}
               width={mapW}
               height={bandH}

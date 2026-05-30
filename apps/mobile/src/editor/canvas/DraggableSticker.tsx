@@ -260,7 +260,7 @@ function DraggableStickerImpl({
       break;
     }
     case 'map': {
-      const pts = (liveRoute && liveRoute.length > 1) ? liveRoute : run.route;
+      const pts = liveRoute && liveRoute.length > 1 ? liveRoute : undefined;
       width = 140;
       body = (
         <>

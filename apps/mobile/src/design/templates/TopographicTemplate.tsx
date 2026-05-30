@@ -127,7 +127,6 @@ export function TopographicTemplate({ run, width, height, background, units = 'k
         <View style={{ position: 'absolute', inset: 0, overflow: 'hidden', backgroundColor: c.paper2, opacity: 0.55 }}>
           {background === 'map' ? (
             <RouteMap
-              points={run.route}
               rawLatLng={rawLatLng}
               width={frameW}
               height={frameH}
@@ -139,7 +138,6 @@ export function TopographicTemplate({ run, width, height, background, units = 'k
             />
           ) : (
             <RouteMap
-              points={run.route}
               width={frameW}
               height={frameH}
               style="light"

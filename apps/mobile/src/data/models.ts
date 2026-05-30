@@ -46,7 +46,6 @@ export interface Activity {
   splits?: Split[];
   streamHr?: number[];
   streamPace?: number[];
-  route: Point[];
   notes?: string;
   weather: Weather;
   kind: ActivityKind;

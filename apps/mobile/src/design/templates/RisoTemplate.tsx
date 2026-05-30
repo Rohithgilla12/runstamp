@@ -60,10 +60,10 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
       {background === 'map' && (
         <>
           <View style={{ position: 'absolute', top: offY, left: offX, right: -offX, bottom: -offY, opacity: 0.55 }}>
-            <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={PINK} routeStrokeWidth={3.5} animate={false} flat />
+            <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="light" accent={PINK} routeStrokeWidth={3.5} animate={false} flat />
           </View>
           <View style={{ position: 'absolute', top: -offY, left: -offX, right: offX, bottom: offY, opacity: 0.6 }}>
-            <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={BLUE} routeStrokeWidth={3.5} animate={false} flat />
+            <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="light" accent={BLUE} routeStrokeWidth={3.5} animate={false} flat />
           </View>
         </>
       )}

@@ -74,7 +74,6 @@ export function SplitsLedgerTemplate({ run, width, height, background, units = '
       {background === 'map' && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: headerReserve, opacity: 0.06 }}>
           <RouteMap
-            points={run.route}
             rawLatLng={rawLatLng}
             width={width}
             height={headerReserve}

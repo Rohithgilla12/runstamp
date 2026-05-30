@@ -75,7 +75,7 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
       {/* Backdrop */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.30 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accentDeep} routeStrokeWidth={3} animate={false} flat />
+          <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accentDeep} routeStrokeWidth={3} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (

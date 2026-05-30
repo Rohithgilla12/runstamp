@@ -56,7 +56,7 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
       <View style={{ position: 'absolute', top: inset, left: inset, width: bw, height: bh, borderRadius: f?.radius ?? 0, overflow: 'hidden' }}>
         {background === 'map' && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: mapOpacity }}>
-            <RouteMap points={run.route} rawLatLng={live.rawLatLng} width={bw} height={bh} style={mapStyle} accent={c.accent} routeStrokeWidth={4} animate={!frozen} />
+            <RouteMap rawLatLng={live.rawLatLng} width={bw} height={bh} style={mapStyle} accent={c.accent} routeStrokeWidth={4} animate={!frozen} />
           </View>
         )}
         {background === 'photo' && (

@@ -72,7 +72,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
       {/* Backdrop map / photo / solid bleeds under the content at low opacity */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.12 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
+          <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="light" accent={c.accent} routeStrokeWidth={2} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (

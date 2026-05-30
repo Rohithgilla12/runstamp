@@ -1,5 +1,4 @@
 import type { ApiActivity } from '@runstamp/shared-types';
-import { route } from './sample';
 import type { Activity, ActivityKind } from './models';
 
 export function mapApiToActivity(a: ApiActivity): Activity {
@@ -40,7 +39,6 @@ export function mapApiToActivity(a: ApiActivity): Activity {
     power: a.runningPowerW && a.runningPowerW > 0 ? Math.round(a.runningPowerW) : undefined,
     startLat: typeof a.startLat === 'number' ? a.startLat : undefined,
     startLon: typeof a.startLon === 'number' ? a.startLon : undefined,
-    route: route(hashId(a.id), inferRouteKind(distanceKm, a)),
     weather: { t: 22, w: '—', icon: 'clear' },
     kind: inferKind(a, distanceKm),
   };
@@ -66,19 +64,6 @@ function synthesizeTitle(when: Date, distanceKm: number, city: string | undefine
   const base = `${slot} ${noun}`;
   const trimmedCity = city?.trim();
   return trimmedCity ? `${base} in ${trimmedCity}` : base;
-}
-
-function hashId(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return (h % 1000) / 100;
-}
-
-function inferRouteKind(distanceKm: number, a: ApiActivity): 'loop' | 'lake' | 'out' | 'trail' | 'urban' {
-  if (a.elevationM && a.elevationM > 150) return 'trail';
-  if (distanceKm > 20) return 'loop';
-  if (a.city) return 'urban';
-  return 'loop';
 }
 
 function inferKind(a: ApiActivity, distanceKm: number): ActivityKind {

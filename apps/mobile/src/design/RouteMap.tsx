@@ -23,13 +23,13 @@ import {
 
 interface Props {
   /** Normalized [0..1] polyline. Used by the bare paper fallback path. */
-  points: readonly Point[];
+  points?: readonly Point[];
   /**
    * Privacy-masked raw lat/lng sequence. When provided, RouteMap renders
    * real OpenStreetMap tiles underneath and projects the polyline through
    * the same slippy projection so it aligns pixel-exact. Falls back to the
-   * bare paper path when null/undefined (synthetic routes, treadmill runs,
-   * the route-map sticker fallback).
+   * bare paper path when null/undefined (the route-map sticker's normalized
+   * polyline, or the honest empty state for routeless runs).
    */
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
   width?: number;
@@ -54,9 +54,9 @@ interface Props {
 //    path where the user wants to see where they actually ran.
 //
 // 2. `rawLatLng` absent   → bare paper backdrop, project the normalized
-//    polyline through a uniform [0..1] -> canvas fit. This is the path used
-//    by synthetic routes (data/sample.ts seed) and the route-map sticker's
-//    fallback for indoor / no-GPS runs.
+//    polyline (from useActivityStreams) through a uniform [0..1] -> canvas fit.
+//    Used by the route-map sticker; when there's no polyline either, the
+//    component renders an honest "no route" state instead of a fake curve.
 const STYLES = {
   light: { bg: '#e8e1d1' },
   dark:  { bg: '#1d1a16' },
@@ -90,9 +90,16 @@ export function RouteMap({
   const a = accent ?? c.accent;
   const compassFill = resolvedStyle === 'dark' ? '#8a8170' : '#75695a';
 
+  const pts = points ?? [];
   const useTiles = rawLatLng != null && rawLatLng.length > 1;
+  // No tiles and no usable polyline = a routeless run (treadmill/indoor/manual).
+  // Render an honest "no route" mark, never a fabricated curve.
+  const isEmpty = !useTiles && pts.length < 2;
 
   const { pathD, sx, sy, ex, ey, bbox, pathLen } = useMemo(() => {
+    if (isEmpty) {
+      return { pathD: '', sx: 0, sy: 0, ex: 0, ey: 0, bbox: null as BBox | null, pathLen: 0 };
+    }
     if (useTiles && rawLatLng) {
       let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
       for (const pt of rawLatLng) {
@@ -131,8 +138,8 @@ export function RouteMap({
     }
 
     const pad = 18;
-    const xs = points.map((p) => p[0]);
-    const ys = points.map((p) => p[1]);
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
@@ -142,11 +149,11 @@ export function RouteMap({
     const scale = Math.min((width - pad * 2) / rangeX, (height - pad * 2) / rangeY);
     const offX = (width - rangeX * scale) / 2 - minX * scale;
     const offY = (height - rangeY * scale) / 2 - minY * scale;
-    const projected: { x: number; y: number }[] = new Array(points.length);
-    for (let i = 0; i < points.length; i++) {
+    const projected: { x: number; y: number }[] = new Array(pts.length);
+    for (let i = 0; i < pts.length; i++) {
       projected[i] = {
-        x: points[i][0] * scale + offX,
-        y: points[i][1] * scale + offY,
+        x: pts[i][0] * scale + offX,
+        y: pts[i][1] * scale + offY,
       };
     }
     const canvasPts = simplifyPath(projected, ROUTE_SIMPLIFY_EPSILON);
@@ -169,7 +176,7 @@ export function RouteMap({
       bbox: null as BBox | null,
       pathLen: len,
     };
-  }, [useTiles, rawLatLng, points, width, height]);
+  }, [isEmpty, useTiles, rawLatLng, pts, width, height]);
 
   // Honor the system Reduce Motion toggle — flipping it in Settings should
   // affect routes currently on screen.
@@ -235,31 +242,49 @@ export function RouteMap({
           style={tileStyle}
         />
       )}
-      {/* Soft halo under the route so the polyline pops against any backdrop. */}
-      <AnimatedPath
-        d={pathD}
-        fill="none"
-        stroke={a}
-        strokeWidth={routeStrokeWidth * 2.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.18}
-        strokeDasharray={`${pathLen} ${pathLen}`}
-        animatedProps={lineAnimatedProps}
-      />
-      <AnimatedPath
-        d={pathD}
-        fill="none"
-        stroke={a}
-        strokeWidth={routeStrokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray={`${pathLen} ${pathLen}`}
-        animatedProps={lineAnimatedProps}
-      />
-      <Circle cx={sx} cy={sy} r={6} fill="#fff" stroke={a} strokeWidth={2} />
-      <Circle cx={sx} cy={sy} r={2.5} fill={a} />
-      <AnimatedCircle cx={ex} cy={ey} r={5} fill={a} animatedProps={endDotAnimatedProps} />
+      {isEmpty && (
+        <SvgText
+          x={width / 2}
+          y={height / 2}
+          fontSize={10}
+          fill={compassFill}
+          textAnchor="middle"
+          opacity={0.7}
+          letterSpacing={1}
+          fontFamily="System"
+        >
+          Indoor · no route
+        </SvgText>
+      )}
+      {!isEmpty && (
+        <>
+          {/* Soft halo under the route so the polyline pops against any backdrop. */}
+          <AnimatedPath
+            d={pathD}
+            fill="none"
+            stroke={a}
+            strokeWidth={routeStrokeWidth * 2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.18}
+            strokeDasharray={`${pathLen} ${pathLen}`}
+            animatedProps={lineAnimatedProps}
+          />
+          <AnimatedPath
+            d={pathD}
+            fill="none"
+            stroke={a}
+            strokeWidth={routeStrokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={`${pathLen} ${pathLen}`}
+            animatedProps={lineAnimatedProps}
+          />
+          <Circle cx={sx} cy={sy} r={6} fill="#fff" stroke={a} strokeWidth={2} />
+          <Circle cx={sx} cy={sy} r={2.5} fill={a} />
+          <AnimatedCircle cx={ex} cy={ey} r={5} fill={a} animatedProps={endDotAnimatedProps} />
+        </>
+      )}
       {!flat && (
         <G transform={`translate(${width - 26},20)`}>
           <SvgText x={0} y={0} fontSize={9} fill={compassFill} textAnchor="middle">

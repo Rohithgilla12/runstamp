@@ -26,4 +26,9 @@ describe('mapApiToActivity', () => {
   it('keeps a provided title', () => {
     expect(mapApiToActivity(base).title).toBe('Cubbon Park long run');
   });
+
+  it('never fabricates a route — routeless runs carry no synthetic polyline', () => {
+    const a = mapApiToActivity(base) as unknown as Record<string, unknown>;
+    expect('route' in a).toBe(false);
+  });
 });

@@ -36,7 +36,7 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
       {/* Backdrop — bleed behind the stamp */}
       {background === 'map' && (
         <View style={{ position: 'absolute', inset: 0, opacity: 0.45 }}>
-          <RouteMap points={run.route} rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} animate={false} flat />
+          <RouteMap rawLatLng={rawLatLng} width={width} height={height} style="dark" accent={c.accent} routeStrokeWidth={3} animate={false} flat />
         </View>
       )}
       {background === 'photo' && (
