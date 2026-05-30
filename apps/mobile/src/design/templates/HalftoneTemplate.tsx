@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
+import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 
 interface Props {
@@ -32,6 +33,12 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km',
 
   const inkTone = '#14110d';
   const paperTone = '#f0e9d8';
+
+  // Bottom byline strip: PACE + TIME are fixed anchors every run has; the two
+  // remaining slots fill from the richer training metrics a runner came for
+  // (GAP, cadence, VO₂, ELEV...), in interest order. Indoor / unimported runs
+  // that lack them simply show fewer cells — never an empty column.
+  const extras = richMetrics(run, units).slice(0, 2);
 
   return (
     <View style={{ width, height, position: 'relative', backgroundColor: paperTone, overflow: 'hidden' }}>
@@ -124,8 +131,9 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km',
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: PAD.md }}>
           <PageStat label="PACE" value={`${fmtPace(run.pace, units)}/${distUnit(units)}`} ink={inkTone} />
           <PageStat label="TIME" value={fmtTime(run.seconds)} ink={inkTone} />
-          <PageStat label="ELEV" value={`${run.elev}m`} ink={inkTone} />
-          {run.avgHr > 0 ? <PageStat label="HR" value={`${run.avgHr}`} ink={inkTone} /> : null}
+          {extras.map((m) => (
+            <PageStat key={m.key} label={m.label} value={m.value} ink={inkTone} />
+          ))}
         </View>
       </View>
     </View>

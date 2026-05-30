@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
+import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 
@@ -38,6 +39,13 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
   const PRUSSIAN = '#142f4f';
   const PRUSSIAN_DARK = '#0a1d33';
   const CREAM = '#f0e6cd';
+
+  // Legend always leads with pace + time, then fills the two remaining slots
+  // from the run's present-only richer metrics (GAP, cadence, VO₂, elev, HR…)
+  // so the cream-on-blue legend never shows a hollow "0m" on a flat/indoor run.
+  const fill = richMetrics(run, units)
+    .filter((m) => m.key !== 'cal')
+    .slice(0, 2);
 
   return (
     <View style={{ width, height, position: 'relative', backgroundColor: PRUSSIAN, overflow: 'hidden' }}>
@@ -135,8 +143,9 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
         <View style={{ flexDirection: 'row', gap: PAD.lg, marginTop: PAD.md }}>
           <Plate label="PACE" value={`${fmtPace(run.pace, units)}/${distUnit(units)}`} cream={CREAM} />
           <Plate label="TIME" value={fmtTime(run.seconds)} cream={CREAM} />
-          <Plate label="ELEV" value={`${run.elev}m`} cream={CREAM} />
-          {run.avgHr > 0 ? <Plate label="HR" value={`${run.avgHr}`} cream={CREAM} /> : null}
+          {fill.map((m) => (
+            <Plate key={m.key} label={m.label} value={m.value} cream={CREAM} />
+          ))}
         </View>
         <View style={{ marginTop: PAD.md }}>
           <RunstampMark tone="paper" opacity={0.55} />

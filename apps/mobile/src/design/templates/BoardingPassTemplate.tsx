@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, type Units } from './shared';
+import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 
@@ -48,6 +49,14 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
   const stripH = 18;
   const barcodeH = 44;
   const contentH = height - stripH * 2 - barcodeH;
+
+  // Fourth stub stat is data-aware: surface the richest metric the run carries
+  // (GAP / cadence / VO₂ …) for the training-literate runner, falling back to
+  // elevation so an indoor / unimported run never shows an empty slot.
+  const topMetric = richMetrics(run, units).find((m) => m.key !== 'elev');
+  const stubExtra =
+    topMetric ?? { label: 'ELEVATION', value: `${run.elev}`, unit: 'm' };
+  const stubExtraUnit = 'unit' in stubExtra ? stubExtra.unit : undefined;
 
   // Column widths — left body gets ~62%, right stub gets ~38%
   const tearX = Math.round(width * 0.62);
@@ -166,7 +175,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
         </View>
 
         {/* Perforated tear line — column of small circles */}
-        <TearLine height={contentH} x={tearX} accent={c.accent} />
+        <TearLine height={contentH} x={tearX} stroke={c.ink} />
 
         {/* RIGHT STUB — stats */}
         <View style={{ width: rightW, paddingHorizontal: 14, paddingVertical: 16, justifyContent: 'space-between' }}>
@@ -206,14 +215,17 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
               </TText>
             </View>
 
-            {/* Elev */}
+            {/* Fourth stat — richest available metric (GAP / cadence / VO₂ …),
+                elevation as fallback so the slot is never empty */}
             <View>
-              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>ELEVATION</Eyebrow>
+              <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>{stubExtra.label}</Eyebrow>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 2 }}>
                 <TText variant="mono" style={{ fontSize: Math.min(rightW * 0.18, 16), color: c.ink2, letterSpacing: -0.3, lineHeight: Math.min(rightW * 0.18, 16) }}>
-                  {run.elev}
+                  {stubExtra.value}
                 </TText>
-                <TText variant="mono" style={{ fontSize: 8, color: c.ink3, marginLeft: 2 }}>m</TText>
+                {stubExtraUnit && (
+                  <TText variant="mono" style={{ fontSize: 8, color: c.ink3, marginLeft: 2 }}>{stubExtraUnit}</TText>
+                )}
               </View>
             </View>
           </View>
@@ -312,10 +324,10 @@ function Barcode({ height, seed, inkColor }: BarcodeProps) {
 interface TearLineProps {
   height: number;
   x: number;
-  accent: string;
+  stroke: string;
 }
 
-function TearLine({ height, accent }: TearLineProps) {
+function TearLine({ height, stroke }: TearLineProps) {
   const circleR = 3;
   const spacing = 10;
   const count = Math.floor(height / spacing);
@@ -330,7 +342,7 @@ function TearLine({ height, accent }: TearLineProps) {
             cy={i * spacing + circleR + (height - count * spacing) / 2}
             r={circleR}
             fill="#f0e9d8"
-            stroke={accent}
+            stroke={stroke}
             strokeWidth={0.5}
             strokeOpacity={0.35}
           />

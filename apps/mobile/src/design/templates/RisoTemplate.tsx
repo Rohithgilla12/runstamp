@@ -9,6 +9,7 @@ import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { richMetrics } from './metrics';
 
 interface Props {
   run: Activity;
@@ -42,6 +43,12 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
   // Subtle mis-registration offset in pixels.
   const offX = 2.2;
   const offY = 1.6;
+
+  // Third stat slot leads with the run's richest present-only metric (GAP,
+  // cadence, VO₂…) and falls back to elevation — so a flat/indoor run never
+  // prints a hollow "0m" where a training number should be.
+  const third = richMetrics(run, units).filter((m) => m.key !== 'cal')[0]
+    ?? { label: 'ELEV', value: `${run.elev}m` };
 
   return (
     <View style={{ width, height, position: 'relative', backgroundColor: PAPER, overflow: 'hidden' }}>
@@ -141,7 +148,7 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <RisoStat label="PACE" value={`${fmtPace(run.pace, units)}/${distUnit(units)}`} pink={PINK} blue={BLUE} />
           <RisoStat label="TIME" value={fmtTime(run.seconds)} pink={PINK} blue={BLUE} />
-          <RisoStat label="ELEV" value={`${run.elev}m`} pink={PINK} blue={BLUE} />
+          <RisoStat label={third.label} value={third.value} pink={PINK} blue={BLUE} />
           {run.city ? <RisoStat label="CITY" value={run.city.toUpperCase()} pink={PINK} blue={BLUE} /> : null}
         </View>
         <View style={{ marginTop: PAD.md, alignItems: 'center' }}>

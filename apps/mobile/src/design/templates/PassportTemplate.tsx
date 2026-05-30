@@ -10,6 +10,7 @@ import { PostmarkMark } from '../SunMark';
 import { EYEBROW_SIZE, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { richMetrics } from './metrics';
 
 interface Props {
   run: Activity;
@@ -39,6 +40,10 @@ export function PassportTemplate({ run, width, height, background, units = 'km',
 
   const mrzLines = buildMRZ(run);
   const guideCount = 9;
+
+  // One richer endorsement below the core stack — GAP / elevation / cadence,
+  // whichever the run actually carries. Absent on indoor runs → no empty slot.
+  const endorsement = richMetrics(run, units)[0];
 
   return (
     <View style={{ width, height, position: 'relative', backgroundColor: paperTone, overflow: 'hidden' }}>
@@ -185,12 +190,21 @@ export function PassportTemplate({ run, width, height, background, units = 'km',
             </View>
           </View>
 
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: 'flex-end', marginBottom: endorsement ? 16 : 0 }}>
             <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>DURATION</Eyebrow>
             <TText variant="mono" style={{ fontSize: Math.min(width * 0.055, 20), color: inkTone, letterSpacing: -0.3, marginTop: 3 }}>
               {fmtTime(run.seconds)}
             </TText>
           </View>
+
+          {endorsement && (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>{endorsement.label}</Eyebrow>
+              <TText variant="monoSemi" style={{ fontSize: Math.min(width * 0.055, 20), color: inkTone, letterSpacing: -0.3, marginTop: 3 }}>
+                {endorsement.value}
+              </TText>
+            </View>
+          )}
         </View>
       </View>
 

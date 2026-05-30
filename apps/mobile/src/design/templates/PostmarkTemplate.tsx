@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, Line, Path, Rect, Text as SvgText, TextPath } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
-import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
@@ -93,6 +93,7 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
           country={(run.country || 'RUNSTAMP').toUpperCase()}
           date={`${run.day.toUpperCase()} · ${formatMonthDay(run.date)}`}
           pace={fmtPace(run.pace, units)}
+          paceUnit={paceUnit(units)}
           time={fmtTime(run.seconds)}
           accent={c.accent}
         />
@@ -123,11 +124,12 @@ interface PostmarkRingProps {
   country: string;
   date: string;
   pace: string;
+  paceUnit: string;
   time: string;
   accent: string;
 }
 
-function PostmarkRing({ width, height, city, country, date, pace, time, accent }: PostmarkRingProps) {
+function PostmarkRing({ width, height, city, country, date, pace, paceUnit, time, accent }: PostmarkRingProps) {
   // Size the ring to occupy most of the canvas while leaving margin
   const size = Math.min(width, height) * 0.82;
   const cx = size / 2;
@@ -220,7 +222,7 @@ function PostmarkRing({ width, height, city, country, date, pace, time, accent }
         fontFamily="JetBrainsMono_400Regular"
       >
         <TextPath href={`#${bottomArcId}`} startOffset="50%" textAnchor="middle">
-          {`${pace}/km  ·  ${time}`}
+          {`${pace}${paceUnit}  ·  ${time}`}
         </TextPath>
       </SvgText>
     </Svg>

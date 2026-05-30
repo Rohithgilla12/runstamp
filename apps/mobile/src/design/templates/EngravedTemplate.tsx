@@ -7,8 +7,8 @@ import Svg, {
 } from 'react-native-svg';
 import type { Activity } from '../../data/sample';
 import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
-import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
+import { richMetrics } from './metrics';
 import { type Units } from './shared';
 
 interface Props {
@@ -41,6 +41,16 @@ export function EngravedTemplate({ run, width, height, background, units = 'km' 
   const borderInset2 = 16;
 
   const distFontSize = Math.min(width * 0.28, 100);
+
+  // Third stat slot: elevation reads most certificate-like, but a flat or
+  // indoor run (elev 0) would leave a dead "0m". Fall back to the strongest
+  // present rich metric (GAP, cadence, VO₂, …); if a run truly has none,
+  // keep elevation — an honest "0m" beats a duplicated stat.
+  const richer = richMetrics(run, units).find((m) => m.key !== 'elev');
+  const thirdStat =
+    run.elev > 0 || !richer
+      ? { label: 'ELEV', value: `${run.elev}m` }
+      : { label: richer.label, value: richer.value };
 
   return (
     <View style={{ width, height, position: 'relative', backgroundColor: paper, overflow: 'hidden' }}>
@@ -131,7 +141,7 @@ export function EngravedTemplate({ run, width, height, background, units = 'km' 
         <View style={{ width: 0.7, backgroundColor: ink, opacity: 0.15 }} />
         <StatBlock label="TIME" value={fmtTime(run.seconds)} ink={ink} />
         <View style={{ width: 0.7, backgroundColor: ink, opacity: 0.15 }} />
-        <StatBlock label="ELEV" value={`${run.elev}m`} ink={ink} />
+        <StatBlock label={thirdStat.label} value={thirdStat.value} ink={ink} />
       </View>
 
       {/* Run title — italic serif */}

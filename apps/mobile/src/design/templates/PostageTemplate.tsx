@@ -7,8 +7,29 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, TONE, formatMonthDay, type Units } from './shared';
+import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+
+// Terse suffix so a bare number (cadence/VO₂) never sits unlabeled in the strip.
+// elev/power/gap already carry their own units from richMetrics.
+const BARE_SUFFIX: Record<string, string> = { cadence: ' spm', vo2: ' VO₂' };
+
+// Pick one secondary value for the pace · time strip. Prefer elevation (already
+// shown on hilly runs — zero regression) then runner-coded metrics so flat or
+// indoor runs that today read only "pace · time" gain a third honest value.
+function stripMetric(run: Activity, units: Units): string | null {
+  const order = ['elev', 'gap', 'cadence', 'vo2', 'power'];
+  const present = richMetrics(run, units);
+  for (const key of order) {
+    const m = present.find((x) => x.key === key);
+    if (!m) continue;
+    // richMetrics gives elev as "86 m"; tighten to "86m" to keep the original look.
+    if (key === 'elev') return m.value.replace(' m', 'm');
+    return `${m.value}${BARE_SUFFIX[key] ?? ''}`;
+  }
+  return null;
+}
 
 interface Props {
   run: Activity;
@@ -40,6 +61,7 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
   const cardW = width - inset * 2;
   const cardH = height - inset * 2;
   const denomFont = Math.min(cardW * 0.22, 80);
+  const secondary = stripMetric(run, units);
 
   return (
     <View style={{ width, height, position: 'relative' }}>
@@ -132,13 +154,13 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
               </TText>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 }}>
-              <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)' }}>{fmtPace(run.pace, units)}</TText>
+              <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)', letterSpacing: -0.2 }}>{fmtPace(run.pace, units)}</TText>
               <Dot />
-              <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)' }}>{fmtTime(run.seconds)}</TText>
-              {run.elev > 0 && (
+              <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)', letterSpacing: -0.2 }}>{fmtTime(run.seconds)}</TText>
+              {secondary && (
                 <>
                   <Dot />
-                  <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)' }}>{run.elev}m</TText>
+                  <TText variant="mono" style={{ fontSize: 12, color: 'rgba(243,237,226,0.75)', letterSpacing: -0.2 }}>{secondary}</TText>
                 </>
               )}
             </View>

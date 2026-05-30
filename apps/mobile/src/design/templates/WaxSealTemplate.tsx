@@ -13,7 +13,7 @@ import { distUnit, fmtDist, fmtTime } from '../../data/sample';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
-import { type Units } from './shared';
+import { PAD, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 
@@ -104,13 +104,13 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
       <View pointerEvents="none" style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(14,13,11,0.45)' }} />
 
       {/* Run title + date at the top */}
-      <View style={{ position: 'absolute', top: 22, left: 20, right: 20, alignItems: 'center' }}>
+      <View style={{ position: 'absolute', top: PAD.xl, left: PAD.lg, right: PAD.lg, alignItems: 'center' }}>
         <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: 8 }}>
           {run.day.toUpperCase()} · {run.city.toUpperCase()}
         </Eyebrow>
         <TText
           variant="serifItalic"
-          style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: 4, textAlign: 'center', lineHeight: 17 }}
+          style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: PAD.xs, textAlign: 'center', lineHeight: 17 }}
           numberOfLines={2}
         >
           {run.title}
@@ -135,13 +135,13 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
       </View>
 
       {/* Bottom strip */}
-      <View style={{ position: 'absolute', bottom: 18, left: 20, right: 20 }}>
+      <View style={{ position: 'absolute', bottom: PAD.lg, left: PAD.lg, right: PAD.lg }}>
         <View style={{ flexDirection: 'row', height: 2 }}>
           {Array.from({ length: 14 }).map((_, i) => (
             <View key={i} style={{ flex: 1, backgroundColor: i % 2 === 0 ? c.accent : 'rgba(243,237,226,0.7)' }} />
           ))}
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: PAD.xs }}>
           <RunstampMark tone="paper" opacity={0.5} />
           <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.45)', letterSpacing: 1 }}>
             {formatWaxDate(run.date)}

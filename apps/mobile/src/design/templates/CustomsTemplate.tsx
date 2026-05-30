@@ -7,6 +7,7 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { type Units } from './shared';
+import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 
@@ -37,12 +38,29 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
   const isPB = run.kind === 'long' || run.distance > 21;
 
   const unitLabel = distUnit(units).toUpperCase();
+
+  // Genuine training metrics already declared above (elevation, calories) are
+  // dropped so the ledger never repeats a row; the next 2 present-only metrics
+  // — GAP, cadence, VO₂ — get declared in the form's own customs phrasing.
+  const customsLabels: Record<string, string> = {
+    gap: 'GRADE-ADJUSTED PACE',
+    cadence: 'CADENCE DECLARED',
+    vo2: 'AEROBIC FITNESS (VO₂)',
+    power: 'RUNNING POWER',
+    hr: 'AVERAGE HEART RATE',
+  };
+  const extraRows = richMetrics(run, units)
+    .filter((m) => m.key in customsLabels)
+    .slice(0, 2)
+    .map((m) => ({ label: customsLabels[m.key] ?? m.label, value: m.value.toUpperCase() }));
+
   const formRows: { label: string; value: string }[] = [
     { label: 'DISTANCE DECLARED', value: `${fmtDist(run.distance, units)} ${unitLabel}` },
     { label: 'PACE DECLARED',     value: `${fmtPace(run.pace, units)} / ${unitLabel}` },
     { label: 'TIME DECLARED',     value: fmtTime(run.seconds) },
     { label: 'ELEVATION GAIN',    value: `${run.elev} M` },
     { label: 'CALORIES CONSUMED', value: run.cal > 0 ? `${run.cal} KCAL` : '—' },
+    ...extraRows,
     { label: 'PURPOSE OF VISIT',  value: purposeFromKind(run.kind) },
     { label: 'CITY OF ORIGIN',    value: (run.city || '—').toUpperCase() },
     { label: 'COUNTRY',           value: (run.country || '—').toUpperCase() },
@@ -220,7 +238,7 @@ function FormRow({ label, value, isLast, inkTone }: FormRowProps) {
         </Eyebrow>
         <TText
           variant="mono"
-          style={{ fontSize: 12.5, color: inkTone, letterSpacing: 0.4, textAlign: 'right', flexShrink: 0 }}
+          style={{ fontSize: 12.5, color: inkTone, letterSpacing: -0.2, textAlign: 'right', flexShrink: 0 }}
         >
           {value}
         </TText>
