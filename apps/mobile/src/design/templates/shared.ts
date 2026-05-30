@@ -5,7 +5,7 @@
 // carries the load) we keep eyebrow sizes uniform and let serif/mono sizes
 // scale off the canvas width.
 
-import type { Units } from '../../data/sample';
+import type { Units } from '../theme';
 
 /**
  * Padding scale. Use these instead of raw numbers so a future tweak (e.g.

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';
 import { useStamps } from '../../state/useStamps';

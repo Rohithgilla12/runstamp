@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import { useAppState } from '../../state/AppState';
 import { useStamps } from '../../state/useStamps';
 import { Perforation } from './perforation';

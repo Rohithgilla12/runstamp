@@ -1,25 +1,7 @@
 import { apiGet } from './api';
+import type { ActivityStream, StreamType, StreamsResponse } from '@runstamp/shared-types';
 
-export type StreamType =
-  | 'latlng'
-  | 'heartrate'
-  | 'altitude'
-  | 'speed'
-  | 'cadence'
-  | 'power'
-  | 'vertical_oscillation'
-  | 'ground_contact_time'
-  | 'stride_length';
-
-export interface ActivityStream {
-  type: StreamType;
-  data: unknown;
-}
-
-export interface StreamsResponse {
-  activityId: string;
-  streams: ActivityStream[] | null;
-}
+export type { ActivityStream, StreamType, StreamsResponse };
 
 export function getActivityStreams(
   activityId: string,

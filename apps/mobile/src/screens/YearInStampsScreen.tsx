@@ -31,7 +31,8 @@ import { shareExportedVideo } from '../services/videoExport';
 import { useActivities } from '../state/useActivities';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useAppState } from '../state/AppState';
-import { distUnit, fmtDist, type Activity } from '../data/sample';
+import type { Activity } from '../data/models';
+import { distUnit, fmtDist } from '../lib/format';
 import { countContinents } from '../design/worldGeometry';
 import type { RootStackProps } from '../nav/types';
 

@@ -1,4 +1,4 @@
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import type { CatalogStamp } from '../../state/useStamps';
 
 export interface WeekStats {

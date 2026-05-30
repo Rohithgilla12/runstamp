@@ -8,7 +8,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import type { Point } from '../data/sample';
+import type { Point } from '../data/models';
 import { simplifyPath } from '../analytics/simplifyPath';
 import { useColors, useTheme } from './theme';
 import { MapTilesLayer } from './MapTilesLayer';

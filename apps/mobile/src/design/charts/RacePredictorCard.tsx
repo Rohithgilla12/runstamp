@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { fmtTime } from '../../data/sample';
+import { fmtTime } from '../../lib/format';
 import type { RacePredictorResult } from '../../analytics/racePredictor';
 import { Card } from '../atoms';
 import { useColors } from '../theme';

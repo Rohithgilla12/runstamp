@@ -2,7 +2,7 @@ import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../lib/format';
 import { useAppState } from '../../state/AppState';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
@@ -11,7 +11,7 @@ import { RouteMap } from '../../design/RouteMap';
 import { StreamChart } from '../../design/charts';
 import { applyTheme, type ResolvedStickerStyle } from '../stickers/themedSticker';
 import type { StickerInstance, StickerTheme } from '../layouts/types';
-import type { Activity, Point, Split } from '../../data/sample';
+import type { Activity, Point, Split } from '../../data/models';
 
 const STICKER_DEFAULTS: ResolvedStickerStyle = {
   container: {

@@ -1,8 +1,8 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
-import type { Activity, Split } from '../../data/sample';
-import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit } from '../../data/sample';
+import type { Activity, Split } from '../../data/models';
+import { distUnit, fmtDist, fmtPace, fmtTime, paceUnit } from '../../lib/format';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';

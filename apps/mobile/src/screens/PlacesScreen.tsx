@@ -3,7 +3,8 @@ import { Dimensions, Modal, Pressable, RefreshControl, ScrollView, View } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { distUnit, fmtDist, fmtTime, type Activity } from '../data/sample';
+import type { Activity } from '../data/models';
+import { distUnit, fmtDist, fmtTime } from '../lib/format';
 import type { RootStackParamList } from '../nav/types';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import { getRunningWorkoutsSince } from '../../services/healthkit';
 import { useHealth } from '../../state/HealthContext';
 

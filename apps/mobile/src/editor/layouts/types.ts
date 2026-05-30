@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { Activity, Point, Split } from '../../data/sample';
+import type { Activity, Point, Split } from '../../data/models';
 
 export type LayoutId =
   | 'none'

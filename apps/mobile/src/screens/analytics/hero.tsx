@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { distUnit, fmtDist, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtTime } from '../../lib/format';
 import { Card } from '../../design/atoms';
 import { SunMark } from '../../design/SunMark';
 import { useColors } from '../../design/theme';

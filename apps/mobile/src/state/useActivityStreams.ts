@@ -4,7 +4,7 @@ import { getActivityStreams, type ActivityStream, type StreamType } from '../ser
 import { usePrivacyZones } from './usePrivacyZones';
 import { maskRouteRaw } from '../analytics/privacyMask';
 import type { PrivacyZone } from '../services/privacyZones';
-import type { Point } from '../data/sample';
+import type { Point } from '../data/models';
 
 interface UseActivityStreamsState {
   streams: Record<StreamType, ActivityStream | undefined>;

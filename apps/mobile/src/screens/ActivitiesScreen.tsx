@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, TextInput, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { distUnit, fmtDist, fmtTime, type Activity, type ActivitySource } from '../data/sample';
+import type { Activity } from '../data/models';
+import type { ActivitySource } from '@runstamp/shared-types';
+import { distUnit, fmtDist, fmtTime } from '../lib/format';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';
 import { useFullRefresh } from '../state/useFullRefresh';

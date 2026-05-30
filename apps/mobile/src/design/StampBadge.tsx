@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Path, RadialGradient, Stop, Text as SvgText, TextPath } from 'react-native-svg';
 import { useColors } from './theme';
-import type { StampTier } from '../data/sample';
+import type { StampTier } from '@runstamp/shared-types';
 
 interface Props {
   id: string;

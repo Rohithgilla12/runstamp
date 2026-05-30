@@ -1,8 +1,8 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import type { Activity } from '../../data/sample';
-import { distUnit, fmtDist, fmtPace, fmtTime } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../lib/format';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';

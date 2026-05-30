@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { distUnit, fmtDist, fmtTime } from '../../data/sample';
+import { distUnit, fmtDist, fmtTime } from '../../lib/format';
 import { Sep } from '../../design/atoms';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';

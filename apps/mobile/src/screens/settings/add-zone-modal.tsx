@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, View } from 'react-native';
-import { fmtDist, type Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import { fmtDist } from '../../lib/format';
 import { Icon } from '../../design/Icon';
 import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';

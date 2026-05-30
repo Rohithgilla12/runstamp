@@ -18,7 +18,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
-import type { Activity } from '../data/sample';
+import type { Activity } from '../data/models';
 import type { CatalogStamp } from '../state/useStamps';
 import { StampBadge } from './StampBadge';
 import { useColors } from './theme';

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { fmtDist, fmtTime, type Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import { fmtDist, fmtTime } from '../../lib/format';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
 import { useAppState } from '../../state/AppState';

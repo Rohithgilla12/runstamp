@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fmtDist } from '../data/sample';
+import { fmtDist } from '../lib/format';
 import { useAuth } from '../state/AuthContext';
 import { useAppState } from '../state/AppState';
 import { useActivities } from '../state/useActivities';

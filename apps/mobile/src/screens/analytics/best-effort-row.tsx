@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { fmtTime } from '../../data/sample';
+import { fmtTime } from '../../lib/format';
 import type { BestEffort } from '../../services/bestEfforts';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';

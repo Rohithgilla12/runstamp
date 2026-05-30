@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { distUnit, fmtDist, fmtPace, fmtTime, type Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import { distUnit, fmtDist, fmtPace, fmtTime } from '../../lib/format';
 import { Icon } from '../../design/Icon';
 import { RouteMap } from '../../design/RouteMap';
 import { useColors } from '../../design/theme';

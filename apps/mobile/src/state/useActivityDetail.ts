@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { canonicalizeActivity, getActivityDetail, type ApiActivityDetail } from '../services/activities';
-import type { Split } from '../data/sample';
+import type { Split } from '../data/models';
 import { useAuth } from './AuthContext';
 import { useActivities } from './useActivities';
 

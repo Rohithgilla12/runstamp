@@ -1,4 +1,4 @@
-import type { Activity, Point, Split } from '../../data/sample';
+import type { Activity, Point, Split } from '../../data/models';
 import type { StickerKey } from '../layouts/types';
 
 export function stickerHasValue(

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
 import { useAppState } from '../../state/AppState';

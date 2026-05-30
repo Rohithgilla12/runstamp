@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { type Stamp, type StampTier } from '../data/sample';
+import type { StampTier } from '@runstamp/shared-types';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useFullRefresh } from '../state/useFullRefresh';
 import { StampShareModal } from './StampShareModal';
@@ -146,7 +146,7 @@ export function StampsScreen({ navigation, route }: RootStackProps<'Stamps'>) {
   );
 }
 
-function StampRow({ stamp, onPress }: { stamp: Stamp | CatalogStamp; onPress?: () => void }) {
+function StampRow({ stamp, onPress }: { stamp: CatalogStamp; onPress?: () => void }) {
   const c = useColors();
   const earned = !!stamp.earnedAt;
   const body = (

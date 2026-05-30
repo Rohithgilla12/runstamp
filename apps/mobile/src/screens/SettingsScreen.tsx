@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { fmtDist } from '../data/sample';
+import { fmtDist } from '../lib/format';
 import { Card, SectionHeader } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { SunMark } from '../design/SunMark';

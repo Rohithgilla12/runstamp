@@ -8,8 +8,8 @@ import Svg, {
   Text as SvgText,
   TextPath,
 } from 'react-native-svg';
-import type { Activity } from '../../data/sample';
-import { distUnit, fmtDist, fmtTime } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import { distUnit, fmtDist, fmtTime } from '../../lib/format';
 import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';

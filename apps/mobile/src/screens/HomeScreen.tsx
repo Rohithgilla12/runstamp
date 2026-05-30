@@ -11,7 +11,7 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Activity } from '../data/sample';
+import type { Activity } from '../data/models';
 import { PostmarkMark } from '../design/SunMark';
 import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';

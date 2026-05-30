@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect, LinearGradient, Stop, Line, G } from 'react-native-svg';
-import type { StampTier } from '../data/sample';
+import type { StampTier } from '@runstamp/shared-types';
 import type { CatalogStamp } from '../state/useStamps';
 import { TText } from './typography';
 import { StampBadge } from './StampBadge';

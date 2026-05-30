@@ -1,4 +1,4 @@
-import type { Activity } from '../../data/sample';
+import type { Activity } from '../../data/models';
 import type { Period } from '../../analytics/compare';
 import { filterByWeek, type WeekKey } from '../../analytics/week';
 

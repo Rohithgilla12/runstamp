@@ -1,5 +1,6 @@
-import type { Activity } from '../../data/sample';
-import { fmtPace, type Units } from '../../data/sample';
+import type { Activity } from '../../data/models';
+import type { Units } from '../theme';
+import { fmtPace } from '../../lib/format';
 
 export interface RichMetric {
   key: string;
