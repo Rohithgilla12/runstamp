@@ -6,7 +6,7 @@ import {
   fmtPace,
   fmtTime,
   paceUnit,
-} from '../sample';
+} from '../format';
 
 describe('fmtPace', () => {
   it('formats sec/km as M:SS by default', () => {
