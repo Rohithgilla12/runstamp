@@ -968,8 +968,8 @@ function DraggableSticker({
     }
     case 'splits': {
       // Real splits land via useActivityDetail -> liveSplits. Fall back to
-      // any splits on the run (legacy / synthetic) so the sticker keeps
-      // rendering during the brief window before detail fetch resolves.
+      // any splits already on the run so the sticker keeps rendering during
+      // the brief window before the detail fetch resolves.
       const splits = liveSplits ?? run.splits ?? [];
       width = 180;
       body = (
