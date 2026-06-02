@@ -30,6 +30,14 @@ type incomingStream struct {
 	Values []float64 `json:"values"`
 }
 
+// incomingDistanceTime is the transient cumulative-distance (m) + elapsed-time
+// (s) series the mobile client derives from the workout's GPS route. Used to
+// compute segment best efforts at ingest; never persisted.
+type incomingDistanceTime struct {
+	DistanceM []float64 `json:"distanceM"`
+	TimeSec   []float64 `json:"timeSec"`
+}
+
 // incomingStreams carries all optional stream kinds from a single workout.
 type incomingStreams struct {
 	Heartrate          *incomingStream      `json:"heartrate,omitempty"`
@@ -65,8 +73,9 @@ type incomingWorkout struct {
 	VO2maxMlKgMin          *float64        `json:"vo2maxMlKgMin,omitempty"`
 	StartLatitude          *float64        `json:"startLatitude,omitempty"`
 	StartLongitude         *float64        `json:"startLongitude,omitempty"`
-	Streams                *incomingStreams `json:"streams,omitempty"`
-	Splits                 json.RawMessage `json:"splits,omitempty"`
+	Streams                *incomingStreams      `json:"streams,omitempty"`
+	Splits                 json.RawMessage      `json:"splits,omitempty"`
+	DistanceTime           *incomingDistanceTime `json:"distanceTime,omitempty"`
 }
 
 func roundFloatPtr(f *float64) *int {
@@ -223,6 +232,18 @@ func (h *HealthHandler) Sync(w http.ResponseWriter, r *http.Request) {
 			uploaded++
 			if wk.Streams != nil && canonical != nil {
 				h.insertStreams(r, canonical.ID, wk.UUID, wk.Streams)
+			}
+		}
+
+		// Segment best efforts. Runs for new AND re-synced existing rows so a
+		// resync backfills bests onto prior imports. Only when Apple Health is
+		// the canonical row — never clobber a Strava canonical's native bests.
+		if canonical != nil && canonical.Source == "apple_health" && wk.DistanceTime != nil {
+			efforts := activities.ComputeBestEfforts(wk.DistanceTime.DistanceM, wk.DistanceTime.TimeSec)
+			if len(efforts) > 0 {
+				if err := h.Activities.Repo().UpsertBestEfforts(r.Context(), canonical.ID, efforts); err != nil {
+					h.Log.Warn("health sync: upsert best efforts", "uuid", wk.UUID, "err", err)
+				}
 			}
 		}
 	}
