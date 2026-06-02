@@ -61,6 +61,7 @@ interface WorkoutPayload {
   startLongitude?: number;
   streams?: WorkoutStreamsPayload;
   splits?: SplitPayload[];
+  distanceTime?: { distanceM: number[]; timeSec: number[] };
 }
 
 interface SyncRequest {
@@ -192,6 +193,7 @@ export async function syncRecentWorkouts(
 
         const streams = buildStreamsPayload(detail.streams);
         if (streams != null) payload.streams = streams;
+        if (detail.distanceTime != null) payload.distanceTime = detail.distanceTime;
 
         if (detail.splits.length > 0) {
           payload.splits = detail.splits;
@@ -291,6 +293,7 @@ export async function importHealthKitWorkout(
   }
   const streams = buildStreamsPayload(detail.streams);
   if (streams != null) payload.streams = streams;
+  if (detail.distanceTime != null) payload.distanceTime = detail.distanceTime;
   if (detail.splits.length > 0) payload.splits = detail.splits;
 
   return apiPost<SyncResponse>('/v1/health/workouts', { workouts: [payload] }, { idToken });

@@ -14,6 +14,7 @@
  */
 
 import { Platform } from 'react-native';
+import { deriveDistanceTime } from '../lib/deriveDistanceTime';
 import {
   AuthorizationRequestStatus,
   getRequestStatusForAuthorization,
@@ -79,6 +80,7 @@ export interface HKWorkoutDetail {
     durationSec: number;
     avgHr?: number;
   }>;
+  distanceTime: { distanceM: number[]; timeSec: number[] } | null;
 }
 
 const READ_TYPES = [
@@ -347,6 +349,8 @@ export async function getRunningWorkoutDetail(
       routeLocations,
     );
 
+    const distanceTime = deriveDistanceTime(routeLocations, MAX_STREAM_POINTS);
+
     return {
       uuid: workout.uuid,
       startDate,
@@ -367,6 +371,7 @@ export async function getRunningWorkoutDetail(
       vo2maxMlKgMin,
       streams,
       splits,
+      distanceTime,
     };
   } catch {
     return null;
