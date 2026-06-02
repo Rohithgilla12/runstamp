@@ -276,30 +276,28 @@ func loadYearToDate(ctx context.Context, pool *pgxpool.Pool, userID string, year
 	return ytd, nil
 }
 
-// pbDistanceWindow defines what counts as a 5K / 10K / HM / Marathon PB.
-// ±5% of the canonical distance; pace bucketing by raw distance_m, not
-// the noisier avg_pace_s_per_km.
-var pbDistanceWindow = []struct {
-	key     string
-	lowerM  float64
-	upperM  float64
+// profilePBDistances maps each public-profile PB slot to its exact target
+// distance in activity_best_efforts. Half = 21097 m, Marathon = 42195 m.
+var profilePBDistances = []struct {
+	key      string
+	distance int
 }{
-	{"5k", 4750, 5250},
-	{"10k", 9500, 10500},
-	{"half", 20543.05, 22706.05},  // 21097 m ± 5%
-	{"marathon", 40087.6, 44307.6}, // 42195 m ± 5%
+	{"5k", 5000},
+	{"10k", 10000},
+	{"half", 21097},
+	{"marathon", 42195},
 }
 
-// loadPersonalBests picks the fastest full run in each distance window.
-// Returns the struct with nil entries where no qualifying run exists.
+// loadPersonalBests picks the fastest stored segment best for each distance.
+// Returns the struct with nil entries where no qualifying effort exists.
 func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (*personalBests, error) {
 	pbs := &personalBests{}
-	for _, w := range pbDistanceWindow {
-		pb, err := loadOnePB(ctx, pool, userID, w.lowerM, w.upperM)
+	for _, d := range profilePBDistances {
+		pb, err := loadOnePB(ctx, pool, userID, d.distance)
 		if err != nil {
 			return nil, err
 		}
-		switch w.key {
+		switch d.key {
 		case "5k":
 			pbs.FiveK = pb
 		case "10k":
@@ -313,25 +311,20 @@ func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (
 	return pbs, nil
 }
 
-func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, lowerM, upperM float64) (*personalBest, error) {
+func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM int) (*personalBest, error) {
 	var (
-		elapsed  int
-		distance float64
-		started  time.Time
-		city     *string
+		elapsed int
+		started time.Time
+		city    *string
 	)
 	err := pool.QueryRow(ctx, `
-		SELECT elapsed_seconds, distance_m, started_at, location_city
-		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
-		  AND distance_m BETWEEN $2 AND $3
-		  AND elapsed_seconds > 0
-		ORDER BY elapsed_seconds ASC
-		LIMIT 1
-	`, userID, lowerM, upperM).Scan(&elapsed, &distance, &started, &city)
+SELECT abe.time_seconds, a.started_at, a.location_city
+FROM activity_best_efforts abe
+JOIN activities a ON a.id = abe.activity_id
+WHERE a.user_id = $1 AND a.dupe_of IS NULL AND abe.distance_m = $2
+ORDER BY abe.time_seconds ASC
+LIMIT 1`, userID, distanceM).Scan(&elapsed, &started, &city)
 	if err != nil {
-		// pgx returns ErrNoRows when there's no qualifying run; that's not
-		// an error condition — it's "no PB at this distance yet."
 		if isNoRows(err) {
 			return nil, nil
 		}
@@ -339,7 +332,7 @@ func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, lowerM, u
 	}
 	pb := &personalBest{
 		TimeSeconds: elapsed,
-		DistanceKm:  distance / 1000.0,
+		DistanceKm:  float64(distanceM) / 1000.0,
 		Date:        started.UTC().Format("2006-01-02"),
 	}
 	if city != nil {
