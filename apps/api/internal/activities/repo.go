@@ -305,6 +305,22 @@ ON CONFLICT (activity_id, type) DO UPDATE SET data = EXCLUDED.data`,
 	return nil
 }
 
+// UpsertBestEfforts writes the segment best efforts for an activity. Idempotent
+// per (activity_id, distance_m) so re-ingest / backfill overwrites cleanly.
+func (r *Repository) UpsertBestEfforts(ctx context.Context, activityID string, efforts []BestEffort) error {
+	for _, e := range efforts {
+		_, err := r.pool.Exec(ctx, `
+INSERT INTO activity_best_efforts (activity_id, distance_m, time_seconds)
+VALUES ($1, $2, $3)
+ON CONFLICT (activity_id, distance_m) DO UPDATE SET time_seconds = EXCLUDED.time_seconds`,
+			activityID, e.DistanceM, e.TimeSeconds)
+		if err != nil {
+			return fmt.Errorf("activities: upsert best effort: %w", err)
+		}
+	}
+	return nil
+}
+
 // FindDuplicate looks for an existing canonical activity (dupe_of IS NULL) for
 // the same user where started_at is within ±60 s and distance_m is within ±2%
 // of the candidate. The source parameter is the source of the *incoming* row;
