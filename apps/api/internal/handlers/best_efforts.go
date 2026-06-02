@@ -2,22 +2,22 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// BestEffortsHandler computes per-distance PRs from the user's canonical
-// (non-dupe) activities. We approximate by finding the fastest run that
-// covers >= distance — i.e. a 5K PR is min(elapsed_seconds) over runs that
-// went >= 5000m. This isn't a true "best 5K split inside a longer run"
-// (that needs the GPS stream); a stream-backed implementation lands later
-// once we ingest the polyline. For now this matches what Strava's free tier
-// surfaces and is good enough to render the Analytics PRs section.
+// BestEffortsHandler serves per-distance PRs from the user's canonical
+// (non-dupe) runs. Each PR is the fastest contiguous segment covering that
+// distance (the true "best 5K within a longer run"), precomputed at ingest
+// and stored in activity_best_efforts. Read here as MIN(time_seconds) per
+// distance.
 type BestEffortsHandler struct {
 	Pool  *pgxpool.Pool
 	Users *users.Repo
@@ -85,16 +85,17 @@ func (h *BestEffortsHandler) compute(ctx context.Context, userID string) ([]best
 			startedAt time.Time
 		)
 		err := h.Pool.QueryRow(ctx, `
-SELECT id, elapsed_seconds, started_at
-FROM activities
-WHERE user_id = $1
-  AND dupe_of IS NULL
-  AND sport = 'run'
-  AND distance_m >= $2
-ORDER BY elapsed_seconds ASC
+SELECT a.id, abe.time_seconds, a.started_at
+FROM activity_best_efforts abe
+JOIN activities a ON a.id = abe.activity_id
+WHERE a.user_id = $1
+  AND a.dupe_of IS NULL
+  AND a.sport = 'run'
+  AND abe.distance_m = $2
+ORDER BY abe.time_seconds ASC
 LIMIT 1`, userID, d.meters).Scan(&id, &elapsed, &startedAt)
 		if err != nil {
-			if err.Error() == "no rows in result set" {
+			if errors.Is(err, pgx.ErrNoRows) {
 				continue
 			}
 			return nil, err
