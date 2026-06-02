@@ -485,6 +485,20 @@ func (im *Importer) enrichOne(ctx context.Context, userID string, act *activitie
 		}
 	}
 
+	// Segment best efforts from the distance + time streams (same transient
+	// inputs as GAP — not persisted as streams). Independent of altitude.
+	if d := floatStream(streams, "distance"); len(d) >= 2 {
+		t := floatStream(streams, "time")
+		if len(t) != len(d) {
+			t = activities.DeriveTimeUniform(len(d))
+		}
+		if efforts := activities.ComputeBestEfforts(d, t); len(efforts) > 0 {
+			if err := im.activitiesRepo.UpsertBestEfforts(ctx, act.ID, efforts); err != nil {
+				im.log.Warn("strava importer: upsert best efforts", "activity_id", act.ID, "err", err)
+			}
+		}
+	}
+
 	// Persist streams (velocity_smooth → "speed", canonical name shared with
 	// Apple Health). Skip time/distance — transient inputs for GAP, not in
 	// the activity_streams CHECK constraint.
