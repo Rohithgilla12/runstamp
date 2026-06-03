@@ -18,7 +18,17 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 
 <Base title={title} description={description} canonicalPath="/u/">
   <main class="profile-root">
-    <a class="profile-back" href="/">← Runstamp</a>
+    <div class="profile-topbar">
+      <a class="profile-back" href="/">← Runstamp</a>
+      <button class="profile-share" id="profile-share" type="button" hidden aria-label="Share this album">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12" />
+          <path d="M8 7l4-4 4 4" />
+          <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" />
+        </svg>
+        <span class="profile-share-label" id="profile-share-label">Share</span>
+      </button>
+    </div>
 
     <div data-state="loading" id="profile">
       <p class="profile-loading">Loading…</p>
@@ -278,17 +288,51 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     padding: var(--space-6) var(--space-4) var(--space-16);
     min-height: 100vh;
   }
+  .profile-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+  }
   .profile-back {
-    display: inline-block;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ink-3);
     text-decoration: none;
-    margin-bottom: var(--space-8);
   }
   .profile-back:hover { color: var(--solar); }
+
+  .profile-share {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+  .profile-share svg { width: 13px; height: 13px; }
+  .profile-share:hover {
+    color: var(--solar);
+    border-color: color-mix(in oklch, var(--solar) 45%, transparent);
+  }
+  /* Copy-link confirmation — moss, the app's "done/synced" colour. */
+  .profile-share[data-copied="true"] {
+    color: var(--moss);
+    border-color: color-mix(in oklch, var(--moss) 45%, transparent);
+  }
 
   .profile-loading {
     color: var(--ink-3);
@@ -1736,6 +1780,34 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       setTimeout(() => els.forEach((e) => e.classList.add("is-in")), 1600);
     }
 
+    // Share the album: native share sheet on mobile, copy-link with a
+    // "Copied" confirmation everywhere else.
+    function setupShare(name) {
+      const btn = document.getElementById("profile-share");
+      const label = document.getElementById("profile-share-label");
+      if (!btn) return;
+      const url = window.location.origin + window.location.pathname;
+      const shareData = { title: `${name} on Runstamp`, text: `${name}'s running album`, url };
+      let resetTimer = 0;
+      btn.addEventListener("click", async () => {
+        if (navigator.share) {
+          try { await navigator.share(shareData); } catch { /* dismissed */ }
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(url);
+          btn.dataset.copied = "true";
+          if (label) label.textContent = "Copied";
+          clearTimeout(resetTimer);
+          resetTimer = setTimeout(() => {
+            btn.dataset.copied = "false";
+            if (label) label.textContent = "Share";
+          }, 1600);
+        } catch { /* clipboard blocked */ }
+      });
+      btn.hidden = false;
+    }
+
     async function load() {
       const handle = pathHandle();
       if (!handle) {
@@ -1803,6 +1875,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         hide("profile");
         show("profile-card");
         initReveal();
+        setupShare(displayName);
       } catch {
         hide("profile");
         show("profile-missing");
