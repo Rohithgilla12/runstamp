@@ -99,6 +99,49 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- The climb — cumulative distance line for the last 12 months. -->
+      <section class="profile-section" id="profile-climb-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">THE CLIMB</p>
+          <p class="section-count">cumulative distance · 12 months</p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-climb-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 150px">
+              <svg class="chart-svg" id="profile-climb-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <span class="chart-end-dot" id="profile-climb-dot" aria-hidden="true"></span>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--ends">
+            <span id="profile-climb-start">—</span>
+            <span>Now</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Monthly volume — 12 coarse bars with a 12-month mean line. -->
+      <section class="profile-section" id="profile-monthly-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">MONTHLY VOLUME</p>
+          <p class="section-count" id="profile-monthly-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-monthly-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 150px">
+              <svg class="chart-svg" id="profile-monthly-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <span class="chart-mean-tag" id="profile-monthly-mean"></span>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-monthly-foot"></div>
+        </div>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-dot legend-dot--solar"></span>Best month</span>
+          <span class="legend-item"><span class="legend-line"></span>12-month average</span>
+        </div>
+      </section>
+
       <!-- Personal bests — perforated postage-stamp rectangles. -->
       <section class="profile-section" id="profile-pbs-section" hidden>
         <header class="section-header">
@@ -114,13 +157,54 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           <p class="eyebrow">THE LAST 26 WEEKS</p>
           <p class="section-count" id="profile-weekly-max"></p>
         </header>
-        <div class="weekly-wrap">
-          <svg class="weekly-svg" id="profile-weekly-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-weekly-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 120px">
+              <svg class="chart-svg" id="profile-weekly-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <span class="chart-mean-tag" id="profile-weekly-mean"></span>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--ends">
+            <span id="profile-weekly-start">—</span>
+            <span>This week</span>
+          </div>
         </div>
-        <div class="weekly-axis">
-          <span id="profile-weekly-start">—</span>
-          <span>This week</span>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-dot legend-dot--solar"></span>Max week</span>
+          <span class="legend-item"><span class="legend-line"></span>26-week average</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Weekly distance</span>
         </div>
+      </section>
+
+      <!-- Training rhythm — distance by weekday, Mon → Sun. -->
+      <section class="profile-section" id="profile-weekday-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">TRAINING RHYTHM</p>
+          <p class="section-count" id="profile-weekday-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-weekday-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 140px">
+              <svg class="chart-svg" id="profile-weekday-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-weekday-foot"></div>
+        </div>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-dot legend-dot--solar"></span>Long-run day</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Distance by weekday</span>
+        </div>
+      </section>
+
+      <!-- Consistency — streaks + run-day ledger, four mono cells. -->
+      <section class="profile-section profile-section--tight" id="profile-consistency-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">CONSISTENCY</p>
+          <p class="section-count">last 12 months</p>
+        </header>
+        <div class="tally" id="profile-consistency" aria-label="Consistency and streaks"></div>
       </section>
 
       <!-- Calendar heatmap — 52×7 moss grid for the last 12 months. -->
@@ -132,6 +216,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         <div class="heatmap-wrap">
           <svg class="heatmap-svg" id="profile-heatmap-svg" aria-hidden="true"></svg>
         </div>
+        <div class="legend-row heatmap-legend" id="profile-heatmap-legend"></div>
       </section>
 
       <!-- Highlights — table-of-contents ledger lines. -->
@@ -157,6 +242,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           <p class="eyebrow">EARNED</p>
           <p class="section-count" id="profile-stamps-count"></p>
         </header>
+        <div class="tier-legend" id="profile-stamps-legend"></div>
         <div class="stamps-grid" id="profile-stamps-grid"></div>
       </section>
 
@@ -507,26 +593,175 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
   }
   .pb-stamp svg { display: block; width: 100%; height: 100%; }
 
-  /* ── Weekly bars ──────────────────────────────────────────────── */
-  .weekly-wrap {
-    position: relative;
-    width: 100%;
-    height: 120px;
+  /* ── Shared analytical chart frame ────────────────────────────── */
+  /* A left gutter holds crisp HTML y-axis labels; the SVG plot stretches
+     to fill width (preserveAspectRatio="none"). All marks use
+     non-scaling-stroke so hairlines stay 1px regardless of the stretch. */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr;
+    column-gap: var(--space-3);
   }
-  .weekly-svg {
+  .chart-yaxis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 2px 0 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: -0.02em;
+    color: var(--ink-3);
+    font-feature-settings: "tnum" 1;
+  }
+  .chart-plot {
+    position: relative;
+    height: var(--chart-h, 140px);
+  }
+  .chart-svg {
     width: 100%;
     height: 100%;
+    display: block;
     overflow: visible;
   }
-  .weekly-axis {
-    display: flex;
-    justify-content: space-between;
+  .chart-foot {
     margin-top: var(--space-2);
+    margin-left: calc(2.75rem + var(--space-3));
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.1em;
     color: var(--ink-3);
     text-transform: uppercase;
+  }
+  .chart-foot--ends {
+    display: flex;
+    justify-content: space-between;
+  }
+  .chart-foot--even {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    text-align: center;
+  }
+  .chart-mean-tag {
+    position: absolute;
+    right: 0;
+    transform: translateY(-50%);
+    background: var(--paper);
+    padding: 0 0.35em;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+    font-feature-settings: "tnum" 1;
+    white-space: nowrap;
+  }
+  .chart-end-dot {
+    position: absolute;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--solar);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 3px var(--paper);
+  }
+
+  /* ── Chart legends / keys ─────────────────────────────────────── */
+  .legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-6);
+    margin-top: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .legend-dot--solar { background: var(--solar); }
+  .legend-dot--ink { background: var(--ink); }
+  .legend-line {
+    width: 16px;
+    border-top: 1.5px dashed var(--ink-3);
+    flex-shrink: 0;
+  }
+  .legend-swatch {
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .heatmap-legend { justify-content: flex-end; gap: var(--space-2); }
+  .heatmap-scale {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0 var(--space-1);
+  }
+
+  /* ── Stamp tier legend ────────────────────────────────────────── */
+  .tier-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-8);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px dashed var(--line);
+  }
+  .tier-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+  .tier-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .tier-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .tier-count {
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* ── Section reveal ───────────────────────────────────────────── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.55s cubic-bezier(0.22, 0.7, 0.2, 1),
+                transform 0.55s cubic-bezier(0.22, 0.7, 0.2, 1);
+    will-change: opacity, transform;
+  }
+  .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
   }
 
   /* ── Calendar heatmap ─────────────────────────────────────────── */
@@ -861,12 +1096,24 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       if (!grid || !section || !count) return;
       if (!stamps || stamps.length === 0) { section.hidden = true; return; }
       count.textContent = `${stamps.length} earned`;
+      renderStampLegend(stamps);
       grid.innerHTML = stamps.slice(0, 60).map((s) => {
         const tier = tierFor(s.stampId);
         const name = nameFromStampId(s.stampId);
         return `<div class="stamp">${stampSVG(name, tier)}</div>`;
       }).join("");
       section.hidden = false;
+    }
+
+    function renderStampLegend(stamps) {
+      const el = document.getElementById("profile-stamps-legend");
+      if (!el) return;
+      const counts = { common: 0, rare: 0, mythic: 0 };
+      for (const s of stamps) counts[tierFor(s.stampId)]++;
+      el.innerHTML = ["common", "rare", "mythic"].map((t) => {
+        const c = TIER_COLORS[t];
+        return `<span class="tier-item"><span class="tier-dot" style="background:${c.ring}"></span><span class="tier-name">${c.label}</span><span class="tier-count">${counts[t]}</span></span>`;
+      }).join("");
     }
 
     function renderCities(cities) {
@@ -1039,10 +1286,15 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}"><title>${escapeAttr(title)}</title></rect>`;
       }).join("");
 
-      const baseline = `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="${PALETTE.line}" stroke-width="1" stroke-dasharray="3 3"/>`;
+      const mean = total / weekly.length;
+      const meanY = baseY - (max > 0 ? (mean / max) * usable : 0);
+      const meanLine = `<line x1="0" y1="${meanY.toFixed(1)}" x2="${W}" y2="${meanY.toFixed(1)}" stroke="${PALETTE.ink3}" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>`;
+      const baseline = `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="${PALETTE.line}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
       svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-      svg.innerHTML = bars + baseline;
+      svg.innerHTML = meanLine + bars + baseline;
 
+      setYAxis("profile-weekly-yaxis", max);
+      placeMeanTag("profile-weekly-mean", meanY, H, `avg ${Math.round(mean)} km`);
       setText("profile-weekly-max", `${Math.round(max).toLocaleString()} km · max week`);
       setText("profile-weekly-start", formatMonthYear(weekly[0].weekStart));
       section.hidden = false;
@@ -1134,8 +1386,20 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 
       const ranDays = cal.length;
       const totalKm = cal.reduce((s, d) => s + (d.distanceKm || 0), 0);
-      setText("profile-heatmap-summary", `${ranDays} ${ranDays === 1 ? "day" : "days"} · ${Math.round(totalKm).toLocaleString()} km · darker = farther`);
+      setText("profile-heatmap-summary", `${ranDays} ${ranDays === 1 ? "day" : "days"} · ${Math.round(totalKm).toLocaleString()} km`);
+      renderHeatmapLegend();
       section.hidden = false;
+    }
+
+    // GitHub-style intensity key so the moss buckets read as a scale, not
+    // a guess. Thresholds mirror heatmapFill (<5, <10, <20, 20+ km).
+    function renderHeatmapLegend() {
+      const el = document.getElementById("profile-heatmap-legend");
+      if (!el) return;
+      const swatches = HEATMAP_TINTS
+        .map((c) => `<span class="legend-swatch" style="background:${c}"></span>`)
+        .join("");
+      el.innerHTML = `<span>Rest</span><span class="heatmap-scale">${swatches}</span><span>20+ km</span>`;
     }
 
     function heatmapFill(km) {
@@ -1229,6 +1493,249 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
+    // ── Shared analytical chart helpers ────────────────────────────
+    // Three HTML labels (max / mid / 0) in the chart's left gutter — the
+    // y-axis IS the legend on these surfaces (.impeccable rule 6).
+    function setYAxis(id, max) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const fmt = (n) => Math.round(n).toLocaleString();
+      el.innerHTML = `<span>${fmt(max)}</span><span>${fmt(max / 2)}</span><span>0</span>`;
+    }
+
+    function placeMeanTag(id, yVal, H, text) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.top = `${((yVal / H) * 100).toFixed(1)}%`;
+      el.textContent = text;
+    }
+
+    // Sparse calendar → dense oldest→newest daily series, rest days = 0.
+    function denseDaily(cal, days) {
+      const byDate = new Map();
+      for (const d of cal) byDate.set(d.date, d.distanceKm || 0);
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const out = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setUTCDate(d.getUTCDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        out.push({ date: iso, km: byDate.get(iso) || 0 });
+      }
+      return out;
+    }
+
+    // ── The climb — cumulative distance over 12 months ─────────────
+    function renderClimb(cal) {
+      const section = document.getElementById("profile-climb-section");
+      const svg = document.getElementById("profile-climb-svg");
+      if (!section || !svg) return;
+      if (!cal || cal.length === 0) { section.hidden = true; return; }
+      const series = denseDaily(cal, 365);
+      let cum = 0;
+      const cums = series.map((d) => (cum += d.km));
+      const total = cum;
+      if (total <= 0) { section.hidden = true; return; }
+
+      const W = 600, H = 150, top = 10, baseY = H - 8, usable = baseY - top;
+      const n = cums.length;
+      const xAt = (i) => (i / (n - 1)) * W;
+      const yAt = (v) => baseY - (v / total) * usable;
+
+      let line = `M 0 ${yAt(0).toFixed(1)}`;
+      for (let i = 1; i < n; i++) line += ` L ${xAt(i).toFixed(1)} ${yAt(cums[i]).toFixed(1)}`;
+      const area = `${line} L ${W} ${baseY} L 0 ${baseY} Z`;
+
+      const guides = [0, 0.5, 1].map((f) => {
+        const gy = (baseY - f * usable).toFixed(1);
+        return `<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="${PALETTE.line}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+      }).join("");
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = `${guides}
+        <path d="${area}" fill="${PALETTE.ink}" fill-opacity="0.06"/>
+        <path d="${line}" fill="none" stroke="${PALETTE.ink}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+
+      // The y-axis top tick equals the total (a cumulative curve maxes at
+      // its sum) — so it labels the endpoint; the solar dot just marks "now".
+      setYAxis("profile-climb-yaxis", total);
+      const dot = document.getElementById("profile-climb-dot");
+      if (dot) dot.style.top = `${((top / H) * 100).toFixed(1)}%`;
+      setText("profile-climb-start", formatMonthYear(series[0].date));
+      section.hidden = false;
+    }
+
+    // ── Monthly volume — 12 month bars + mean line ─────────────────
+    function renderMonthly(cal) {
+      const section = document.getElementById("profile-monthly-section");
+      const svg = document.getElementById("profile-monthly-svg");
+      if (!section || !svg) return;
+      if (!cal || cal.length === 0) { section.hidden = true; return; }
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
+        months.push({ key: d.toISOString().slice(0, 7), m: d.getUTCMonth(), km: 0 });
+      }
+      const idx = new Map(months.map((b, i) => [b.key, i]));
+      for (const d of cal) {
+        const k = d.date.slice(0, 7);
+        if (idx.has(k)) months[idx.get(k)].km += d.distanceKm || 0;
+      }
+      const total = months.reduce((s, b) => s + b.km, 0);
+      if (total <= 0) { section.hidden = true; return; }
+      const max = Math.max(...months.map((b) => b.km));
+      const mean = total / 12;
+
+      const W = 600, H = 150, top = 10, baseY = H - 8, usable = baseY - top;
+      const slot = W / 12, barW = Math.min(34, slot * 0.62);
+      let maxIdx = 0;
+      months.forEach((b, i) => { if (b.km >= months[maxIdx].km) maxIdx = i; });
+
+      const bars = months.map((b, i) => {
+        const h = max > 0 ? (b.km > 0 ? Math.max(2, (b.km / max) * usable) : 0) : 0;
+        const x = i * slot + (slot - barW) / 2, y = baseY - h;
+        const fill = i === maxIdx && b.km > 0 ? PALETTE.solar : PALETTE.ink;
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"><title>${Math.round(b.km)} km</title></rect>`;
+      }).join("");
+
+      const meanY = baseY - (mean / max) * usable;
+      const meanLine = `<line x1="0" y1="${meanY.toFixed(1)}" x2="${W}" y2="${meanY.toFixed(1)}" stroke="${PALETTE.ink3}" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>`;
+      const baseline = `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="${PALETTE.line}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = meanLine + bars + baseline;
+
+      setYAxis("profile-monthly-yaxis", max);
+      placeMeanTag("profile-monthly-mean", meanY, H, `avg ${Math.round(mean)} km`);
+      const MI = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+      const foot = document.getElementById("profile-monthly-foot");
+      if (foot) foot.innerHTML = months.map((b) => `<span>${MI[b.m]}</span>`).join("");
+      setText("profile-monthly-count", `${Math.round(max).toLocaleString()} km · best month`);
+      section.hidden = false;
+    }
+
+    // ── Training rhythm — distance by weekday ──────────────────────
+    function renderWeekday(cal) {
+      const section = document.getElementById("profile-weekday-section");
+      const svg = document.getElementById("profile-weekday-svg");
+      if (!section || !svg) return;
+      if (!cal || cal.length === 0) { section.hidden = true; return; }
+      const km = [0, 0, 0, 0, 0, 0, 0]; // Mon … Sun
+      const runs = [0, 0, 0, 0, 0, 0, 0];
+      for (const d of cal) {
+        const dt = new Date(d.date + "T00:00:00Z");
+        const wd = (dt.getUTCDay() + 6) % 7;
+        km[wd] += d.distanceKm || 0;
+        runs[wd] += d.runs || 0;
+      }
+      const total = km.reduce((s, v) => s + v, 0);
+      if (total <= 0) { section.hidden = true; return; }
+      const max = Math.max(...km);
+      let maxIdx = 0;
+      km.forEach((v, i) => { if (v >= km[maxIdx]) maxIdx = i; });
+
+      const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const W = 600, H = 140, top = 10, baseY = H - 8, usable = baseY - top;
+      const slot = W / 7, barW = Math.min(48, slot * 0.6);
+      const bars = km.map((v, i) => {
+        const h = max > 0 ? (v > 0 ? Math.max(2, (v / max) * usable) : 0) : 0;
+        const x = i * slot + (slot - barW) / 2, y = baseY - h;
+        const fill = i === maxIdx && v > 0 ? PALETTE.solar : PALETTE.ink;
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${fill}"><title>${names[i]} · ${Math.round(v)} km · ${runs[i]} ${runs[i] === 1 ? "run" : "runs"}</title></rect>`;
+      }).join("");
+      const baseline = `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="${PALETTE.line}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars + baseline;
+
+      setYAxis("profile-weekday-yaxis", max);
+      const DI = ["M", "T", "W", "T", "F", "S", "S"];
+      const foot = document.getElementById("profile-weekday-foot");
+      if (foot) foot.innerHTML = DI.map((d) => `<span>${d}</span>`).join("");
+      setText("profile-weekday-count", `${names[maxIdx].toLowerCase()} · long-run day`);
+      section.hidden = false;
+    }
+
+    // ── Consistency — week streaks + run-day ledger ────────────────
+    function isoWeekKey(isoDate) {
+      const d = new Date(isoDate + "T00:00:00Z");
+      const wd = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - wd);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function renderConsistency(cal) {
+      const section = document.getElementById("profile-consistency-section");
+      const el = document.getElementById("profile-consistency");
+      if (!section || !el) return;
+      if (!cal || cal.length === 0) { section.hidden = true; return; }
+      const runDays = cal.filter((d) => (d.runs || 0) > 0 || (d.distanceKm || 0) > 0).length;
+      if (runDays === 0) { section.hidden = true; return; }
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const wd = (today.getUTCDay() + 6) % 7;
+      const thisMonday = new Date(today);
+      thisMonday.setUTCDate(thisMonday.getUTCDate() - wd);
+
+      const weekIdx = new Map(); // weekStart → 0..51 (51 = current week)
+      for (let i = 0; i < 52; i++) {
+        const m = new Date(thisMonday);
+        m.setUTCDate(m.getUTCDate() - 7 * (51 - i));
+        weekIdx.set(m.toISOString().slice(0, 10), i);
+      }
+      const present = new Array(52).fill(false);
+      for (const d of cal) {
+        const k = isoWeekKey(d.date);
+        if (weekIdx.has(k)) present[weekIdx.get(k)] = true;
+      }
+      const activeWeeks = present.filter(Boolean).length;
+      let best = 0, run = 0;
+      for (const p of present) { run = p ? run + 1 : 0; if (run > best) best = run; }
+      // "Current" counts back from this week, or last week if the runner
+      // simply hasn't logged a run yet this week.
+      let cur = 0;
+      const end = present[51] ? 51 : (present[50] ? 50 : -1);
+      for (let i = end; i >= 0 && present[i]; i--) cur++;
+
+      const cells = [
+        { label: "WEEK STREAK", value: String(cur), unit: "wk" },
+        { label: "BEST STREAK", value: String(best), unit: "wk" },
+        { label: "RUN DAYS", value: String(runDays), unit: "/yr" },
+        { label: "ACTIVE WEEKS", value: String(activeWeeks), unit: "/52" },
+      ];
+      el.innerHTML = cells.map((c) => `
+        <div class="tally-cell">
+          <div class="tally-label">${c.label}</div>
+          <div class="tally-value">${c.value}<span class="tally-unit">${c.unit}</span></div>
+        </div>`).join("");
+      section.hidden = false;
+    }
+
+    // Staggered reveal as each section scrolls in. Above-the-fold
+    // sections fire immediately; reduced-motion shows everything at once.
+    function initReveal() {
+      const els = document.querySelectorAll(
+        ".year-ledger:not([hidden]), .profile-section:not([hidden])"
+      );
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce || !("IntersectionObserver" in window)) {
+        els.forEach((e) => e.classList.add("reveal", "is-in"));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        for (const en of entries) {
+          if (en.isIntersecting) { en.target.classList.add("is-in"); io.unobserve(en.target); }
+        }
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+      els.forEach((e) => { e.classList.add("reveal"); io.observe(e); });
+      // Safety net: nothing should ever stay invisible. If the observer
+      // never fires for an element (no scroll, headless render, print),
+      // reveal whatever's left after a beat.
+      setTimeout(() => els.forEach((e) => e.classList.add("is-in")), 1600);
+    }
+
     async function load() {
       const handle = pathHandle();
       if (!handle) {
@@ -1280,8 +1787,12 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 
         renderTotals(totalsWithStamps);
         renderYearLedger(data.yearToDate);
+        renderClimb(data.calendar);
+        renderMonthly(data.calendar);
         renderPBs(data.personalBests);
         renderWeekly(data.weekly);
+        renderWeekday(data.calendar);
+        renderConsistency(data.calendar);
         renderHeatmap(data.calendar);
         renderHighlights(data.highlights);
         renderCountries(data.countries);
@@ -1291,6 +1802,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         document.title = `${displayName} on Runstamp`;
         hide("profile");
         show("profile-card");
+        initReveal();
       } catch {
         hide("profile");
         show("profile-missing");
