@@ -149,11 +149,20 @@ public class RunstampVideoEncoderModule: Module {
         throw EncoderError.sessionNotFound
       }
 
-      // Backpressure — input is bounded by the codec's queue. In practice
-      // we never see this loop spin more than a frame or two because
-      // captureRef itself is slower than the encoder.
+      // Bounded backpressure wait. Bail if the writer has failed (disk full,
+      // app suspended mid-export) or if we've waited far longer than any real
+      // frame should need — otherwise a never-ready failed writer hangs the
+      // export forever.
+      var waitTicks = 0
       while !session.input.isReadyForMoreMediaData {
+        if session.writer.status == .failed {
+          throw session.writer.error ?? EncoderError.writeFailed
+        }
+        if waitTicks >= 2000 { // 2000 * 5ms = 10s ceiling
+          throw EncoderError.writeFailed
+        }
         try await Task.sleep(nanoseconds: 5_000_000)
+        waitTicks += 1
       }
 
       guard let image = UIImage(contentsOfFile: pngPath),
