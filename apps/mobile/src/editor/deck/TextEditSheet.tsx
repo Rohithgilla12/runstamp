@@ -18,9 +18,7 @@ interface Props {
   onClose: () => void;
 }
 
-// Fill-in-the-form text editing for the free-text slots (title + place). Metrics
-// stay honest and aren't editable here — only the descriptive text a runner
-// writes themselves. Styled like a customs / luggage-tag field, on-brand.
+// Editable free-text slots (title + place); metrics stay honest, not editable.
 export function TextEditSheet({
   visible, titleValue, placeValue, titlePlaceholder, placePlaceholder, edited,
   onChangeTitle, onChangePlace, onReset, onClose,

@@ -106,7 +106,7 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
       return;
     }
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9, allowsEditing: false });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, allowsEditing: false });
       if (!result.canceled && result.assets[0]) {
         setPhotoUri(result.assets[0].uri);
         setBg('photo');
