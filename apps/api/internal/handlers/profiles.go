@@ -276,8 +276,8 @@ func loadYearToDate(ctx context.Context, pool *pgxpool.Pool, userID string, year
 	return ytd, nil
 }
 
-// profilePBDistances maps each public-profile PB slot to its exact target
-// distance in activity_best_efforts. Half = 21097 m, Marathon = 42195 m.
+// profilePBDistances maps each public-profile PB slot to its target
+// distance in metres. Half = 21097 m, Marathon = 42195 m.
 var profilePBDistances = []struct {
 	key      string
 	distance int
@@ -288,8 +288,8 @@ var profilePBDistances = []struct {
 	{"marathon", 42195},
 }
 
-// loadPersonalBests picks the fastest stored segment best for each distance.
-// Returns the struct with nil entries where no qualifying effort exists.
+// loadPersonalBests picks the fastest full run near each distance.
+// Returns the struct with nil entries where no qualifying run exists.
 func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (*personalBests, error) {
 	pbs := &personalBests{}
 	for _, d := range profilePBDistances {
@@ -311,19 +311,27 @@ func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (
 	return pbs, nil
 }
 
+// loadOnePB finds the fastest full run within ±5% of the target distance.
+// Apple Health runs carry no segment efforts, so the PB is a whole-run
+// best — the run with the smallest moving time (falling back to elapsed)
+// in the band. Matches the "best full run · ±5% of distance" card copy.
 func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM int) (*personalBest, error) {
 	var (
-		elapsed int
+		seconds int
+		actualM float64
 		started time.Time
 		city    *string
 	)
 	err := pool.QueryRow(ctx, `
-SELECT abe.time_seconds, a.started_at, a.location_city
-FROM activity_best_efforts abe
-JOIN activities a ON a.id = abe.activity_id
-WHERE a.user_id = $1 AND a.dupe_of IS NULL AND abe.distance_m = $2
-ORDER BY abe.time_seconds ASC
-LIMIT 1`, userID, distanceM).Scan(&elapsed, &started, &city)
+SELECT
+	CASE WHEN moving_seconds > 0 THEN moving_seconds ELSE elapsed_seconds END AS t,
+	distance_m, started_at, location_city
+FROM activities
+WHERE user_id = $1 AND dupe_of IS NULL
+  AND distance_m BETWEEN $2 * 0.95 AND $2 * 1.05
+  AND (moving_seconds > 0 OR elapsed_seconds > 0)
+ORDER BY t ASC
+LIMIT 1`, userID, distanceM).Scan(&seconds, &actualM, &started, &city)
 	if err != nil {
 		if isNoRows(err) {
 			return nil, nil
@@ -331,8 +339,8 @@ LIMIT 1`, userID, distanceM).Scan(&elapsed, &started, &city)
 		return nil, err
 	}
 	pb := &personalBest{
-		TimeSeconds: elapsed,
-		DistanceKm:  float64(distanceM) / 1000.0,
+		TimeSeconds: seconds,
+		DistanceKm:  actualM / 1000.0,
 		Date:        started.UTC().Format("2006-01-02"),
 	}
 	if city != nil {
