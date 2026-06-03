@@ -126,11 +126,10 @@ export function VideoExportModal({
         },
         shouldCancel: () => cancelledRef.current,
       });
-      if (cancelledRef.current) return;
 
-      // Press the seal, let it register, then hand off. The hold gives the
-      // modal a graceful exit beat so the share sheet doesn't appear to
-      // interrupt a half-finished progress bar.
+      // Encode finished — the file exists. Deliver it even if a cancel
+      // raced in during the seal hold; discarding here would leak the temp
+      // file and give the user nothing.
       setPhase('done');
       Animated.timing(sealAnim, {
         toValue: 1,
@@ -139,7 +138,6 @@ export function VideoExportModal({
         useNativeDriver: true,
       }).start();
       await new Promise((r) => setTimeout(r, DONE_HOLD_MS));
-      if (cancelledRef.current) return;
       onComplete(uri);
     } catch (e) {
       if (cancelledRef.current) return;
@@ -302,7 +300,7 @@ export function VideoExportModal({
 
             <Pressable
               onPress={handleCancel}
-              disabled={phase === 'done'}
+              disabled={phase === 'muxing' || phase === 'done'}
               style={({ pressed }) => [
                 {
                   marginTop: 18,
@@ -312,7 +310,7 @@ export function VideoExportModal({
                   borderWidth: 1,
                   borderColor: c.line,
                   backgroundColor: c.paper2,
-                  opacity: pressed || phase === 'done' ? 0.5 : 1,
+                  opacity: pressed || phase === 'muxing' || phase === 'done' ? 0.5 : 1,
                 },
               ]}
             >
