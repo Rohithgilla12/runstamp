@@ -158,9 +158,18 @@ class RunstampVideoEncoderModule : Module() {
 
       try { session.codec.stop() } catch (_: Exception) {}
       session.codec.release()
-      if (session.muxerStarted) {
-        try { session.muxer.stop() } catch (_: Exception) {}
+
+      // If the muxer never started, no frames were ever written — the file is
+      // empty/invalid. Don't hand it back as success; clean up and error so the
+      // JS layer surfaces a real failure instead of a broken share.
+      if (!session.muxerStarted) {
+        session.muxer.release()
+        sessions.remove(sessionId)
+        File(session.outputPath).delete()
+        throw EncoderException("no-frames-muxed", "Encode produced no video frames")
       }
+
+      try { session.muxer.stop() } catch (_: Exception) {}
       session.muxer.release()
 
       sessions.remove(sessionId)
