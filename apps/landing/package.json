@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "astro": "^5.0.0",
+    "astro": "^6.4.3",
     "workers-og": "^0.0.27"
   },
   "devDependencies": {
