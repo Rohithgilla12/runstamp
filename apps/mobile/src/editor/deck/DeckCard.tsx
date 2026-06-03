@@ -7,7 +7,8 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { Canvas } from '../canvas/Canvas';
-import type { Activity, Background, Layout, LiveStreams, StickerInstance } from '../layouts/types';
+import { seedToStickers } from './seed';
+import type { Activity, Background, Layout, LiveStreams } from '../layouts/types';
 
 interface Props {
   layout: Layout;
@@ -23,22 +24,11 @@ interface Props {
   onPress: () => void;
 }
 
-// Each card is a frozen Canvas seeded from the layout — what you flip past is
-// exactly what exports.
-function seedToStickers(layout: Layout): StickerInstance[] {
-  return (layout.seed ?? []).map((s, i) => ({
-    id: `deck-${layout.id}-${i}`,
-    key: s.key,
-    x: s.x,
-    y: s.y,
-    scale: s.scale ?? 1,
-  }));
-}
-
 export const DeckCard = memo(function DeckCard({
   layout, run, live, background, photoUri, index, scrollX, itemWidth, cardW, cardH, onPress,
 }: Props) {
-  const stickers = useMemo(() => seedToStickers(layout), [layout]);
+  // Same seed helper the franking capture uses, so the card and the export match.
+  const stickers = useMemo(() => seedToStickers(layout, 'deck'), [layout]);
 
   // pos: -1 = one slot left of center, 0 = centered, 1 = one slot right.
   // Slots overlap (itemWidth < cardW) so neighbours tuck behind the centred

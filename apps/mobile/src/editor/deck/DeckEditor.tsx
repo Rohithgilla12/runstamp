@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, useWindowDimensions, View } from 'react-native';
+import { Alert, Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
@@ -14,6 +14,7 @@ import { Eyebrow, TText } from '../../design/typography';
 import { Icon } from '../../design/Icon';
 import { layoutById } from '../layouts/registry';
 import { developOrder } from './develop';
+import { deckGeometry, snapIndexFor } from './geometry';
 import { DeckCard } from './DeckCard';
 import { FrankingOverlay } from './FrankingOverlay';
 import { TextEditSheet } from './TextEditSheet';
@@ -21,6 +22,9 @@ import { ShareSheet } from '../share/ShareSheet';
 import type { Activity } from '../../data/models';
 import type { Background, Layout, LiveStreams, Surface } from '../layouts/types';
 import type { RootStackProps } from '../../nav/types';
+
+// null = inherit the run's value; a string (incl. '') = a typed-in override.
+type TextOverride = string | null;
 
 export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
   const c = useColors();
@@ -49,11 +53,10 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tmpUri, setTmpUri] = useState<string | null>(null);
   const [tmpSize, setTmpSize] = useState<number | null>(null);
-  // Free-text overrides for the title / place slots. null = use the run's own
-  // value; a string (incl. '') = the runner typed their own. Metrics stay
-  // honest and are never editable.
-  const [titleText, setTitleText] = useState<string | null>(null);
-  const [placeText, setPlaceText] = useState<string | null>(null);
+  // Free-text overrides for the title / place slots. Metrics stay honest and
+  // are never editable here.
+  const [titleText, setTitleText] = useState<TextOverride>(null);
+  const [placeText, setPlaceText] = useState<TextOverride>(null);
   const [textSheet, setTextSheet] = useState(false);
 
   // What the cards render: the run with any typed-in title/place applied.
@@ -76,11 +79,7 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
       .filter((l): l is Layout => l != null);
   }, [run, live]);
 
-  const ratio = surface === '9:16' ? 16 / 9 : surface === '1:1' ? 1 : 5 / 4;
-  const cardW = Math.min(Math.round(screenW * 0.66), 268);
-  const cardH = Math.round(cardW * ratio);
-  const itemWidth = Math.round(cardW * 0.8); // slots overlap → stacked peek
-  const sidePad = (screenW - itemWidth) / 2;
+  const { cardW, cardH, itemWidth, sidePad } = deckGeometry(screenW, surface);
   const deckH = cardH + 44;
 
   const scrollX = useSharedValue(0);
@@ -88,8 +87,7 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
   const listRef = useRef<Animated.FlatList<Layout>>(null);
 
   const onMomentumEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / itemWidth);
-    setCenterIndex(Math.max(0, Math.min(ordered.length - 1, idx)));
+    setCenterIndex(snapIndexFor(e.nativeEvent.contentOffset.x, itemWidth, ordered.length));
   }, [itemWidth, ordered.length]);
 
   const goToCard = useCallback((index: number) => {
@@ -99,11 +97,22 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
 
   const pickPhoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9, allowsEditing: false });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-      setBg('photo');
+    if (!perm.granted) {
+      // A hard denial gives no system prompt on a retry — point to Settings so
+      // the photo button isn't a silent dead end.
+      if (!perm.canAskAgain) {
+        Alert.alert('Photo access needed', 'Enable photo access in Settings → Runstamp to add a photo background.');
+      }
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9, allowsEditing: false });
+      if (!result.canceled && result.assets[0]) {
+        setPhotoUri(result.assets[0].uri);
+        setBg('photo');
+      }
+    } catch (err) {
+      console.warn('[editor] photo picker failed', err);
     }
   }, []);
 
@@ -127,8 +136,7 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
     );
   }
 
-  // run is defined past the guard; displayRun mirrors it. Cards + the franked
-  // capture render this so typed-in text shows everywhere.
+  // Cards + the franked capture render this, so typed-in text shows everywhere.
   const cardRun = displayRun ?? run;
   const textEdited = titleText != null || placeText != null;
 
@@ -256,7 +264,11 @@ export function DeckEditor({ route, navigation }: RootStackProps<'Editor'>) {
             surface={surface}
             tileStyle={tileStyle}
             onCaptured={(uri, size) => { setTmpUri(uri); setTmpSize(size); setFranking(false); setSheetOpen(true); }}
-            onError={() => setFranking(false)}
+            onError={(err) => {
+              setFranking(false);
+              console.warn('[editor] franking capture failed', err);
+              Alert.alert('Could not save your card', 'The map may not have finished loading — check your connection and try again.');
+            }}
           />
         )}
       </Modal>

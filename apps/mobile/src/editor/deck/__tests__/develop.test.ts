@@ -22,6 +22,9 @@ describe('DECK_LAYOUT_IDS', () => {
     expect(DECK_LAYOUT_IDS).toHaveLength(12);
     expect(new Set(DECK_LAYOUT_IDS).size).toBe(12);
   });
+  it('opens on postage by default (first in registry order)', () => {
+    expect(DECK_LAYOUT_IDS[0]).toBe('postage');
+  });
 });
 
 describe('seedSatisfaction', () => {
@@ -51,5 +54,17 @@ describe('developOrder', () => {
 
   it('is deterministic — registry order breaks score ties', () => {
     expect(developOrder(makeRun(), NO_STREAMS)).toEqual(developOrder(makeRun(), NO_STREAMS));
+  });
+
+  it('falls back to exact registry order when the run has no data at all', () => {
+    // Every slot empty → all scores 0 → the tiebreak (registry order) decides.
+    // This is the sparse-run contract DeckEditor relies on for ordered[0].
+    const blank = makeRun({ distance: 0, seconds: 0, elev: 0, pace: 0, avgHr: 0, maxHr: 0, cal: 0, title: '', city: '—', date: '' });
+    expect(developOrder(blank, NO_STREAMS)).toEqual(DECK_LAYOUT_IDS);
+  });
+
+  it('does not reshuffle when streams arrive (no deck seed uses stream keys today)', () => {
+    const withRoute: LiveStreams = { hr: [120, 150], pace: [300, 280], route: [[0, 0], [1, 1]], splits: null, rawLatLng: [[0, 0], [1, 1]] };
+    expect(developOrder(makeRun(), withRoute)).toEqual(developOrder(makeRun(), NO_STREAMS));
   });
 });

@@ -4,13 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Line } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import type { TileStyle } from '../../services/mapTiles';
 import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';
 import { Canvas } from '../canvas/Canvas';
 import { captureCanvas } from '../share/capture';
-import type { Activity, Background, Layout, LiveStreams, StickerInstance, Surface } from '../layouts/types';
+import { seedToStickers } from './seed';
+import { surfaceRatio } from './geometry';
+import type { Activity, Background, Layout, LiveStreams, Surface } from '../layouts/types';
 
 interface Props {
   run: Activity;
@@ -21,31 +23,27 @@ interface Props {
   surface: Surface;
   tileStyle: TileStyle;
   onCaptured: (uri: string, sizeBytes: number | null) => void;
-  onError: () => void;
+  onError: (err: unknown) => void;
 }
 
 const PRESS_MS = 240;
 const BLEED_MS = 420;
 const SETTLE_MS = 720;
+// Watchdog: a tile prefetch can hang on a flaky network, and captureRef gives
+// no timeout of its own — bail rather than leave "Sealing…" stuck forever.
+const CAPTURE_TIMEOUT_MS = 12000;
 
-function seedToStickers(layout: Layout): StickerInstance[] {
-  return (layout.seed ?? []).map((s, i) => ({ id: `frank-${layout.id}-${i}`, key: s.key, x: s.x, y: s.y, scale: s.scale ?? 1 }));
-}
-
-// The commit moment. The card (a clean Canvas, ref'd for capture) sits under a
-// stamp that presses down with a haptic thunk and bleeds solar ink — both are
-// SIBLINGS of the captured view, so the exported PNG stays clean. The press
-// also masks the capture/tile-prefetch latency.
+// The commit moment: the captured card sits under a stamp + ink bleed that are
+// SIBLINGS of the captured view, so the exported PNG stays clean.
 export function FrankingOverlay({ run, layout, background, photoUri, live, surface, tileStyle, onCaptured, onError }: Props) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
   const canvasRef = useRef<View>(null);
 
-  const ratio = surface === '9:16' ? 16 / 9 : surface === '1:1' ? 1 : 5 / 4;
   const exportW = Math.min(screenW - 32, 380);
-  const exportH = Math.round(exportW * ratio);
-  const stickers = useMemo(() => seedToStickers(layout), [layout]);
+  const exportH = Math.round(exportW * surfaceRatio(surface));
+  const stickers = useMemo(() => seedToStickers(layout, 'frank'), [layout]);
 
   const press = useSharedValue(0);
   const bleed = useSharedValue(0);
@@ -58,17 +56,22 @@ export function FrankingOverlay({ run, layout, background, photoUri, live, surfa
     const thunk = setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}), PRESS_MS);
     const grab = setTimeout(async () => {
       try {
-        const uri = await captureCanvas({ canvasRef, background, live, canvasW: exportW, canvasH: exportH, tileStyle });
+        const uri = await Promise.race([
+          captureCanvas({ canvasRef, background, live, canvasW: exportW, canvasH: exportH, tileStyle }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('capture timed out')), CAPTURE_TIMEOUT_MS)),
+        ]);
         let size: number | null = null;
         try {
-          const info = await FileSystem.getInfoAsync(uri);
-          size = info.exists && !info.isDirectory ? info.size ?? null : null;
+          // expo-file-system v19: the legacy getInfoAsync throws — use the File API.
+          const file = new File(uri);
+          size = file.exists ? file.size ?? null : null;
         } catch {
-          // Size badge is optional — leave null.
+          // File-size badge is optional — leave null on any FS error.
         }
         if (!cancelled) onCaptured(uri, size);
-      } catch {
-        if (!cancelled) onError();
+      } catch (err) {
+        if (!cancelled) onError(err);
       }
     }, SETTLE_MS);
 
@@ -110,10 +113,9 @@ export function FrankingOverlay({ run, layout, background, photoUri, live, surfa
           />
         </View>
 
-        {/* Ink bleed — sibling of the captured view, never baked in. */}
+        {/* Ink bleed + stamp — siblings of the captured view, never baked in. */}
         <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: exportH * 0.5 - 70, left: exportW * 0.5 - 70, width: 140, height: 140, borderRadius: 70, backgroundColor: c.accent }, bleedStyle]} />
 
-        {/* The stamp press. */}
         <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: exportH * 0.5 - 56, left: exportW * 0.5 - 56, width: 112, height: 112 }, stampStyle]}>
           <Postmark size={112} color={c.accent} />
         </Animated.View>
