@@ -35,7 +35,7 @@ interface Props {
    * wrapped in a <ChartShareFrame> for the 9:16 brand chrome.
    */
   videoFrame?: (chartProgress: number) => ReactNode;
-  /** Off-screen render dims for the video. Defaults to 360×640 (9:16). */
+  /** Off-screen render dims for the video. Defaults to 1080×1920 (9:16). */
   videoDims?: { width: number; height: number };
 }
 
@@ -51,7 +51,9 @@ export function ShareableChartCard({ title, subtitle, children, shareMessage, ex
   const captureViewRef = useRef<View>(null);
   const [busy, setBusy] = useState(false);
   const [videoExporting, setVideoExporting] = useState(false);
-  const resolvedVideoDims = videoDims ?? { width: 360, height: 640 };
+  // Default to 1080-wide (3x of the 360x640 logical card) so the MP4 isn't a
+  // soft, upscaled 360p file on Instagram Stories / Photos.
+  const resolvedVideoDims = videoDims ?? { width: 1080, height: 1920 };
 
   const onShare = useCallback(async () => {
     if (busy || !captureViewRef.current) return;

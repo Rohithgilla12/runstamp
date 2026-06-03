@@ -18,9 +18,9 @@ interface NativeRunstampVideoEncoder {
 }
 
 export interface StartOptions {
-  /** Output video width in pixels. Should match the source PNG width. */
+  /** Output video width in pixels. Must be even (H.264/YUV420). Should match the source PNG width. */
   width: number;
-  /** Output video height in pixels. Should match the source PNG height. */
+  /** Output video height in pixels. Must be even (H.264/YUV420). Should match the source PNG height. */
   height: number;
   /** Frames per second. Presentation timestamps are computed as frameIndex / fps. */
   fps: number;
