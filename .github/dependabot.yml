@@ -24,24 +24,10 @@ updates:
       - dependency-name: "@types/react"
       - dependency-name: "@types/react-dom"
 
-  - package-ecosystem: npm
-    directory: /apps/mobile
-    schedule:
-      interval: weekly
-    groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
-    ignore:
-      - dependency-name: "expo"
-      - dependency-name: "expo-*"
-      - dependency-name: "react"
-      - dependency-name: "react-dom"
-      - dependency-name: "react-native"
-      - dependency-name: "react-native-*"
-      - dependency-name: "@types/react"
-      - dependency-name: "@types/react-dom"
+  # No separate /apps/mobile npm block: this is a pnpm workspace with a single
+  # root lockfile, so the directory:/ config above already covers every package
+  # (mobile, landing, marketing) AND updates pnpm-lock.yaml. A per-app block here
+  # produces package.json-only PRs that fail --frozen-lockfile in CI.
 
   - package-ecosystem: gomod
     directory: /apps/api
