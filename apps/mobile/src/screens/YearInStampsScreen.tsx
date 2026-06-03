@@ -33,8 +33,8 @@ import { useActivityStreams } from '../state/useActivityStreams';
 import { useStamps, type CatalogStamp } from '../state/useStamps';
 import { useAppState } from '../state/AppState';
 import type { Activity } from '../data/models';
-import { distUnit, fmtDist } from '../lib/format';
-import { countContinents } from '../design/worldGeometry';
+import { distUnit } from '../lib/format';
+import { computeYearStats, filterEarnedInYear, fmtRecapDist, type YearStats } from '../lib/yearStats';
 import type { RootStackProps } from '../nav/types';
 
 // "Year in Stamps" — a paginated, scroll-driven recap. Five panels:
@@ -63,10 +63,7 @@ export function YearInStampsScreen({ navigation }: RootStackProps<'YearInStamps'
 
   const year = new Date().getFullYear();
   const stats = useMemo(() => computeYearStats(activities, earned, year), [activities, earned, year]);
-  const earnedThisYear = useMemo(
-    () => earned.filter((e) => e.earnedAt?.startsWith(`${year}-`)),
-    [earned, year],
-  );
+  const earnedThisYear = useMemo(() => filterEarnedInYear(earned, year), [earned, year]);
   const topRun = useMemo(
     () => (stats.longestRunDate ? activities.find((a) => a.date === stats.longestRunDate) ?? null : null),
     [activities, stats.longestRunDate],
@@ -323,7 +320,9 @@ function CoverPanel({ active, reduceMotion, year, stats }: PanelProps) {
 
 function TallyPanel({ active, reduceMotion, stats, units }: PanelProps) {
   const c = useColors();
-  const totalDist = Number(fmtDist(stats.totalKm, units));
+  const totalRaw = units === 'mi' ? stats.totalKm / 1.609 : stats.totalKm;
+  const totalDist = Number.isFinite(totalRaw) ? totalRaw : 0;
+  const totalDecimals = totalDist >= 100 ? 0 : 1;
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 32, justifyContent: 'center' }}>
@@ -337,7 +336,7 @@ function TallyPanel({ active, reduceMotion, stats, units }: PanelProps) {
           label="TOTAL"
           unit={distUnit(units)}
           to={totalDist}
-          decimals={1}
+          decimals={totalDecimals}
           active={active}
           reduceMotion={reduceMotion}
           delay={0}
@@ -602,7 +601,7 @@ function TopRunPanel({ active, reduceMotion, stats, topRun, units }: PanelProps)
           </Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 6 }}>
             <TText variant="monoMedium" style={{ fontSize: 48, lineHeight: 52, letterSpacing: -1.4, color: c.paper }}>
-              {fmtDist(stats.longestRunKm, units)}
+              {fmtRecapDist(stats.longestRunKm, units)}
             </TText>
             <TText style={{ fontSize: 14, color: 'rgba(243,237,226,0.55)', marginLeft: 6 }}>{distUnit(units)}</TText>
           </View>
@@ -728,50 +727,6 @@ function WaxSeal({ year, accent, ink }: { year: number; accent: string; ink: str
       </G>
     </Svg>
   );
-}
-
-// ── Stats ────────────────────────────────────────────────────────────────
-
-interface YearStats {
-  totalKm: number;
-  totalRuns: number;
-  totalSec: number;
-  newCities: number;
-  countries: number;
-  continents: number;
-  longestRunKm: number;
-  longestRunDate: string | null;
-}
-
-function computeYearStats(activities: Activity[], earned: CatalogStamp[], year: number): YearStats {
-  const yearPrefix = `${year}-`;
-  const yearRuns = activities.filter((a) => a.date.startsWith(yearPrefix));
-  let totalKm = 0;
-  let totalSec = 0;
-  let longestRunKm = 0;
-  let longestRunDate: string | null = null;
-  const cities = new Set<string>();
-  const countries = new Set<string>();
-  for (const r of yearRuns) {
-    totalKm += r.distance;
-    totalSec += r.seconds;
-    if (r.distance > longestRunKm) {
-      longestRunKm = r.distance;
-      longestRunDate = r.date;
-    }
-    if (r.city?.trim()) cities.add(r.city.trim());
-    if (r.country?.trim()) countries.add(r.country.trim());
-  }
-  return {
-    totalKm,
-    totalRuns: yearRuns.length,
-    totalSec,
-    newCities: cities.size,
-    countries: countries.size,
-    continents: countContinents([...countries]),
-    longestRunKm,
-    longestRunDate,
-  };
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];

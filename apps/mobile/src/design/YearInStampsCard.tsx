@@ -18,28 +18,18 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
-import type { Activity } from '../data/models';
 import type { CatalogStamp } from '../state/useStamps';
 import { StampBadge } from './StampBadge';
 import { useColors } from './theme';
 import { RunstampMark } from './RunstampMark';
 import { TText, Eyebrow } from './typography';
 import { easeInOut, staggeredT } from './charts/reveal';
-import { countContinents } from './worldGeometry';
+import { computeYearStats, filterEarnedInYear, fmtRecapDist, type YearStats } from '../lib/yearStats';
+
+export { computeYearStats, filterEarnedInYear, type YearStats } from '../lib/yearStats';
 
 export const YIS_CARD_WIDTH = 360;
 export const YIS_CARD_HEIGHT = 640;
-
-export interface YearStats {
-  totalKm: number;
-  totalRuns: number;
-  totalSec: number;
-  newCities: number;
-  countries: number;
-  continents: number;
-  longestRunKm: number;
-  longestRunDate: string | null;
-}
 
 interface Props {
   year: number;
@@ -68,7 +58,7 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress,
   const stampsT = revealing ? clamp01((progress - 0.45) / 0.5) : 1;
   const footerT = revealing ? clamp01((progress - 0.85) / 0.15) : 1;
 
-  const distLabel = formatDist(stats.totalKm * (revealing ? tallyT : 1), units);
+  const distLabel = fmtRecapDist(stats.totalKm * (revealing ? tallyT : 1), units);
   const runsLabel = revealing ? String(Math.round(stats.totalRuns * tallyT)) : String(stats.totalRuns);
   const placesCount = stats.countries > 0 ? stats.countries : stats.newCities;
   const placesLabel = revealing
@@ -130,7 +120,7 @@ export function YearInStampsCard({ year, stats, earnedThisYear, units, progress,
         <View style={{ flexDirection: 'row', gap: 24 * s, marginTop: 14 * s }}>
           <Tally label="RUNS" value={runsLabel} scale={s} />
           <Tally label={stats.countries > 0 ? 'COUNTRIES' : 'CITIES'} value={placesLabel} scale={s} />
-          <Tally label="LONGEST" value={`${formatDist(stats.longestRunKm * (revealing ? tallyT : 1), units)} ${distUnitLabel}`} scale={s} />
+          <Tally label="LONGEST" value={`${fmtRecapDist(stats.longestRunKm * (revealing ? tallyT : 1), units)} ${distUnitLabel}`} scale={s} />
         </View>
       </View>
 
@@ -252,50 +242,6 @@ function Perforation({ tint, scale: s }: { tint: string; scale: number }) {
   );
 }
 
-function formatDist(km: number, units: 'km' | 'mi'): string {
-  const v = units === 'mi' ? km / 1.609 : km;
-  if (v >= 1000) return v.toFixed(0);
-  if (v >= 100) return v.toFixed(0);
-  return v.toFixed(1).replace(/\.0$/, '');
-}
-
 function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
-}
-
-// Helper exposed for callers that need the same shape as YearInStampsScreen.
-export function computeYearStats(activities: Activity[], earned: CatalogStamp[], year: number): YearStats {
-  const yearPrefix = `${year}-`;
-  const yearRuns = activities.filter((a) => a.date.startsWith(yearPrefix));
-  let totalKm = 0;
-  let totalSec = 0;
-  let longestRunKm = 0;
-  let longestRunDate: string | null = null;
-  const cities = new Set<string>();
-  const countries = new Set<string>();
-  for (const r of yearRuns) {
-    totalKm += r.distance;
-    totalSec += r.seconds;
-    if (r.distance > longestRunKm) {
-      longestRunKm = r.distance;
-      longestRunDate = r.date;
-    }
-    if (r.city?.trim()) cities.add(r.city.trim());
-    if (r.country?.trim()) countries.add(r.country.trim());
-  }
-  return {
-    totalKm,
-    totalRuns: yearRuns.length,
-    totalSec,
-    newCities: cities.size,
-    countries: countries.size,
-    continents: countContinents([...countries]),
-    longestRunKm,
-    longestRunDate,
-  };
-}
-
-export function filterEarnedInYear(earned: CatalogStamp[], year: number): CatalogStamp[] {
-  const prefix = `${year}-`;
-  return earned.filter((s) => s.earnedAt?.startsWith(prefix));
 }
