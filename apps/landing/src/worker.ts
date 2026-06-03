@@ -158,7 +158,8 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
   // Cache lives at Cloudflare's edge with up to 1h s-maxage, so without
   // this, old PNGs survive deploys until TTL expiry.
   const cacheKey = new Request(`${SITE_BASE}/u/${handle}/og.png?v=${CACHE_VERSION}`);
-  const cache = caches.default;
+  // caches.default is a Cloudflare Workers global absent from the DOM CacheStorage lib type.
+  const cache = (caches as unknown as { default: Cache }).default;
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
