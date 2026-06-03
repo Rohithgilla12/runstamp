@@ -31,6 +31,11 @@ import {
   finishEncoding,
   startEncoding,
 } from '../../modules/runstamp-video-encoder';
+import { normalizeEvenDims, clampTotalFrames } from '../lib/encodeGuards';
+
+// Single in-flight export — two concurrent captureRef loops on heavy
+// 1080x1920 trees contend for the main thread; reject fast instead.
+let exportInFlight = false;
 
 export interface VideoExportRendererHandle {
   /** Updates the offscreen tree's progress and resolves after paint settles. */
@@ -179,12 +184,18 @@ export interface EncodeOptions {
 export async function encodeChartVideo(options: EncodeOptions): Promise<string> {
   const { renderer, width, height, fps, durationSec, holdSec = 0.5, onProgress, onPhase, shouldCancel } = options;
 
+  if (exportInFlight) {
+    throw new Error('An export is already running. Try again in a moment.');
+  }
+  exportInFlight = true;
+
   const revealFrames = Math.max(1, Math.round(fps * durationSec));
   const holdFrames = Math.max(0, Math.round(fps * holdSec));
-  const totalFrames = revealFrames + holdFrames;
+  const totalFrames = clampTotalFrames(revealFrames + holdFrames);
   onPhase?.('capturing');
 
-  const { sessionId } = await startEncoding({ width, height, fps });
+  const dims = normalizeEvenDims(width, height);
+  const { sessionId } = await startEncoding({ width: dims.width, height: dims.height, fps });
 
   // Remembers the PNG of the final reveal frame so we can feed it to the
   // encoder repeatedly during the hold without re-capturing identical
@@ -209,8 +220,8 @@ export async function encodeChartVideo(options: EncodeOptions): Promise<string> 
         lastFramePath = await captureRef(renderer.viewRef, {
           format: 'png',
           result: 'tmpfile',
-          width,
-          height,
+          width: dims.width,
+          height: dims.height,
         });
       }
 
@@ -234,5 +245,7 @@ export async function encodeChartVideo(options: EncodeOptions): Promise<string> 
     // path is safe.
     await cancelEncoding(sessionId).catch(() => undefined);
     throw e;
+  } finally {
+    exportInFlight = false;
   }
 }
