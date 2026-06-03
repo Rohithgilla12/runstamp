@@ -24,9 +24,7 @@ import { useColors } from './theme';
 import { RunstampMark } from './RunstampMark';
 import { TText, Eyebrow } from './typography';
 import { easeInOut, staggeredT } from './charts/reveal';
-import { computeYearStats, filterEarnedInYear, fmtRecapDist, type YearStats } from '../lib/yearStats';
-
-export { computeYearStats, filterEarnedInYear, type YearStats } from '../lib/yearStats';
+import { fmtRecapDist, type YearStats } from '../lib/yearStats';
 
 export const YIS_CARD_WIDTH = 360;
 export const YIS_CARD_HEIGHT = 640;
