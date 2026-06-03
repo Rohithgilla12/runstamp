@@ -6,6 +6,7 @@ import { Icon } from '../../design/Icon';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
 import { connectStrava, disconnectStrava, getStravaStatus, type StravaStatus } from '../../services/strava';
+import { STRAVA_ENABLED } from '../../config/features';
 import { useAuth } from '../../state/AuthContext';
 import { useHealth } from '../../state/HealthContext';
 import type { RootStackParamList } from '../../nav/types';
@@ -23,6 +24,7 @@ export function ConnectionsScreen({ back }: { back: () => void }) {
   const [stravaBusy, setStravaBusy] = useState(false);
 
   const refreshStravaStatus = useCallback(async () => {
+    if (!STRAVA_ENABLED) return;
     const idToken = await getIdToken();
     if (!idToken) return;
     try {
@@ -138,7 +140,9 @@ export function ConnectionsScreen({ back }: { back: () => void }) {
 
   const healthSub = (() => {
     if (!healthConnected) return 'Read-only — tap to connect';
-    return 'Read-only · runs deduplicated against Strava';
+    return STRAVA_ENABLED
+      ? 'Read-only · runs deduplicated against Strava'
+      : 'Read-only · Apple Watch & iPhone workouts';
   })();
 
   const handleHealthPress = useCallback(async () => {
@@ -175,7 +179,7 @@ export function ConnectionsScreen({ back }: { back: () => void }) {
         <TText variant="serif" style={{ fontSize: 28, lineHeight: 30, letterSpacing: -0.6, color: c.ink }}>Where your runs come from.</TText>
       </View>
       <View style={{ paddingHorizontal: 14, paddingTop: 18, gap: 10 }}>
-        {stravaConnected ? (
+        {STRAVA_ENABLED && (stravaConnected ? (
           // Existing Strava-app-owner accounts keep their working tile until
           // they choose to disconnect — flip the gate below to re-enable for
           // everyone once Strava approves the athlete quota increase.
@@ -216,7 +220,7 @@ export function ConnectionsScreen({ back }: { back: () => void }) {
             statusConnected={false}
             sub="Strava caps new developer apps at 1 athlete. We’ve applied for an increase — you’ll be able to connect as soon as Strava approves it."
           />
-        )}
+        ))}
         <ConnCard
           bg={healthConnected ? '#fb466c' : c.paper2}
           iconNode={<Icon.heart size={24} color={healthConnected ? '#fff' : c.ink2} />}

@@ -16,6 +16,7 @@ import { Eyebrow, TText } from '../design/typography';
 import { Card, SectionHeader } from '../design/atoms';
 import { Icon } from '../design/Icon';
 import { WorldMap, type MapCity } from '../design/WorldMap';
+import { STRAVA_ENABLED } from '../config/features';
 import { countContinents } from '../design/worldGeometry';
 import { PlacesShareModal } from './PlacesShareModal';
 import type { TabProps } from '../nav/types';
@@ -299,7 +300,7 @@ function EmptyPlaces({
         </Eyebrow>
         {!hasActivities ? (
           <TText style={{ fontSize: 14, color: c.ink2, marginTop: 12, lineHeight: 20 }}>
-            No runs yet — connect Strava or Apple Health to start filling your passport.
+            No runs yet — connect {STRAVA_ENABLED ? 'Strava or Apple Health' : 'Apple Health'} to start filling your passport.
           </TText>
         ) : (
           <>

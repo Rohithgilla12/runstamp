@@ -66,11 +66,11 @@ apps/mobile/*.apk
 /generate_stamp_components.mjs
 
 # Internal planning docs — kept locally for the maintainer, NOT shipped to
-# the public repo. The PRD, roadmap, work logs, internal design specs, and
-# Claude-session chat exports stay private. Public-facing pieces of the
-# design system live in .impeccable.md (kept in the repo on purpose).
+# the public repo. The PRD, work logs, internal design specs, and
+# Claude-session chat exports stay private. Public-facing pieces — the
+# roadmap (ROADMAP.md) and design system (.impeccable.md) — are kept in the
+# repo on purpose.
 /runstamp-prd.md
-/ROADMAP.md
 /TONIGHT.md
 /STRAVA_QUOTA.md
 /docs/

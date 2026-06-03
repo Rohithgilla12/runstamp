@@ -23,6 +23,7 @@ import { ConnectionsScreen } from './settings/connections-screen';
 import { PrivacyScreen } from './settings/privacy-screen';
 import { ProfileScreen } from './settings/profile-screen';
 import { computeStreak, formatJoined, nextSurface, SURFACE_LABEL, type Sub } from './settings/helpers';
+import { STRAVA_ENABLED } from '../config/features';
 
 export function SettingsScreen(_props: TabProps<'Profile'>) {
   const c = useColors();
@@ -223,7 +224,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
             value={me?.profilePublic && me?.handle ? `runstamp.app/u/${me.handle}` : me?.handle ? 'Private' : 'Not claimed'}
             onPress={() => setSub('profile')}
           />
-          <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value="Strava · Apple Health" onPress={() => setSub('connections')} />
+          <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value={STRAVA_ENABLED ? 'Strava · Apple Health' : 'Apple Health'} onPress={() => setSub('connections')} />
           <Row icon={<Icon.privacy size={18} color={c.ink2} />} label="Privacy" value="200 m blur · on" onPress={() => setSub('privacy')} />
           <Row
             icon={<Icon.ruler size={18} color={c.ink2} />}

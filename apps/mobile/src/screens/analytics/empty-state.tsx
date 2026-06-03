@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from '../../design/atoms';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
+import { STRAVA_ENABLED } from '../../config/features';
 
 export function EmptyState({ loading }: { loading: boolean }) {
   const c = useColors();
@@ -12,7 +13,7 @@ export function EmptyState({ loading }: { loading: boolean }) {
         Stats start appearing after your first run.
       </TText>
       <TText style={{ fontSize: 13, color: c.ink3, marginTop: 8, lineHeight: 18 }}>
-        Connect Strava or Apple Health from Profile → Connections.
+        Connect {STRAVA_ENABLED ? 'Strava or Apple Health' : 'Apple Health'} from Profile → Connections.
       </TText>
     </Card>
   );

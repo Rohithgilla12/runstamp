@@ -24,7 +24,7 @@ const googleWebClientId =
 const config: ExpoConfig = {
   name: 'Runstamp',
   slug: 'runstamp',
-  version: '0.1.0',
+  version: '1.0.0',
   orientation: 'portrait',
   scheme: 'runstamp',
   userInterfaceStyle: 'automatic',
@@ -73,19 +73,44 @@ const config: ExpoConfig = {
         'Runstamp reads from your Photos so you can pin a real run photo to your share card. We never upload them.',
       NSPhotoLibraryAddUsageDescription:
         'Runstamp saves your finished share card to your camera roll so you can post it to Instagram, WhatsApp, or X.',
-      // `fetch` is what HKObserverQuery's background delivery needs;
-      // `remote-notification` lets Strava webhook → APNs silent push wake
-      // the app for a sync. `processing` was here for BGTaskScheduler but
-      // we don't schedule BGProcessingTaskRequests in M1 — and including
-      // it without BGTaskSchedulerPermittedIdentifiers is an App Store
-      // Connect 409 (validator error 8d004b9a).
-      UIBackgroundModes: ['fetch', 'remote-notification'],
+      // `fetch` is what HKObserverQuery's background delivery needs. We dropped
+      // `remote-notification` for the Apple-Health-only launch: it only existed
+      // for the Strava webhook → APNs silent push, which is deferred with
+      // Strava (stamp-earned pushes are normal alerts and don't need it).
+      // Restore it alongside STRAVA_ENABLED. `processing` stays out — without
+      // BGTaskSchedulerPermittedIdentifiers it's an App Store Connect 409
+      // (validator error 8d004b9a).
+      UIBackgroundModes: ['fetch'],
       // Only standard crypto (HTTPS / Apple Sign-In) — skips the App Store Connect
       // export-compliance prompt on every TestFlight upload.
       ITSAppUsesNonExemptEncryption: false,
       // Needed so `react-native-share` can canOpenURL the instagram-stories
       // and instagram schemes for the IG Stories direct-share flow.
       LSApplicationQueriesSchemes: ['instagram-stories', 'instagram']
+    },
+    // Apple required-reason API manifest (PrivacyInfo.xcprivacy). These four
+    // categories cover the restricted APIs that React Native, Expo, and the
+    // native modules reach for. Declaring the reasons keeps App Store uploads
+    // free of the ITMS-91053 "missing API declaration" notices.
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1']
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1']
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1']
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['E174.1']
+        }
+      ]
     }
   },
   android: {

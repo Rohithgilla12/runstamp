@@ -4,6 +4,7 @@ import { Icon } from '../../design/Icon';
 import { PostmarkMark } from '../../design/SunMark';
 import { useColors } from '../../design/theme';
 import { Eyebrow, TText } from '../../design/typography';
+import { STRAVA_ENABLED } from '../../config/features';
 
 export function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect: () => void }) {
   const c = useColors();
@@ -21,7 +22,9 @@ export function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect:
           Connect a source to{'\n'}stamp your first run.
         </TText>
         <TText style={{ fontSize: 13, color: c.onInk2, marginTop: 10, lineHeight: 18 }}>
-          Runstamp reads from Strava or Apple Health. Read-only — we never write back.
+          {STRAVA_ENABLED
+            ? 'Runstamp reads from Strava or Apple Health. Read-only — we never write back.'
+            : 'Runstamp reads from Apple Health. Read-only — we never write back.'}
         </TText>
         <Pressable
           onPress={onConnect}
@@ -36,7 +39,9 @@ export function EmptyHome({ loading, onConnect }: { loading: boolean; onConnect:
         </Pressable>
       </View>
       <View style={{ paddingHorizontal: 4, gap: 12 }}>
-        <BulletRow icon="strava" label="Strava — fastest path. Pulls your whole history once you connect." color="#fc4c02" />
+        {STRAVA_ENABLED && (
+          <BulletRow icon="strava" label="Strava — fastest path. Pulls your whole history once you connect." color="#fc4c02" />
+        )}
         <BulletRow icon="health" label="Apple Health — Apple Watch users. 90-day backfill on first sync." color="#fb466c" />
       </View>
     </View>

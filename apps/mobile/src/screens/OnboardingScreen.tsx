@@ -12,6 +12,7 @@ import { useAuth } from '../state/AuthContext';
 import { useHealth } from '../state/HealthContext';
 import { connectStrava, getStravaImportStatus, type ImportStatus } from '../services/strava';
 import { isHealthKitAvailable } from '../services/healthkit';
+import { STRAVA_ENABLED } from '../config/features';
 
 type Step = 'splash' | 'signin' | 'primer' | 'sync' | 'health';
 type SyncPhase = 'idle' | 'connecting' | 'syncing' | 'done';
@@ -37,7 +38,7 @@ export function OnboardingScreen() {
     <View style={{ flex: 1, backgroundColor: c.paper, paddingTop: insets.top + 24 }}>
       {step === 'splash'  && <Splash next={() => setStep('signin')} />}
       {step === 'signin'  && <SignIn back={() => setStep('splash')} next={() => setStep('primer')} />}
-      {step === 'primer'  && <Primer back={() => setStep('signin')} next={() => setStep('sync')} />}
+      {step === 'primer'  && <Primer back={() => setStep('signin')} next={STRAVA_ENABLED ? () => setStep('sync') : afterStrava} />}
       {step === 'sync'    && <ConnectStrava back={() => setStep('primer')} done={afterStrava} />}
       {step === 'health'  && <ConnectHealth done={() => setHasOnboarded(true)} />}
     </View>
@@ -50,7 +51,7 @@ function Splash({ next }: { next: () => void }) {
     <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 40, paddingBottom: 36, justifyContent: 'space-between' }}>
       <View>
         <SunMark size={96} />
-        <Eyebrow style={{ marginTop: 48, marginBottom: 14 }}>RUNSTAMP · v0.1</Eyebrow>
+        <Eyebrow style={{ marginTop: 48, marginBottom: 14 }}>RUNSTAMP · v1.0</Eyebrow>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
           <TText variant="serif" style={{ fontSize: 50, lineHeight: 54, letterSpacing: -1.2, color: c.ink }}>
             Make your runs{'\n'}
@@ -158,7 +159,7 @@ function SignIn({ back, next }: { back: () => void; next: () => void }) {
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 32, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
       <Pressable onPress={back} style={{ marginBottom: 24 }}><Icon.back size={22} color={c.ink2} /></Pressable>
-      <Eyebrow style={{ marginBottom: 10 }}>STEP 01 · 03</Eyebrow>
+      <Eyebrow style={{ marginBottom: 10 }}>STEP 01 · {STRAVA_ENABLED ? '03' : '02'}</Eyebrow>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         <TText variant="serif" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -0.8 }}>Sign in to </TText>
         <TText variant="serifItalic" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -0.8, color: c.accent }}>Runstamp</TText>
@@ -283,7 +284,7 @@ function Primer({ back, next }: { back: () => void; next: () => void }) {
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 32, paddingBottom: 32, flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <Pressable onPress={back} style={{ marginBottom: 24 }}><Icon.back size={22} color={c.ink2} /></Pressable>
-      <Eyebrow style={{ marginBottom: 10 }}>STEP 02 · 03</Eyebrow>
+      <Eyebrow style={{ marginBottom: 10 }}>STEP 02 · {STRAVA_ENABLED ? '03' : '02'}</Eyebrow>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         <TText variant="serif" style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.6 }}>Connect your </TText>
         <TText variant="serifItalic" style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.6 }}>runs</TText>
@@ -294,13 +295,15 @@ function Primer({ back, next }: { back: () => void; next: () => void }) {
       </TText>
 
       <View style={{ gap: 12 }}>
-        <ConnectRow
-          color="#fc4c02"
-          iconNode={<Icon.strava size={26} color="#fff" />}
-          title="Strava"
-          desc="Activities, segments, splits. Webhook-driven — runs land within seconds."
-          required
-        />
+        {STRAVA_ENABLED && (
+          <ConnectRow
+            color="#fc4c02"
+            iconNode={<Icon.strava size={26} color="#fff" />}
+            title="Strava"
+            desc="Activities, segments, splits. Webhook-driven — runs land within seconds."
+            required
+          />
+        )}
         <ConnectRow
           color="#fb466c"
           iconNode={<Icon.heart size={22} color="#fff" />}

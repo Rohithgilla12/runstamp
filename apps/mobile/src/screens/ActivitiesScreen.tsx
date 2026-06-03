@@ -12,6 +12,7 @@ import { Eyebrow, TText } from '../design/typography';
 import { FilterChip } from '../design/FilterChip';
 import { Icon } from '../design/Icon';
 import type { RootStackProps } from '../nav/types';
+import { STRAVA_ENABLED } from '../config/features';
 
 type SourceFilter = ActivitySource | 'all';
 
@@ -27,7 +28,9 @@ const RANGES: Range[] = [
 
 const SOURCES: { label: string; value: SourceFilter }[] = [
   { label: 'All sources', value: 'all' },
-  { label: 'Strava', value: 'strava' },
+  ...(STRAVA_ENABLED
+    ? [{ label: 'Strava', value: 'strava' } as { label: string; value: SourceFilter }]
+    : []),
   { label: 'Apple Health', value: 'apple_health' },
   { label: 'Manual', value: 'manual' },
 ];
@@ -249,7 +252,9 @@ export function ActivitiesScreen({ navigation }: RootStackProps<'Activities'>) {
                 ? 'Fetching your runs…'
                 : filtersActive
                   ? 'Try widening your filters.'
-                  : 'Connect Strava or Apple Health to sync.'}
+                  : STRAVA_ENABLED
+                    ? 'Connect Strava or Apple Health to sync.'
+                    : 'Connect Apple Health to sync.'}
             </TText>
             {filtersActive && (
               <Pressable onPress={reset} hitSlop={8} style={{ marginTop: 12 }}>
