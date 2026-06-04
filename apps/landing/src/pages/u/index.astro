@@ -1022,15 +1022,16 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       line:   "rgba(20,17,13,0.10)",
     };
 
-    // Pre-mixed moss intensities for the heatmap. color-mix in oklch
-    // against paper-2 gives perceptually-uniform steps; baking the values
-    // in keeps it Safari-safe inside an SVG fill attribute.
+    // Moss tint-ramp for the heatmap, baked as hex so it's Safari-safe
+    // inside an SVG fill attribute. Every active step shares the brand
+    // moss hue (OKLCH H≈136); only lightness and chroma vary, so the light
+    // cells read as true moss rather than a cooler GitHub-graph sage.
     const HEATMAP_TINTS = [
       "#ebe3d3", // 0 km — paper-2 (rest day still has presence)
-      "#bfc6a9", // <5 km
-      "#94a880", // <10 km
-      "#6a8b5a", // <20 km
-      "#4a6b3a", // 20+ km
+      "#b8c6b3", // <5 km
+      "#92a788", // <10 km
+      "#6d8960", // <20 km
+      "#4a6b3a", // 20+ km — brand moss
     ];
 
     // Two-letter ISO-like code for the postmark country band. We have the
