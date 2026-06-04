@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: italic;
+        font-weight: 400;
+        src: url("fonts/InstrumentSerif_400Regular_Italic.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: normal;
+        font-weight: 400;
+        src: url("fonts/InstrumentSerif_400Regular.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Geist";
+        font-weight: 400;
+        src: url("fonts/Geist_400Regular.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Geist";
+        font-weight: 500;
+        src: url("fonts/Geist_500Medium.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Geist";
+        font-weight: 600;
+        src: url("fonts/Geist_600SemiBold.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Geist";
+        font-weight: 700;
+        src: url("fonts/Geist_700Bold.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-weight: 400;
+        src: url("fonts/JetBrainsMono_400Regular.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-weight: 500;
+        src: url("fonts/JetBrainsMono_500Medium.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        font-weight: 600;
+        src: url("fonts/JetBrainsMono_600SemiBold.ttf") format("truetype");
+      }
+      :root {
+        --paper: #f3ede2;
+        --paper2: #ebe3d3;
+        --paper3: #e2d8c4;
+        --ink: #14110d;
+        --ink2: #3a342b;
+        --ink3: #75695a;
+        --solar: #e85d2f;
+        --moss: #4a6b3a;
+        --line: rgba(20, 17, 13, 0.12);
+        --line2: rgba(20, 17, 13, 0.07);
+        --label: #4a4135; /* AA-safe small-label ink (darker than ink3 hints) */
+        --earned: #3c5a2e; /* deep moss — passes AA on cream for the earned mark */
+        --foil: #c8a24a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--paper);
+        font-family: "Geist", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .serif {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+      }
+      .mono {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        /* paper canvas + radial vignette + grain (radial only, no banding) */
+        background-color: var(--paper);
+        background-image:
+          radial-gradient(120% 95% at 50% 18%, rgba(255, 250, 240, 0.9) 0%, rgba(243, 237, 226, 0) 55%),
+          radial-gradient(130% 120% at 50% 108%, rgba(20, 17, 13, 0.08) 0%, rgba(20, 17, 13, 0) 60%);
+      }
+      #scene1 { z-index: 1; }
+      #scene2 { z-index: 2; opacity: 0; }
+      #scene3 { z-index: 3; opacity: 0; }
+      #scene4 { z-index: 4; opacity: 0; }
+      #scene5 { z-index: 5; opacity: 0; }
+
+      /* paper grain overlay — deterministic feTurbulence */
+      .grain {
+        position: absolute;
+        inset: -40px;
+        z-index: 40;
+        pointer-events: none;
+        opacity: 0.5;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      }
+
+      .eyebrow {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 24px;
+        letter-spacing: 5px;
+        color: var(--ink3);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .eyebrow .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--solar);
+        display: inline-block;
+      }
+      .pagefoot {
+        position: absolute;
+        bottom: 96px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 22px;
+        letter-spacing: 6px;
+        color: var(--label);
+      }
+      .viamark {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 17px;
+        letter-spacing: 2.4px;
+        color: var(--ink3);
+      }
+      .viamark .vd {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--solar);
+      }
+      .ghost {
+        position: absolute;
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        color: var(--ink);
+        opacity: 0.05;
+        white-space: nowrap;
+        pointer-events: none;
+        user-select: none;
+        z-index: 0;
+      }
+      .reg {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+      }
+      .reg::before,
+      .reg::after {
+        content: "";
+        position: absolute;
+        background: var(--solar);
+      }
+      .reg::before { left: 50%; top: 0; width: 1.5px; height: 100%; transform: translateX(-50%); }
+      .reg::after { top: 50%; left: 0; height: 1.5px; width: 100%; transform: translateY(-50%); }
+
+      /* perforation strip (decorative) */
+      .perfs { display: flex; gap: 0; align-items: center; }
+      .perf { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px rgba(20,17,13,0.16); }
+
+      /* ---- scene 1 ---- */
+      #s1-wrap {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 200px 120px;
+      }
+      #s1-eyebrow { position: absolute; top: 150px; left: 120px; }
+      #postmark { width: 430px; height: 430px; margin-bottom: 70px; }
+      #postmark .pm-svg { filter: blur(0.35px); }
+      #s1-head {
+        font-size: 104px;
+        line-height: 0.98;
+        color: var(--ink);
+        text-align: center;
+      }
+      #s1-rule {
+        height: 4px;
+        width: 150px;
+        background: var(--solar);
+        margin-top: 44px;
+        transform-origin: center;
+      }
+      #s1-sub {
+        margin-top: 34px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 25px;
+        letter-spacing: 5px;
+        color: var(--ink2);
+        text-transform: uppercase;
+      }
+
+      /* ---- scene 2 ---- */
+      #s2-eyebrow { position: absolute; top: 150px; left: 120px; }
+      #s2-head {
+        position: absolute;
+        top: 250px;
+        left: 120px;
+        width: 840px;
+      }
+      #s2-head .l1 { font-size: 76px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.02; }
+      #s2-head .l2 { font-size: 116px; color: var(--ink); line-height: 0.96; margin-top: 6px; }
+      #s2-card-wrap {
+        position: absolute;
+        top: 560px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 720px;
+      }
+      .stampcard {
+        position: relative;
+        width: 720px;
+        background: var(--paper2);
+        border: 2px solid var(--ink);
+        padding: 0;
+        box-shadow: 0 40px 90px -30px rgba(20, 17, 13, 0.4), 0 6px 0 0 rgba(20,17,13,0.06);
+      }
+      .stampcard .inner-rule { position: absolute; inset: 9px; border: 1px solid rgba(20,17,13,0.35); pointer-events: none; }
+      .sc-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 30px 34px 0;
+      }
+      .sc-tier {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 19px;
+        letter-spacing: 3px;
+        color: var(--ink);
+        border: 1.5px solid var(--ink);
+        padding: 6px 14px;
+        text-transform: uppercase;
+      }
+      .sc-denom {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 58px;
+        color: var(--ink);
+        line-height: 0.8;
+      }
+      .sc-denom span { font-size: 22px; }
+      .sc-route { width: 100%; height: 300px; display: block; }
+      .sc-name {
+        padding: 4px 34px 0;
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 50px;
+        color: var(--ink);
+      }
+      .sc-stats {
+        display: flex;
+        gap: 0;
+        padding: 18px 34px 26px;
+        border-top: 1px solid var(--line);
+        margin-top: 14px;
+      }
+      .sc-stat { flex: 1; }
+      .sc-stat + .sc-stat { border-left: 1px solid var(--line); padding-left: 22px; }
+      .sc-stat .v {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 38px;
+        font-weight: 600;
+        color: var(--ink);
+        letter-spacing: -1px;
+      }
+      .sc-stat .k {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 2px;
+        color: var(--label);
+        text-transform: uppercase;
+        margin-top: 5px;
+      }
+      .sc-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 34px 26px;
+      }
+      .sc-pm {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 16px;
+        letter-spacing: 2px;
+        color: var(--ink2);
+      }
+      .perf-edge { position: absolute; left: 0; width: 100%; height: 18px; display: flex; justify-content: space-around; }
+      .perf-edge.top { top: -9px; }
+      .perf-edge.bot { bottom: -9px; }
+      .perf-edge.lft, .perf-edge.rgt { top: 0; width: 18px; height: 100%; flex-direction: column; }
+      .perf-edge.lft { left: -9px; }
+      .perf-edge.rgt { right: -9px; left: auto; }
+      .pdot { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px rgba(20,17,13,0.18); }
+
+      /* ---- scene 3 ---- */
+      #s3-eyebrow { position: absolute; top: 150px; left: 120px; }
+      #s3-head {
+        position: absolute;
+        top: 234px;
+        left: 120px;
+        width: 840px;
+        font-size: 112px;
+        line-height: 0.95;
+        color: var(--ink);
+      }
+      #s3-stat {
+        position: absolute;
+        top: 470px;
+        left: 120px;
+        display: flex;
+        gap: 56px;
+      }
+      #s3-stat .blk .n {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 72px;
+        font-weight: 600;
+        color: var(--ink);
+        letter-spacing: -2px;
+        line-height: 1;
+      }
+      #s3-stat .blk .n.accent { color: var(--solar); }
+      #s3-stat .blk .lbl {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 20px;
+        letter-spacing: 3px;
+        color: var(--ink3);
+        text-transform: uppercase;
+        margin-top: 8px;
+      }
+      #s3-grid {
+        position: absolute;
+        top: 700px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 840px;
+        height: 900px;
+      }
+      .citypm {
+        position: absolute;
+        width: 196px;
+        height: 196px;
+        border-radius: 50%;
+        border: 2px solid var(--ink);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(243, 237, 226, 0.4);
+      }
+      .citypm::before {
+        content: "";
+        position: absolute;
+        inset: 9px;
+        border-radius: 50%;
+        border: 1px solid rgba(20, 17, 13, 0.4);
+      }
+      .citypm.today { border-color: var(--solar); color: var(--solar); }
+      .citypm.today::before { border-color: rgba(232, 93, 47, 0.55); }
+      .citypm .cy {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 40px;
+        color: inherit;
+        line-height: 1;
+      }
+      .citypm:not(.today) .cy { color: var(--ink); }
+      .citypm .cd {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 1.5px;
+        color: var(--label);
+        margin-top: 8px;
+      }
+
+      /* ---- scene 4 ---- */
+      #s4-eyebrow { position: absolute; top: 150px; left: 120px; }
+      #s4-head {
+        position: absolute;
+        top: 238px;
+        left: 120px;
+        width: 860px;
+      }
+      #s4-head .h1 { font-size: 96px; line-height: 0.96; color: var(--ink); }
+      #s4-count {
+        position: absolute;
+        top: 470px;
+        left: 120px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 24px;
+        letter-spacing: 3px;
+        color: var(--ink2);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      #s4-count .pop { color: var(--solar); }
+      #s4-grid {
+        position: absolute;
+        top: 580px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 840px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+      }
+      .stamptile {
+        position: relative;
+        height: 290px;
+        background: var(--paper2);
+        border: 2px solid var(--ink);
+        padding: 26px 26px 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+      }
+      .stamptile.locked { border-color: rgba(20, 17, 13, 0.28); background: rgba(235, 227, 211, 0.45); }
+      .stamptile .ttier {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 16px;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: var(--ink3);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .stamptile .ttier .td { width: 9px; height: 9px; border-radius: 50%; }
+      .td.common { background: var(--ink3); }
+      .td.rare { background: var(--moss); }
+      .td.mythic { background: var(--foil); }
+      .stamptile .tname {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 46px;
+        line-height: 0.98;
+        color: var(--ink);
+      }
+      .stamptile.locked .tname { color: var(--ink3); }
+      .stamptile .tdesc {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 1px;
+        color: var(--label);
+      }
+      .stamptile .earned {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 1px;
+        color: var(--earned);
+      }
+      .stamptile .locktag {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 14px;
+        letter-spacing: 2px;
+        color: var(--ink3);
+      }
+      .foilband {
+        position: absolute;
+        top: 0;
+        left: -60%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(
+          100deg,
+          rgba(200, 162, 74, 0) 0%,
+          rgba(200, 162, 74, 0.22) 40%,
+          rgba(243, 224, 168, 0.4) 50%,
+          rgba(60, 110, 140, 0.18) 62%,
+          rgba(200, 162, 74, 0) 100%
+        );
+        pointer-events: none;
+      }
+
+      /* ---- scene 5 ---- */
+      #s5-wrap {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 200px 120px;
+      }
+      #s5-mark { width: 132px; height: 132px; margin-bottom: 50px; }
+      #s5-word {
+        font-size: 156px;
+        color: var(--ink);
+        line-height: 0.9;
+      }
+      #s5-word .dotchar { color: var(--ink); }
+      #s5-tag {
+        margin-top: 28px;
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 52px;
+        color: var(--ink2);
+      }
+      #s5-rule { height: 3px; width: 120px; background: var(--solar); margin-top: 46px; }
+      #s5-cta {
+        margin-top: 40px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 25px;
+        letter-spacing: 4px;
+        color: var(--ink2);
+        text-transform: uppercase;
+      }
+      #s5-date {
+        position: absolute;
+        bottom: 150px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 20px;
+        letter-spacing: 5px;
+        color: var(--ink3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #s5-date .dd { width: 9px; height: 9px; border-radius: 50%; background: var(--solar); }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1080"
+      data-height="1920"
+      data-start="0"
+      data-duration="18.5"
+    >
+      <!-- ============ SCENE 1 — the stamp lands ============ -->
+      <div id="scene1" class="scene">
+        <div class="ghost" id="s1-ghost" style="bottom: 60px; left: -40px; font-size: 360px;">stamped</div>
+        <div class="reg" id="s1-reg" style="top: 150px; right: 120px;"></div>
+        <div id="s1-eyebrow" class="eyebrow"><span class="dot"></span>RUNSTAMP · RUN PASSPORT</div>
+        <div id="s1-wrap">
+          <div id="postmark">
+            <svg class="pm-svg" viewBox="0 0 430 430" width="430" height="430">
+              <defs>
+                <path id="ringpath" d="M215,215 m-160,0 a160,160 0 1,1 320,0 a160,160 0 1,1 -320,0" />
+              </defs>
+              <circle cx="215" cy="215" r="186" fill="none" stroke="#14110d" stroke-width="3" opacity="0.92" />
+              <circle cx="215" cy="215" r="164" fill="none" stroke="#14110d" stroke-width="1.5" opacity="0.5" />
+              <text font-family="JetBrains Mono, monospace" font-size="22" letter-spacing="5" fill="#14110d" opacity="0.9">
+                <textPath href="#ringpath" startOffset="0">RUNSTAMP · RUN PASSPORT · MMXXVI · </textPath>
+              </text>
+              <!-- center mark: a small route squiggle -->
+              <path d="M150,235 C170,200 195,250 215,215 S262,185 285,215" fill="none" stroke="#14110d" stroke-width="4" stroke-linecap="round" opacity="0.9" />
+              <circle cx="150" cy="235" r="6" fill="#14110d" />
+              <circle cx="285" cy="215" r="7" fill="#e85d2f" />
+              <text x="215" y="168" text-anchor="middle" font-family="Instrument Serif, serif" font-style="italic" font-size="34" fill="#14110d">est.</text>
+            </svg>
+          </div>
+          <!-- cancellation wavy lines -->
+          <svg id="s1-cancel" width="640" height="60" viewBox="0 0 640 60" style="position:absolute; top: 330px; pointer-events:none;">
+            <path d="M0,16 Q80,4 160,16 T320,16 T480,16 T640,16" fill="none" stroke="#14110d" stroke-width="3" opacity="0.55" />
+            <path d="M0,30 Q80,18 160,30 T320,30 T480,30 T640,30" fill="none" stroke="#14110d" stroke-width="3" opacity="0.55" />
+            <path d="M0,44 Q80,32 160,44 T320,44 T480,44 T640,44" fill="none" stroke="#14110d" stroke-width="3" opacity="0.55" />
+          </svg>
+          <div id="s1-head" class="serif">Collect a stamp<br />for every run.</div>
+          <div id="s1-rule"></div>
+          <div id="s1-sub">a passport for everywhere you run</div>
+        </div>
+        <div class="grain" data-layout-ignore></div>
+      </div>
+
+      <!-- ============ SCENE 2 — the keepsake ============ -->
+      <div id="scene2" class="scene" data-layout-allow-overflow>
+        <div class="ghost" id="s2-ghost" style="top: 40px; right: -60px; font-size: 300px;">proof</div>
+        <div id="s2-eyebrow" class="eyebrow"><span class="dot"></span>THE KEEPSAKE</div>
+        <div id="s2-head">
+          <div class="l1">Sub-3:45 marathon.</div>
+          <div class="l2 serif">Stamped.</div>
+        </div>
+        <div id="s2-card-wrap">
+          <div class="stampcard">
+            <div class="perf-edge top" id="pe-top"></div>
+            <div class="perf-edge bot" id="pe-bot"></div>
+            <div class="inner-rule"></div>
+            <div class="sc-top">
+              <div class="sc-tier">RARE</div>
+              <div class="sc-denom">42<span>.2</span></div>
+            </div>
+            <svg class="sc-route" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet">
+              <path id="route-ghost" d="M70,235 C150,120 200,250 280,150 S400,60 470,170 T620,90"
+                fill="none" stroke="#14110d" stroke-width="2" opacity="0.12" />
+              <path id="route-line" d="M70,235 C150,120 200,250 280,150 S400,60 470,170 T620,90"
+                fill="none" stroke="#e85d2f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+              <circle id="route-start" cx="70" cy="235" r="8" fill="#14110d" />
+              <circle id="route-end" cx="620" cy="90" r="10" fill="#e85d2f" />
+            </svg>
+            <div class="sc-name serif">First marathon · stamped</div>
+            <div class="sc-stats">
+              <div class="sc-stat"><div class="v mono">3:41:08</div><div class="k">chip time</div></div>
+              <div class="sc-stat"><div class="v mono">5:14</div><div class="k">avg /km</div></div>
+              <div class="sc-stat"><div class="v mono">142</div><div class="k">avg bpm</div></div>
+            </div>
+            <div class="sc-foot">
+              <div class="sc-pm">MUMBAI · 02 JUN 2026</div>
+              <div class="viamark"><span class="vd"></span>VIA RUNSTAMP</div>
+            </div>
+          </div>
+        </div>
+        <div class="grain" data-layout-ignore></div>
+      </div>
+
+      <!-- ============ SCENE 3 — the bigger picture ============ -->
+      <div id="scene3" class="scene" data-layout-allow-overflow>
+        <div class="ghost" id="s3-ghost" style="top: 1180px; left: -40px; font-size: 320px;">passport</div>
+        <div id="s3-eyebrow" class="eyebrow"><span class="dot"></span>RUN PASSPORT</div>
+        <div id="s3-head" class="serif">The bigger picture.</div>
+        <div id="s3-stat">
+          <div class="blk"><div class="n mono" id="cnt-cities">47</div><div class="lbl">cities</div></div>
+          <div class="blk"><div class="n mono accent" id="cnt-countries">6</div><div class="lbl">countries</div></div>
+          <div class="blk"><div class="n mono">312</div><div class="lbl">runs</div></div>
+        </div>
+        <div id="s3-grid">
+          <svg id="s3-arc" width="840" height="900" viewBox="0 0 840 900" style="position:absolute; inset:0; pointer-events:none;">
+            <path id="flight" d="M150,150 Q470,40 690,470" fill="none" stroke="#e85d2f" stroke-width="2.5"
+              stroke-dasharray="3 10" stroke-linecap="round" opacity="0.85" />
+            <circle id="flight-dot" cx="150" cy="150" r="6" fill="#e85d2f" />
+          </svg>
+          <div class="citypm today" style="top: 70px; left: 60px;"><div class="cy">MUM</div><div class="cd">02 JUN</div></div>
+          <div class="citypm" style="top: 30px; left: 560px;"><div class="cy">TYO</div><div class="cd">11 APR</div></div>
+          <div class="citypm" style="top: 320px; left: 320px;"><div class="cy">BER</div><div class="cd">28 SEP</div></div>
+          <div class="citypm" style="top: 410px; left: 620px;"><div class="cy">LIS</div><div class="cd">05 MAR</div></div>
+          <div class="citypm" style="top: 600px; left: 60px;"><div class="cy">NYC</div><div class="cd">17 NOV</div></div>
+          <div class="citypm" style="top: 670px; left: 560px;"><div class="cy">BLR</div><div class="cd">22 JAN</div></div>
+        </div>
+        <div class="pagefoot">— 03 —</div>
+        <div class="grain" data-layout-ignore></div>
+      </div>
+
+      <!-- ============ SCENE 4 — the catalogue ============ -->
+      <div id="scene4" class="scene">
+        <div class="ghost" id="s4-ghost" style="bottom: 80px; right: -30px; font-size: 300px;">collect</div>
+        <div id="s4-eyebrow" class="eyebrow"><span class="dot"></span>THE CATALOGUE</div>
+        <div id="s4-head"><div class="h1 serif">Earned, not<br />grinded.</div></div>
+        <div id="s4-count"><span>18 stamps logged</span><span>·</span><span class="pop">3 mythic</span></div>
+        <div id="s4-grid">
+          <div class="stamptile" data-tile>
+            <div class="earned">✦ earned</div>
+            <div class="ttier"><span class="td rare"></span>rare</div>
+            <div class="tname">First<br />marathon</div>
+            <div class="tdesc">42.2 KM</div>
+          </div>
+          <div class="stamptile" data-tile>
+            <div class="foilband" id="foil-1" data-layout-allow-overflow></div>
+            <div class="earned">✦ earned</div>
+            <div class="ttier"><span class="td mythic"></span>mythic</div>
+            <div class="tname">Sub-3<br />marathon</div>
+            <div class="tdesc">UNDER 3:00:00</div>
+          </div>
+          <div class="stamptile locked" data-tile>
+            <div class="locktag">— locked</div>
+            <div class="ttier"><span class="td mythic"></span>mythic</div>
+            <div class="tname">Boston<br />qualifier</div>
+            <div class="tdesc">BQ STANDARD</div>
+          </div>
+          <div class="stamptile locked" data-tile>
+            <div class="locktag">— locked</div>
+            <div class="ttier"><span class="td mythic"></span>mythic</div>
+            <div class="tname">50K<br />ultra</div>
+            <div class="tdesc">SINGLE RUN</div>
+          </div>
+        </div>
+        <div class="grain" data-layout-ignore></div>
+      </div>
+
+      <!-- ============ SCENE 5 — Runstamp ============ -->
+      <div id="scene5" class="scene">
+        <div class="ghost" id="s5-ghost" style="top: 120px; left: 50%; transform: translateX(-50%); font-size: 300px;">2026</div>
+        <div id="s5-wrap">
+          <svg id="s5-mark" viewBox="0 0 132 132" width="132" height="132">
+            <circle cx="66" cy="66" r="58" fill="none" stroke="#14110d" stroke-width="3" />
+            <circle cx="66" cy="66" r="49" fill="none" stroke="#14110d" stroke-width="1.2" opacity="0.5" />
+            <path d="M40,80 C52,56 66,90 80,60 S98,52 104,66" fill="none" stroke="#14110d" stroke-width="4" stroke-linecap="round" />
+            <circle cx="104" cy="66" r="6" fill="#e85d2f" />
+          </svg>
+          <div id="s5-word" class="serif">Runstamp<span class="dotchar">.</span></div>
+          <div id="s5-tag">Collect a stamp for every run.</div>
+          <div id="s5-rule"></div>
+          <div id="s5-cta">Free &amp; open source · iOS + Android</div>
+        </div>
+        <div id="s5-date"><span class="dd"></span>STAMPED · 02 JUN 2026</div>
+        <div class="grain" data-layout-ignore></div>
+      </div>
+    </div>
+
+    <script>
+      // ---- build decorative repeats synchronously (no Math.random / Date) ----
+      (function buildDecor() {
+        // perforation rows on the share card (top + bottom)
+        var pcount = 20;
+        ["pe-top", "pe-bot"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          for (var i = 0; i < pcount; i++) {
+            var d = document.createElement("div");
+            d.className = "pdot";
+            el.appendChild(d);
+          }
+        });
+      })();
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      var EASE_OUT = "power3.out";
+
+      /* ================= SCENE 1 (0 – 3.4) ================= */
+      tl.fromTo("#s1-eyebrow", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 0.15);
+      tl.fromTo("#s1-reg", { opacity: 0, scale: 0.4 }, { opacity: 0.9, scale: 1, duration: 0.4, ease: "back.out(2)" }, 0.3);
+      // postmark STAMPS down
+      tl.fromTo(
+        "#postmark",
+        { opacity: 0, scale: 1.55, rotation: -11 },
+        { opacity: 1, scale: 1, rotation: -3, duration: 0.42, ease: "power4.out" },
+        0.28
+      );
+      // settle bounce
+      tl.to("#postmark", { scale: 1.03, duration: 0.1, ease: "power1.inOut" }, 0.7);
+      tl.to("#postmark", { scale: 1, duration: 0.16, ease: "sine.out" }, 0.8);
+      // cancellation lines streak across
+      tl.fromTo("#s1-cancel", { opacity: 0, scaleX: 0, transformOrigin: "left center" }, { opacity: 1, scaleX: 1, duration: 0.45, ease: "power3.out" }, 0.62);
+      // headline lines
+      tl.fromTo("#s1-head", { opacity: 0, y: 46 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.78);
+      tl.fromTo("#s1-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, 1.12);
+      tl.fromTo("#s1-sub", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.3);
+      tl.fromTo("#s1-ghost", { opacity: 0 }, { opacity: 0.05, duration: 0.9, ease: "power1.out" }, 0.4);
+      // ambient: postmark slow breathe + ghost drift (seekable)
+      tl.to("#postmark", { rotation: -1.4, duration: 2.2, ease: "sine.inOut" }, 1.1);
+      tl.to("#s1-ghost", { x: 26, duration: 2.6, ease: "sine.inOut" }, 0.9);
+
+      /* T1 — blur crossfade @ 3.4 */
+      tl.to("#scene1", { filter: "blur(12px)", scale: 1.03, opacity: 0, duration: 0.5, ease: "power2.inOut" }, 3.4);
+      tl.fromTo(
+        "#scene2",
+        { filter: "blur(12px)", scale: 0.97, opacity: 0 },
+        { filter: "blur(0px)", scale: 1, opacity: 1, duration: 0.5, ease: "power2.inOut", immediateRender: false },
+        3.5
+      );
+
+      /* ================= SCENE 2 (3.6 – 7.0) ================= */
+      tl.fromTo("#s2-eyebrow", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 3.7);
+      tl.fromTo("#s2-head .l1", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" }, 3.85);
+      tl.fromTo("#s2-head .l2", { opacity: 0, y: 40, x: -10 }, { opacity: 1, y: 0, x: 0, duration: 0.6, ease: "power3.out" }, 4.0);
+      // card slides up + settles (entrance on wrapper)
+      tl.fromTo(
+        "#s2-card-wrap",
+        { opacity: 0, y: 90, scale: 0.93 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.72, ease: "power3.out" },
+        4.05
+      );
+      // route draws on
+      tl.set("#route-line", { strokeDasharray: 820, strokeDashoffset: 820 }, 4.4);
+      tl.to("#route-line", { strokeDashoffset: 0, duration: 1.1, ease: "power1.inOut" }, 4.5);
+      tl.fromTo("#route-end", { scale: 0, transformOrigin: "center" }, { scale: 1, duration: 0.4, ease: "back.out(2.4)" }, 5.5);
+      // stats stagger up
+      tl.fromTo(".sc-stat", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.1 }, 4.7);
+      tl.fromTo(".sc-foot > *", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power1.out", stagger: 0.12 }, 5.2);
+      tl.fromTo("#s2-ghost", { opacity: 0 }, { opacity: 0.05, duration: 0.9 }, 3.9);
+      // ambient: gentle card float (different prop than entrance — y already settled, use rotation)
+      tl.to("#s2-card-wrap", { rotation: -0.6, duration: 2.4, ease: "sine.inOut" }, 5.0);
+      tl.to("#s2-ghost", { x: -24, duration: 2.6, ease: "sine.inOut" }, 4.0);
+
+      /* T2 — vertical push (page turn) @ 7.0 */
+      tl.to("#scene2", { y: -1920, duration: 0.58, ease: "power3.inOut" }, 7.0);
+      tl.fromTo(
+        "#scene3",
+        { y: 1920, opacity: 1 },
+        { y: 0, duration: 0.58, ease: "power3.inOut", immediateRender: false },
+        7.0
+      );
+
+      /* ================= SCENE 3 (7.7 – 10.8) ================= */
+      tl.fromTo("#s3-eyebrow", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 7.75);
+      tl.fromTo("#s3-head", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 7.9);
+      tl.fromTo("#s3-stat .blk", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.1 }, 8.1);
+      // count-ups
+      var cities = { v: 0 }, countries = { v: 0 };
+      tl.to(cities, { v: 47, duration: 1.0, ease: "power1.out", onUpdate: function () { document.getElementById("cnt-cities").textContent = Math.round(cities.v); } }, 8.2);
+      tl.to(countries, { v: 6, duration: 1.0, ease: "power1.out", onUpdate: function () { document.getElementById("cnt-countries").textContent = Math.round(countries.v); } }, 8.2);
+      // city postmarks cascade
+      tl.fromTo(".citypm", { opacity: 0, scale: 0.5, rotation: -8 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(1.7)", stagger: 0.09 }, 8.35);
+      // flight path draws
+      tl.set("#flight", { strokeDasharray: "3 10", strokeDashoffset: 700 }, 8.9);
+      tl.to("#flight", { strokeDashoffset: 0, duration: 1.2, ease: "power1.inOut" }, 9.0);
+      tl.fromTo("#flight-dot", { motionPath: undefined, opacity: 0 }, { opacity: 1, duration: 0.3 }, 9.0);
+      tl.to("#flight-dot", { attr: { cx: 690, cy: 470 }, duration: 1.2, ease: "power1.inOut" }, 9.0);
+      tl.fromTo("#s3-ghost", { opacity: 0 }, { opacity: 0.05, duration: 0.9 }, 8.0);
+      // ambient breathe on today postmark
+      tl.to(".citypm.today", { scale: 1.05, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, 9.2);
+
+      /* T3 — blur crossfade @ 10.8 */
+      tl.to("#scene3", { filter: "blur(12px)", scale: 1.03, opacity: 0, duration: 0.5, ease: "power2.inOut" }, 10.8);
+      tl.fromTo(
+        "#scene4",
+        { filter: "blur(12px)", scale: 0.97, opacity: 0 },
+        { filter: "blur(0px)", scale: 1, opacity: 1, duration: 0.5, ease: "power2.inOut", immediateRender: false },
+        10.9
+      );
+
+      /* ================= SCENE 4 (11.0 – 14.4) ================= */
+      tl.fromTo("#s4-eyebrow", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 11.05);
+      tl.fromTo("#s4-head .h1", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 11.2);
+      tl.fromTo("#s4-count > *", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", stagger: 0.08 }, 11.45);
+      // stamp tiles cascade with slight rotation variety
+      tl.fromTo("#s4-grid .stamptile", { opacity: 0, y: 50, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "back.out(1.4)", stagger: 0.11 }, 11.6);
+      // mythic foil sweep (seekable, finite) — slides across the mythic tile
+      tl.fromTo("#foil-1", { x: 0 }, { x: 660, duration: 1.3, ease: "power1.inOut" }, 12.6);
+      tl.fromTo("#s4-ghost", { opacity: 0 }, { opacity: 0.05, duration: 0.9 }, 11.3);
+      // ambient: subtle lift on earned tiles
+      tl.to("#s4-grid .stamptile:nth-child(2)", { y: -6, duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: 1 }, 12.6);
+
+      /* T4 — focus pull @ 14.4 */
+      tl.to("#scene4", { filter: "blur(16px)", duration: 0.5, ease: "power1.in" }, 14.4);
+      tl.to("#scene4", { opacity: 0, duration: 0.3, ease: "power2.in" }, 14.65);
+      tl.set("#scene4", { visibility: "hidden" }, 14.95);
+      tl.fromTo("#scene5", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, 14.7);
+
+      /* ================= SCENE 5 (15.0 – 18.5) ================= */
+      tl.fromTo("#s5-mark", { opacity: 0, scale: 1.5, rotation: -10 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.45, ease: "power4.out" }, 15.0);
+      tl.fromTo("#s5-word", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 15.25);
+      tl.fromTo("#s5-tag", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" }, 15.55);
+      tl.fromTo("#s5-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, 15.85);
+      tl.fromTo("#s5-cta", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 16.0);
+      tl.fromTo("#s5-date", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.out" }, 16.3);
+      tl.fromTo("#s5-ghost", { opacity: 0 }, { opacity: 0.05, duration: 0.9 }, 15.1);
+      // ambient mark breathe
+      tl.to("#s5-mark", { scale: 1.04, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, 16.4);
+      // final scene exit — gentle fade to paper (only allowed on last scene)
+      tl.to("#s5-wrap", { opacity: 0, duration: 0.6, ease: "power1.in" }, 17.9);
+      tl.to("#s5-date", { opacity: 0, duration: 0.5, ease: "power1.in" }, 17.9);
+      tl.set("#scene5", { visibility: "hidden" }, 18.5);
+      // sentinel to full duration
+      tl.set({}, {}, 18.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
