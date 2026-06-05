@@ -12,6 +12,7 @@ export const ApiActivitySchema = z.object({
   title: z.string(),
   city: z.string().optional(),
   country: z.string().optional(),
+  categoryLabel: z.string().optional(),
   distanceM: z.number(),
   elapsedSec: z.number(),
   movingSec: z.number().optional(),
