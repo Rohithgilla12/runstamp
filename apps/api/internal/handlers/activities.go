@@ -303,6 +303,19 @@ func (h *ActivitiesHandler) Patch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// patchStringField normalizes a user-supplied PATCH string: trims whitespace,
+// caps length, and returns nil when the result is empty so the repo writes NULL.
+func patchStringField(raw string, max int) *string {
+	v := strings.TrimSpace(raw)
+	if len(v) > max {
+		v = v[:max]
+	}
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
 func parseLimit(raw string) int {
 	if raw == "" {
 		return defaultActivitiesLimit
