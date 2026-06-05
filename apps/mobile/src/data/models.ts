@@ -29,6 +29,8 @@ export interface Activity {
   place: string;
   city: string;
   country: string;
+  /** User override for the run-type label; absent = derive from kind. */
+  categoryLabel?: string;
   distance: number;
   seconds: number;
   elev: number;

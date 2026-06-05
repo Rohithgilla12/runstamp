@@ -26,6 +26,7 @@ export function mapApiToActivity(a: ApiActivity): Activity {
     place: [a.city, a.country].filter(Boolean).join(', ') || '—',
     city: a.city ?? '',
     country: a.country ?? '',
+    categoryLabel: a.categoryLabel?.trim() || undefined,
     distance: Number(distanceKm.toFixed(2)),
     seconds: a.elapsedSec,
     elev: Math.round(a.elevationM ?? 0),

@@ -31,4 +31,12 @@ describe('mapApiToActivity', () => {
     const a = mapApiToActivity(base) as unknown as Record<string, unknown>;
     expect('route' in a).toBe(false);
   });
+
+  it('reads categoryLabel through from the payload', () => {
+    expect(mapApiToActivity({ ...base, categoryLabel: 'Recovery run' }).categoryLabel).toBe('Recovery run');
+  });
+
+  it('leaves categoryLabel undefined when absent', () => {
+    expect(mapApiToActivity(base).categoryLabel).toBeUndefined();
+  });
 });
