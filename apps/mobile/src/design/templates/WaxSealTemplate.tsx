@@ -16,6 +16,8 @@ import { RouteMap } from '../RouteMap';
 import { PAD, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -108,13 +110,15 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
         <Eyebrow style={{ color: 'rgba(243,237,226,0.5)', fontSize: 8 }}>
           {run.day.toUpperCase()} · {run.city.toUpperCase()}
         </Eyebrow>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: PAD.xs, textAlign: 'center', lineHeight: 17 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 13, color: 'rgba(243,237,226,0.7)', marginTop: PAD.xs, textAlign: 'center', lineHeight: 17 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* The SVG canvas: ribbons + seal + rim text */}

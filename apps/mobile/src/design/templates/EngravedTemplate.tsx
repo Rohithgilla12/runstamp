@@ -10,6 +10,8 @@ import { distUnit, fmtDist, fmtPace, fmtTime } from '../../lib/format';
 import { TText, Eyebrow } from '../typography';
 import { richMetrics } from './metrics';
 import { type Units } from './shared';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField, placeField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -146,13 +148,15 @@ export function EngravedTemplate({ run, width, height, background, units = 'km' 
 
       {/* Run title — italic serif */}
       <View style={{ alignItems: 'center', marginTop: 14, paddingHorizontal: 30 }}>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 15, color: ink, textAlign: 'center', opacity: 0.65, lineHeight: 20 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 15, color: ink, textAlign: 'center', opacity: 0.65, lineHeight: 20 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* Thin rule */}
@@ -168,9 +172,11 @@ export function EngravedTemplate({ run, width, height, background, units = 'km' 
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Eyebrow style={{ color: ink, opacity: 0.45, fontSize: 7 }}>CITY</Eyebrow>
-          <TText variant="serif" style={{ fontSize: 13, color: ink, opacity: 0.7, marginTop: 2 }}>
-            {run.city}
-          </TText>
+          <EditableField field={placeField(run)}>
+            <TText variant="serif" style={{ fontSize: 13, color: ink, opacity: 0.7, marginTop: 2 }}>
+              {run.city}
+            </TText>
+          </EditableField>
         </View>
       </View>
 

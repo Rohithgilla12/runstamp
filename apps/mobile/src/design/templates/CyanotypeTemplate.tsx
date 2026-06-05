@@ -10,6 +10,8 @@ import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -111,13 +113,15 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
         <Eyebrow style={{ color: CREAM, opacity: 0.6, fontSize: EYEBROW_SIZE }}>
           CYANOTYPE — {formatLongDate(run.date).toUpperCase()}
         </Eyebrow>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 22, color: CREAM, marginTop: 6, lineHeight: 26, letterSpacing: -0.3 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 22, color: CREAM, marginTop: 6, lineHeight: 26, letterSpacing: -0.3 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
         <TText variant="mono" style={{ fontSize: 11, color: CREAM, opacity: 0.6, marginTop: 4, letterSpacing: 1 }}>
           {(run.city || 'RUNSTAMP').toUpperCase()}{run.country ? ` · ${run.country.toUpperCase()}` : ''}
         </TText>

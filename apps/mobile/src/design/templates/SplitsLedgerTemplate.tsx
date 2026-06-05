@@ -10,6 +10,8 @@ import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -106,13 +108,15 @@ export function SplitsLedgerTemplate({ run, width, height, background, units = '
             <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>
               {formatLongDate(run.date).toUpperCase()}
             </Eyebrow>
-            <TText
-              variant="serifItalic"
-              style={{ fontSize: 21, color: c.ink, marginTop: 5, lineHeight: 25, letterSpacing: -0.3 }}
-              numberOfLines={2}
-            >
-              {run.title}
-            </TText>
+            <EditableField field={titleField(run)}>
+              <TText
+                variant="serifItalic"
+                style={{ fontSize: 21, color: c.ink, marginTop: 5, lineHeight: 25, letterSpacing: -0.3 }}
+                numberOfLines={2}
+              >
+                {run.title}
+              </TText>
+            </EditableField>
           </View>
           {/* Manifest serial — receipts carry one. */}
           <View style={{ alignItems: 'flex-end' }}>

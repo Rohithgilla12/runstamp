@@ -11,6 +11,8 @@ import { EYEBROW_SIZE, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 import { richMetrics } from './metrics';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField, placeField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -141,19 +143,23 @@ export function PassportTemplate({ run, width, height, background, units = 'km',
           </TText>
           <View style={{ marginTop: 10 }}>
             <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>CITY OF ENTRY</Eyebrow>
-            <TText variant="serif" style={{ fontSize: 15, color: inkTone, marginTop: 2 }}>
-              {run.city}
-            </TText>
+            <EditableField field={placeField(run)}>
+              <TText variant="serif" style={{ fontSize: 15, color: inkTone, marginTop: 2 }}>
+                {run.city}
+              </TText>
+            </EditableField>
           </View>
           <View style={{ marginTop: 10 }}>
             <Eyebrow style={{ color: 'rgba(28,24,18,0.45)', fontSize: EYEBROW_SIZE }}>RUN TITLE</Eyebrow>
-            <TText
-              variant="serifItalic"
-              style={{ fontSize: 12, color: inkTone, lineHeight: 15, marginTop: 2, opacity: 0.75 }}
-              numberOfLines={2}
-            >
-              {run.title}
-            </TText>
+            <EditableField field={titleField(run)}>
+              <TText
+                variant="serifItalic"
+                style={{ fontSize: 12, color: inkTone, lineHeight: 15, marginTop: 2, opacity: 0.75 }}
+                numberOfLines={2}
+              >
+                {run.title}
+              </TText>
+            </EditableField>
           </View>
         </View>
 

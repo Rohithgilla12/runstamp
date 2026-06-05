@@ -7,6 +7,8 @@ import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -61,13 +63,15 @@ export function MinimalTemplate({ run, width, height, background, units = 'km', 
         <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>
           {formatLongDate(run.date).toUpperCase()}
         </Eyebrow>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 22, color: c.ink, marginTop: 6, lineHeight: 26, letterSpacing: -0.3 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 22, color: c.ink, marginTop: 6, lineHeight: 26, letterSpacing: -0.3 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* Centre: distance dominates. JetBrains Mono, negative tracking. */}

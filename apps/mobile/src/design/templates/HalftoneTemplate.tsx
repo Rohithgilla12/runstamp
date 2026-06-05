@@ -9,6 +9,8 @@ import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -89,19 +91,21 @@ export function HalftoneTemplate({ run, width, height, background, units = 'km',
 
       {/* Tabloid headline. Bold all-caps serif sized to fill width. */}
       <View style={{ paddingHorizontal: PAD.lg, marginTop: PAD.lg }}>
-        <TText
-          variant="serif"
-          style={{
-            fontSize: Math.min(width * 0.13, 50),
-            color: inkTone,
-            letterSpacing: -1,
-            lineHeight: Math.min(width * 0.13, 50) * 0.95,
-            textTransform: 'uppercase',
-          }}
-          numberOfLines={3}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serif"
+            style={{
+              fontSize: Math.min(width * 0.13, 50),
+              color: inkTone,
+              letterSpacing: -1,
+              lineHeight: Math.min(width * 0.13, 50) * 0.95,
+              textTransform: 'uppercase',
+            }}
+            numberOfLines={3}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* The big distance number — fills the lower half. */}
