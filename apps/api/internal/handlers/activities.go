@@ -330,11 +330,12 @@ func (h *ActivitiesHandler) Patch(w http.ResponseWriter, r *http.Request) {
 }
 
 // patchStringField normalizes a user-supplied PATCH string: trims whitespace,
-// caps length, and returns nil when the result is empty so the repo writes NULL.
+// caps to max runes (not bytes, so multibyte text never truncates mid-rune),
+// and returns nil when the result is empty so the repo writes NULL.
 func patchStringField(raw string, max int) *string {
 	v := strings.TrimSpace(raw)
-	if len(v) > max {
-		v = v[:max]
+	if r := []rune(v); len(r) > max {
+		v = string(r[:max])
 	}
 	if v == "" {
 		return nil
