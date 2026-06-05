@@ -10,6 +10,9 @@ import { EYEBROW_SIZE, PAD, type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { runTypeField, titleField, placeField } from '../../editor/text/EditFieldContext';
+import { runTypeOverride } from '../../editor/text/runType';
 
 interface Props {
   run: Activity;
@@ -110,11 +113,13 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <TText variant="mono" style={{ fontSize: 9, color: c.ink3, letterSpacing: 2 }}>BOARDING PASS</TText>
-              <View style={{ backgroundColor: c.accent, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 }}>
-                <TText variant="mono" style={{ fontSize: 8, color: '#f3ede2', letterSpacing: 1 }}>
-                  {run.kind.toUpperCase()}
-                </TText>
-              </View>
+              <EditableField field={runTypeField(run)}>
+                <View style={{ backgroundColor: c.accent, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 }}>
+                  <TText variant="mono" style={{ fontSize: 8, color: '#f3ede2', letterSpacing: 1 }}>
+                    {(runTypeOverride(run)?.toUpperCase()) ?? run.kind.toUpperCase()}
+                  </TText>
+                </View>
+              </EditableField>
             </View>
 
             {/* Route line separator */}
@@ -126,7 +131,9 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
               <TText variant="mono" style={{ fontSize: 22, color: c.ink, letterSpacing: -1, lineHeight: 26, marginTop: 1 }}>
                 {cityCode(run.city)}
               </TText>
-              <TText style={{ fontSize: 11, color: c.ink2, marginTop: 1 }}>{run.city}</TText>
+              <EditableField field={placeField(run)}>
+                <TText style={{ fontSize: 11, color: c.ink2, marginTop: 1 }}>{run.city}</TText>
+              </EditableField>
               <TText variant="mono" style={{ fontSize: 9, color: c.ink3, marginTop: 1 }}>{run.country.toUpperCase()}</TText>
             </View>
 
@@ -233,9 +240,11 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
           {/* Run title at the bottom of stub */}
           <View>
             <View style={{ height: 0.8, backgroundColor: 'rgba(20,17,13,0.15)', marginBottom: 8 }} />
-            <TText variant="serifItalic" style={{ fontSize: 10, color: c.ink2, lineHeight: 13 }} numberOfLines={2}>
-              {run.title}
-            </TText>
+            <EditableField field={titleField(run)}>
+              <TText variant="serifItalic" style={{ fontSize: 10, color: c.ink2, lineHeight: 13 }} numberOfLines={2}>
+                {run.title}
+              </TText>
+            </EditableField>
           </View>
         </View>
       </View>
