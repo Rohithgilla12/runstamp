@@ -8,7 +8,7 @@ import { useAccount } from '../../state/useAccount';
 import { SubHeader, Toggle } from './bits';
 
 // Claim a handle + flip the public toggle. PRD §10 #1 answer: we shipped
-// the web profile. Handle is the URL slug at runstamp.app/u/<handle>.
+// the web profile. Handle is the URL slug at runstamp.gilla.fun/u/<handle>.
 // Defaults off so existing users don't get their data published without
 // consent.
 export function ProfileScreen({ back }: { back: () => void }) {
@@ -65,7 +65,7 @@ export function ProfileScreen({ back }: { back: () => void }) {
     }
   }, [me?.handle, save]);
 
-  const publicUrl = savedHandle ? `runstamp.app/u/${savedHandle}` : null;
+  const publicUrl = savedHandle ? `runstamp.gilla.fun/u/${savedHandle}` : null;
   const canPublish = !!savedHandle;
   const isPublic = !!me?.profilePublic && canPublish;
 
@@ -83,7 +83,7 @@ export function ProfileScreen({ back }: { back: () => void }) {
           {savedHandle ? (
             <>
               <TText variant="mono" style={{ fontSize: 18, color: c.paper, marginTop: 6, letterSpacing: -0.3 }}>
-                runstamp.app/u/{savedHandle}
+                runstamp.gilla.fun/u/{savedHandle}
               </TText>
               <TText style={{ fontSize: 12, color: isPublic ? '#9fcf78' : 'rgba(243,237,226,0.55)', marginTop: 6 }}>
                 {isPublic ? '● Public · anyone with the URL can view' : '○ Private · only you can see this URL'}
@@ -91,7 +91,7 @@ export function ProfileScreen({ back }: { back: () => void }) {
             </>
           ) : (
             <TText style={{ fontSize: 14, color: c.ink2, marginTop: 6, lineHeight: 18 }}>
-              No handle claimed yet. Pick one below and your album lives at <TText variant="mono" style={{ fontSize: 14, color: c.ink }}>runstamp.app/u/yourhandle</TText>.
+              No handle claimed yet. Pick one below and your album lives at <TText variant="mono" style={{ fontSize: 14, color: c.ink }}>runstamp.gilla.fun/u/yourhandle</TText>.
             </TText>
           )}
         </Card>
@@ -103,7 +103,7 @@ export function ProfileScreen({ back }: { back: () => void }) {
             {savedHandle ? 'CHANGE HANDLE' : 'CLAIM A HANDLE'}
           </Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TText variant="mono" style={{ fontSize: 14, color: c.ink3 }}>runstamp.app/u/</TText>
+            <TText variant="mono" style={{ fontSize: 14, color: c.ink3 }}>runstamp.gilla.fun/u/</TText>
             <TextInput
               style={{
                 flex: 1,
