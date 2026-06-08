@@ -20,7 +20,7 @@ interface Env {
 
 const API_BASE = "https://runstamp-api.gilla.fun";
 const SITE_BASE = "https://runstamp.gilla.fun";
-const CACHE_VERSION = "4";
+const CACHE_VERSION = "5";
 
 // Palette literals — must match the design tokens in Base.astro.
 const PAPER = "#f3ede2";
@@ -248,7 +248,7 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
   return `
 <div style="display:flex; flex-direction:column; width:1200px; height:630px; background:${PAPER};">
   <!-- Ink hero panel — postcard. -->
-  <div style="display:flex; width:1200px; height:330px; background:${INK}; padding:54px 72px; align-items:center; justify-content:space-between;">
+  <div style="display:flex; width:1200px; height:300px; background:${INK}; padding:44px 72px; align-items:center; justify-content:space-between;">
     <div style="display:flex; flex-direction:column; max-width:760px;">
       <div style="display:flex; font-family:monospace; font-size:18px; color:${SOLAR}; letter-spacing:6px;">@${esc(handle)}</div>
       <div style="display:flex; margin-top:14px;">
@@ -284,7 +284,7 @@ function statBlock(label: string, value: string, unit: string): string {
   return `
 <div style="display:flex; flex-direction:column;">
   <div style="display:flex; font-family:monospace; font-size:18px; color:${INK3}; letter-spacing:4px;">${esc(label)}</div>
-  <div style="display:flex; margin-top:14px; font-family:monospace; font-size:84px; color:${INK}; letter-spacing:-3px; font-weight:500;">${esc(value)}<span style="font-size:32px; color:${INK3}; margin-left:6px; align-self:flex-end; padding-bottom:14px;">${esc(unit)}</span></div>
+  <div style="display:flex; margin-top:10px; font-family:monospace; font-size:54px; color:${INK}; letter-spacing:-2px; font-weight:500;">${esc(value)}<span style="font-size:22px; color:${INK3}; margin-left:6px; align-self:flex-end; padding-bottom:8px;">${esc(unit)}</span></div>
 </div>`;
 }
 
@@ -296,9 +296,9 @@ function tierColor(tier?: string): string {
 function stampTile(s: { name?: string; tier?: string }): string {
   const label = (s.name ?? "STAMP").slice(0, 14);
   return `
-<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:170px; height:100px; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; padding:8px;">
-  <div style="display:flex; width:12px; height:12px; border-radius:9999px; background:${tierColor(s.tier)};"></div>
-  <div style="display:flex; margin-top:8px; font-family:monospace; font-size:14px; color:${INK}; text-align:center; line-height:1.1;">${esc(label)}</div>
+<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:170px; height:76px; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; padding:8px;">
+  <div style="display:flex; width:11px; height:11px; border-radius:9999px; background:${tierColor(s.tier)};"></div>
+  <div style="display:flex; margin-top:6px; font-family:monospace; font-size:13px; color:${INK}; text-align:center; line-height:1.1;">${esc(label)}</div>
 </div>`;
 }
 
@@ -307,7 +307,7 @@ function stampStripBlock(p: PublicProfile | null): string {
   const all = (p?.stamps ?? []).map((s) => ({ stampId: s.stampId, name: s.name, tier: s.tier }));
   const inner =
     all.length === 0
-      ? `<div style="display:flex; width:170px; height:100px; align-items:center; justify-content:center; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; font-family:monospace; font-size:14px; color:${INK3};">no stamps yet</div>`
+      ? `<div style="display:flex; width:170px; height:76px; align-items:center; justify-content:center; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; font-family:monospace; font-size:14px; color:${INK3};">no stamps yet</div>`
       : (() => {
           const { shown, extra } = selectStripStamps(all, 5);
           const tiles = shown.map(stampTile).join("");
@@ -319,7 +319,7 @@ function stampStripBlock(p: PublicProfile | null): string {
         })();
 
   return `
-<div style="display:flex; flex-direction:column; width:1200px; padding:22px 72px 0 72px;">
+<div style="display:flex; flex-direction:column; width:1200px; padding:16px 72px 0 72px;">
   <div style="display:flex; font-family:monospace; font-size:18px; color:${INK3}; letter-spacing:4px;">STAMPS EARNED</div>
   <div style="display:flex; margin-top:12px; gap:14px; align-items:center;">${inner}</div>
 </div>`;
