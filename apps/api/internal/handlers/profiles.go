@@ -50,6 +50,26 @@ type profileTotals struct {
 type publicStamp struct {
 	StampID  string `json:"stampId"`
 	EarnedAt string `json:"earnedAt"`
+	Name     string `json:"name,omitempty"`
+	Tier     string `json:"tier,omitempty"`
+}
+
+// toPublicStamps maps earned rows to the API shape, enriching each with the
+// catalogue name + tier. Unknown ids keep their id with blank name/tier.
+func toPublicStamps(earned []stamps.Earned) []publicStamp {
+	out := make([]publicStamp, 0, len(earned))
+	for _, e := range earned {
+		ps := publicStamp{
+			StampID:  e.StampID,
+			EarnedAt: e.EarnedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		}
+		if def, ok := stamps.Lookup(e.StampID); ok {
+			ps.Name = def.Name
+			ps.Tier = def.Tier
+		}
+		out = append(out, ps)
+	}
+	return out
 }
 
 type publicCity struct {
@@ -171,13 +191,7 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if user.DisplayName != nil {
 		resp.DisplayName = *user.DisplayName
 	}
-	resp.Stamps = make([]publicStamp, 0, len(earned))
-	for _, e := range earned {
-		resp.Stamps = append(resp.Stamps, publicStamp{
-			StampID:  e.StampID,
-			EarnedAt: e.EarnedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		})
-	}
+	resp.Stamps = toPublicStamps(earned)
 
 	// New analytics sections. Each loads independently; a failure logs and
 	// leaves its field empty so the rest of the response still ships.
