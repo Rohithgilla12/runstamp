@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { selectStripStamps } from './stampStrip';
+import { selectStripStamps, type StampTier, type StripStamp } from './stampStrip';
 
-const s = (stampId: string, tier?: string) => ({ stampId, tier });
+const s = (stampId: string, tier?: StampTier): StripStamp => ({ stampId, tier });
 
 describe('selectStripStamps', () => {
   it('orders rarest-first (mythic > rare > common)', () => {
@@ -29,5 +29,15 @@ describe('selectStripStamps', () => {
 
   it('handles empty input', () => {
     expect(selectStripStamps([])).toEqual({ shown: [], extra: 0 });
+  });
+
+  it('sorts a present-but-unknown tier after known tiers', () => {
+    const out = selectStripStamps([s('a', 'common'), { stampId: 'b', tier: 'legendary' as StampTier }]);
+    expect(out.shown.map((x) => x.stampId)).toEqual(['a', 'b']);
+  });
+
+  it('defaults the cap to 5 when max is omitted', () => {
+    const six = Array.from({ length: 6 }, (_, i) => s(`x${i}`, 'common'));
+    expect(selectStripStamps(six).shown).toHaveLength(5);
   });
 });

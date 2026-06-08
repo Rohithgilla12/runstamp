@@ -12,7 +12,7 @@
 // the same as before.
 
 import { ImageResponse } from "workers-og";
-import { selectStripStamps } from "./og/stampStrip";
+import { selectStripStamps, type StripStamp } from "./og/stampStrip";
 
 interface Env {
   ASSETS: Fetcher;
@@ -166,7 +166,8 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
   if (cached) return cached;
 
   try {
-    const profile = await fetchProfile(handle);
+    const res = await fetchProfileResult(handle);
+    const profile = res.kind === "ok" ? res.profile : null;
     const html = ogCardHtml(handle, profile);
 
     // workers-og returns a streaming body. Returning the body directly
@@ -174,6 +175,15 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
     // response) leaves one side empty. Buffer to ArrayBuffer once.
     const png = new ImageResponse(html, { width: 1200, height: 630, format: "png" });
     const buf = await png.arrayBuffer();
+
+    if (res.kind === "error") {
+      // Transient upstream failure — serve the degraded card but don't freeze
+      // it into the cache, so it recovers as soon as the API is back.
+      return new Response(buf, {
+        status: 200,
+        headers: { "Content-Type": "image/png", "Cache-Control": "no-store" },
+      });
+    }
 
     const headers = new Headers({
       "Content-Type": "image/png",
@@ -203,21 +213,42 @@ interface PublicProfile {
   handle: string;
   displayName?: string;
   totals?: { runs: number; distanceKm: number; countries: number; cities: number };
-  stamps?: Array<{ stampId: string; name?: string; tier?: string }>;
+  stamps?: StripStamp[];
   cities?: Array<{ city: string; country?: string; runs: number }>;
   yearToDate?: { year: number; runs: number; distanceKm: number };
 }
 
-async function fetchProfile(handle: string): Promise<PublicProfile | null> {
+type ProfileFetch =
+  | { kind: "ok"; profile: PublicProfile }
+  | { kind: "missing" }
+  | { kind: "error" };
+
+// fetchProfileResult distinguishes a real 404 (missing/private handle —
+// cacheable) from a transient failure (5xx/429/network/parse — must not be
+// cached, or an outage freezes into the OG image). Logs failures so blank
+// cards are debuggable via `wrangler tail`.
+async function fetchProfileResult(handle: string): Promise<ProfileFetch> {
   try {
     const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`, {
       cf: { cacheTtl: 60, cacheEverything: true },
     });
-    if (!r.ok) return null;
-    return (await r.json()) as PublicProfile;
-  } catch {
-    return null;
+    if (r.status === 404) return { kind: "missing" };
+    if (!r.ok) {
+      console.warn("fetchProfile non-ok", { handle, status: r.status });
+      return { kind: "error" };
+    }
+    return { kind: "ok", profile: (await r.json()) as PublicProfile };
+  } catch (err) {
+    console.error("fetchProfile failed", { handle, err: err instanceof Error ? err.message : String(err) });
+    return { kind: "error" };
   }
+}
+
+// fetchProfile keeps the graceful-null contract for the SPA meta path, where
+// a missing/failed profile just downgrades og:title/description.
+async function fetchProfile(handle: string): Promise<PublicProfile | null> {
+  const res = await fetchProfileResult(handle);
+  return res.kind === "ok" ? res.profile : null;
 }
 
 // ogCardHtml builds the OG card markup that Satori renders. Flexbox-only
@@ -304,7 +335,7 @@ function stampTile(s: { name?: string; tier?: string }): string {
 
 // stampStripBlock — the "STAMPS EARNED" row: rarest-first tiles + "+N".
 function stampStripBlock(p: PublicProfile | null): string {
-  const all = (p?.stamps ?? []).map((s) => ({ stampId: s.stampId, name: s.name, tier: s.tier }));
+  const all = p?.stamps ?? [];
   const inner =
     all.length === 0
       ? `<div style="display:flex; width:170px; height:76px; align-items:center; justify-content:center; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; font-family:monospace; font-size:14px; color:${INK3};">no stamps yet</div>`
