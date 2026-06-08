@@ -14,6 +14,7 @@ import { Eyebrow, TText } from '../design/typography';
 import { useAppState } from '../state/AppState';
 import { useAuth } from '../state/AuthContext';
 import { useAccount } from '../state/useAccount';
+import { profileUrl } from '../editor/share/profileUrl';
 import { useActivities } from '../state/useActivities';
 import { useStamps } from '../state/useStamps';
 import type { RootStackParamList } from '../nav/types';
@@ -221,7 +222,7 @@ export function SettingsScreen(_props: TabProps<'Profile'>) {
           <Row
             icon={<Icon.user size={18} color={c.ink2} />}
             label="Public profile"
-            value={me?.profilePublic && me?.handle ? `runstamp.app/u/${me.handle}` : me?.handle ? 'Private' : 'Not claimed'}
+            value={me?.profilePublic && me?.handle ? profileUrl(me.handle).replace('https://', '') : me?.handle ? 'Private' : 'Not claimed'}
             onPress={() => setSub('profile')}
           />
           <Row icon={<Icon.share size={18} color={c.ink2} />} label="Connections" value={STRAVA_ENABLED ? 'Strava · Apple Health' : 'Apple Health'} onPress={() => setSub('connections')} />
