@@ -208,6 +208,21 @@ var Catalog = []Definition{
 	},
 }
 
+// catalogByID indexes Catalog for O(1) id lookups, built once at init.
+var catalogByID = func() map[string]Definition {
+	m := make(map[string]Definition, len(Catalog))
+	for _, d := range Catalog {
+		m[d.ID] = d
+	}
+	return m
+}()
+
+// Lookup returns the catalogue definition for a stamp id.
+func Lookup(id string) (Definition, bool) {
+	d, ok := catalogByID[id]
+	return d, ok
+}
+
 func j(s string) json.RawMessage { return json.RawMessage(s) }
 
 // Sync inserts every catalog entry into stamp_definitions on app boot,
