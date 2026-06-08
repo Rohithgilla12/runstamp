@@ -10,6 +10,9 @@ import { type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { runTypeField, placeField, type EditableTextField } from '../../editor/text/EditFieldContext';
+import { runTypeOverride } from '../../editor/text/runType';
 
 interface Props {
   run: Activity;
@@ -54,15 +57,15 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
     .slice(0, 2)
     .map((m) => ({ label: customsLabels[m.key] ?? m.label, value: m.value.toUpperCase() }));
 
-  const formRows: { label: string; value: string }[] = [
+  const formRows: { label: string; value: string; editField?: EditableTextField }[] = [
     { label: 'DISTANCE DECLARED', value: `${fmtDist(run.distance, units)} ${unitLabel}` },
     { label: 'PACE DECLARED',     value: `${fmtPace(run.pace, units)} / ${unitLabel}` },
     { label: 'TIME DECLARED',     value: fmtTime(run.seconds) },
     { label: 'ELEVATION GAIN',    value: `${run.elev} M` },
     { label: 'CALORIES CONSUMED', value: run.cal > 0 ? `${run.cal} KCAL` : '—' },
     ...extraRows,
-    { label: 'PURPOSE OF VISIT',  value: purposeFromKind(run.kind) },
-    { label: 'CITY OF ORIGIN',    value: (run.city || '—').toUpperCase() },
+    { label: 'PURPOSE OF VISIT',  value: (runTypeOverride(run)?.toUpperCase()) ?? purposeFromKind(run.kind), editField: runTypeField(run) },
+    { label: 'CITY OF ORIGIN',    value: (run.city || '—').toUpperCase(), editField: placeField(run) },
     { label: 'COUNTRY',           value: (run.country || '—').toUpperCase() },
   ];
 
@@ -175,6 +178,7 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
             value={row.value}
             isLast={i === formRows.length - 1}
             inkTone={inkTone}
+            editField={row.editField}
           />
         ))}
       </View>
@@ -227,21 +231,33 @@ interface FormRowProps {
   value: string;
   isLast: boolean;
   inkTone: string;
+  editField?: EditableTextField;
 }
 
-function FormRow({ label, value, isLast, inkTone }: FormRowProps) {
+function FormRow({ label, value, isLast, inkTone, editField }: FormRowProps) {
   return (
     <View style={{ paddingVertical: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <Eyebrow style={{ color: 'rgba(28,24,18,0.50)', fontSize: 7.5, flex: 1, marginRight: 8 }}>
           {label}
         </Eyebrow>
-        <TText
-          variant="mono"
-          style={{ fontSize: 12.5, color: inkTone, letterSpacing: -0.2, textAlign: 'right', flexShrink: 0 }}
-        >
-          {value}
-        </TText>
+        {editField ? (
+          <EditableField field={editField}>
+            <TText
+              variant="mono"
+              style={{ fontSize: 12.5, color: inkTone, letterSpacing: -0.2, textAlign: 'right', flexShrink: 0 }}
+            >
+              {value}
+            </TText>
+          </EditableField>
+        ) : (
+          <TText
+            variant="mono"
+            style={{ fontSize: 12.5, color: inkTone, letterSpacing: -0.2, textAlign: 'right', flexShrink: 0 }}
+          >
+            {value}
+          </TText>
+        )}
       </View>
       {/* Dotted separator — not shown after last row */}
       {!isLast && <DottedLine />}

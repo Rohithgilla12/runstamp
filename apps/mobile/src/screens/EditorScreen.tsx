@@ -38,6 +38,10 @@ import { TopographicTemplate } from '../design/templates/TopographicTemplate';
 import { SplitsLedgerTemplate } from '../design/templates/SplitsLedgerTemplate';
 import { CoordinatesTemplate } from '../design/templates/CoordinatesTemplate';
 import type { RootStackProps } from '../nav/types';
+import { useAuth } from '../state/AuthContext';
+import { updateActivity } from '../services/activityEdit';
+import { EditFieldProvider, type EditableTextField } from '../editor/text/EditFieldContext';
+import { EditTextSheet } from '../editor/text/EditTextSheet';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
@@ -137,7 +141,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const insets = useSafeAreaInsets();
   const { units, tileStyle } = useAppState();
   const id = route.params?.id;
-  const { activities, loading } = useActivities();
+  const { activities, loading, refresh: refreshActivities } = useActivities();
+  const { getIdToken } = useAuth();
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   // Lifted up so every sticker that renders charts/maps shares one fetch.
   // useActivityStreams gracefully no-ops when id is null.
@@ -158,6 +163,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const canvasRef = useRef<View>(null);
   const [exporting, setExporting] = useState(false);
+  const [editField, setEditField] = useState<EditableTextField | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [stickers, setStickers] = useState<StickerInstance[]>([
     { id: 's-distance', key: 'distance', x: 0.5, y: 0.18, scale: 1 },
@@ -220,6 +227,25 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
       setBg('photo');
+    }
+  };
+
+  const handleSaveEdit = async (value: string) => {
+    if (!run || !editField) return;
+    const patch =
+      editField.kind === 'title' ? { title: value }
+      : editField.kind === 'place' ? { city: value }
+      : { categoryLabel: value };
+    setSavingEdit(true);
+    try {
+      const idToken = await getIdToken();
+      await updateActivity(run.id, patch, idToken);
+      await refreshActivities();
+      setEditField(null);
+    } catch {
+      // Keep the sheet open on failure so the edit isn't silently lost.
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -344,6 +370,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
         {/* Canvas */}
         <View style={{ paddingHorizontal: CANVAS_PADDING, paddingTop: 20, alignItems: 'center' }}>
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
+          <EditFieldProvider beginEdit={setEditField} affordance={!exporting && !selected}>
           {template === 'postage' ? (
             <View style={{ width: canvasW, height: canvasH }}>
               <PostageTemplate run={run} width={canvasW} height={canvasH} background={bg} units={units} photoUri={photoUri} rawLatLng={realRawLatLng} />
@@ -464,6 +491,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
               ))}
           </Pressable>
           )}
+          </EditFieldProvider>
           </View>
         </View>
 
@@ -637,6 +665,12 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
       <Modal visible={!!exportResult} transparent animationType="slide" onRequestClose={() => setExportResult(null)}>
         {exportResult && <ExportResultSheet result={exportResult} onClose={() => setExportResult(null)} onShareAgain={() => handleExport('sheet')} />}
       </Modal>
+      <EditTextSheet
+        field={editField}
+        saving={savingEdit}
+        onSave={handleSaveEdit}
+        onCancel={() => setEditField(null)}
+      />
     </GestureHandlerRootView>
   );
 }

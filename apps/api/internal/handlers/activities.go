@@ -42,6 +42,7 @@ type activityResponse struct {
 	Title          string   `json:"title"`
 	City           string   `json:"city,omitempty"`
 	Country        string   `json:"country,omitempty"`
+	CategoryLabel  string   `json:"categoryLabel,omitempty"`
 	DistanceM      float64  `json:"distanceM"`
 	ElapsedSec     int      `json:"elapsedSec"`
 	MovingSec      *int     `json:"movingSec,omitempty"`
@@ -253,7 +254,9 @@ func (h *ActivitiesHandler) Canonicalize(w http.ResponseWriter, r *http.Request)
 }
 
 type patchActivityRequest struct {
-	Title *string `json:"title,omitempty"`
+	Title         *string `json:"title,omitempty"`
+	City          *string `json:"city,omitempty"`
+	CategoryLabel *string `json:"categoryLabel,omitempty"`
 }
 
 // Patch handles PATCH /v1/activities/:id — currently supports renaming.
@@ -286,9 +289,10 @@ func (h *ActivitiesHandler) Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Title != nil {
-		title := strings.TrimSpace(*body.Title)
-		if len(title) > 200 {
-			title = title[:200]
+		// UpdateTitle maps "" → NULL itself, so pass the trimmed/capped string.
+		title := ""
+		if field := patchStringField(*body.Title, 200); field != nil {
+			title = *field
 		}
 		if err := h.Activities.Repo().UpdateTitle(r.Context(), id, title); err != nil {
 			if errors.Is(err, activities.ErrNotFound) {
@@ -300,7 +304,43 @@ func (h *ActivitiesHandler) Patch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if body.City != nil {
+		if err := h.Activities.Repo().UpdateCity(r.Context(), id, patchStringField(*body.City, 200)); err != nil {
+			if errors.Is(err, activities.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "activity not found")
+				return
+			}
+			h.Log.Error("activities patch: update city", "err", err, "activity_id", id)
+			writeError(w, http.StatusInternalServerError, "update failed")
+			return
+		}
+	}
+	if body.CategoryLabel != nil {
+		if err := h.Activities.Repo().UpdateCategoryLabel(r.Context(), id, patchStringField(*body.CategoryLabel, 200)); err != nil {
+			if errors.Is(err, activities.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "activity not found")
+				return
+			}
+			h.Log.Error("activities patch: update category label", "err", err, "activity_id", id)
+			writeError(w, http.StatusInternalServerError, "update failed")
+			return
+		}
+	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// patchStringField normalizes a user-supplied PATCH string: trims whitespace,
+// caps to max runes (not bytes, so multibyte text never truncates mid-rune),
+// and returns nil when the result is empty so the repo writes NULL.
+func patchStringField(raw string, max int) *string {
+	v := strings.TrimSpace(raw)
+	if r := []rune(v); len(r) > max {
+		v = string(r[:max])
+	}
+	if v == "" {
+		return nil
+	}
+	return &v
 }
 
 func parseLimit(raw string) int {
@@ -347,6 +387,9 @@ func toActivityResponse(a *activities.Activity) activityResponse {
 	}
 	if a.LocationCountry != nil {
 		out.Country = *a.LocationCountry
+	}
+	if a.CategoryLabel != nil {
+		out.CategoryLabel = *a.CategoryLabel
 	}
 	return out
 }

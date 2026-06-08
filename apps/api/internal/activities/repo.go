@@ -30,7 +30,7 @@ const selectColumns = `id, user_id, source, external_id, sport, started_at,
   elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
   avg_hr, max_hr, avg_pace_s_per_km, calories,
   title, notes,
-  location_city, location_country,
+  location_city, location_country, category_label,
   ST_Y(location_start::geometry), ST_X(location_start::geometry),
   raw, dupe_of, ingested_at,
   cadence_spm, running_power_w, vertical_oscillation_cm, ground_contact_ms,
@@ -54,7 +54,7 @@ const selectColumnsList = `id, source, external_id, sport, started_at,
   elapsed_seconds, moving_seconds, distance_m, elevation_gain_m,
   avg_hr, max_hr, avg_pace_s_per_km, calories,
   title,
-  location_city, location_country,
+  location_city, location_country, category_label,
   ST_Y(location_start::geometry), ST_X(location_start::geometry),
   cadence_spm, running_power_w, vo2max_ml_kg_min,
   gap_seconds_per_km`
@@ -81,6 +81,7 @@ type Activity struct {
 	StartLon        *float64
 	LocationCity    *string
 	LocationCountry *string
+	CategoryLabel   *string
 	Raw             *json.RawMessage
 	DupeOf          *string
 	IngestedAt      time.Time
@@ -246,6 +247,30 @@ func (r *Repository) UpdateTitle(ctx context.Context, activityID, title string) 
 	tag, err := r.pool.Exec(ctx, `UPDATE activities SET title = $2 WHERE id = $1`, activityID, titleArg)
 	if err != nil {
 		return fmt.Errorf("activities: update title: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// UpdateCity changes only the location_city override. nil clears it.
+func (r *Repository) UpdateCity(ctx context.Context, activityID string, city *string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE activities SET location_city = $2 WHERE id = $1`, activityID, city)
+	if err != nil {
+		return fmt.Errorf("activities: update city: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// UpdateCategoryLabel changes only the run-type override. nil clears it.
+func (r *Repository) UpdateCategoryLabel(ctx context.Context, activityID string, label *string) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE activities SET category_label = $2 WHERE id = $1`, activityID, label)
+	if err != nil {
+		return fmt.Errorf("activities: update category label: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
@@ -579,7 +604,7 @@ func scanActivity(row pgx.Row) (*Activity, error) {
 		&a.ElapsedSeconds, &a.MovingSeconds, &a.DistanceM, &a.ElevationGainM,
 		&a.AvgHR, &a.MaxHR, &a.AvgPaceSPerKm, &a.Calories,
 		&a.Title, &a.Notes,
-		&a.LocationCity, &a.LocationCountry,
+		&a.LocationCity, &a.LocationCountry, &a.CategoryLabel,
 		&a.StartLat, &a.StartLon,
 		&raw, &a.DupeOf, &a.IngestedAt,
 		&a.CadenceSPM, &a.RunningPowerW, &a.VerticalOscCm, &a.GroundContactMs,
@@ -611,7 +636,7 @@ func scanActivityList(row pgx.Row) (*Activity, error) {
 		&a.ElapsedSeconds, &a.MovingSeconds, &a.DistanceM, &a.ElevationGainM,
 		&a.AvgHR, &a.MaxHR, &a.AvgPaceSPerKm, &a.Calories,
 		&a.Title,
-		&a.LocationCity, &a.LocationCountry,
+		&a.LocationCity, &a.LocationCountry, &a.CategoryLabel,
 		&a.StartLat, &a.StartLon,
 		&a.CadenceSPM, &a.RunningPowerW, &a.VO2maxMlKgMin,
 		&a.GAPSecPerKm,

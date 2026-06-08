@@ -10,6 +10,8 @@ import { EYEBROW_SIZE, PAD, formatShortDate, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
 import { richMetrics } from './metrics';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -103,13 +105,15 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: BLUE }} />
           </View>
         </View>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 20, color: BLUE, marginTop: 6, lineHeight: 24, letterSpacing: -0.3 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 20, color: BLUE, marginTop: 6, lineHeight: 24, letterSpacing: -0.3 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* Distance numeral — printed in pink with a blue "ghost" offset behind. */}

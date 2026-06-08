@@ -10,6 +10,8 @@ import { EYEBROW_SIZE, PAD, TONE, formatMonthDay, type Units } from './shared';
 import { richMetrics } from './metrics';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 // Terse suffix so a bare number (cadence/VO₂) never sits unlabeled in the strip.
 // elev/power/gap already carry their own units from richMetrics.
@@ -178,13 +180,15 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
         {/* Title strip — bottom-left */}
         <View style={{ position: 'absolute', bottom: PAD.md + 6, left: PAD.lg, maxWidth: cardW * 0.52 }}>
           <Eyebrow style={{ color: 'rgba(243,237,226,0.55)', fontSize: EYEBROW_SIZE }}>RUN NO.</Eyebrow>
-          <TText
-            variant="serifItalic"
-            style={{ fontSize: 14, color: c.paper, lineHeight: 17, marginTop: 2 }}
-            numberOfLines={2}
-          >
-            {run.title}
-          </TText>
+          <EditableField field={titleField(run)}>
+            <TText
+              variant="serifItalic"
+              style={{ fontSize: 14, color: c.paper, lineHeight: 17, marginTop: 2 }}
+              numberOfLines={2}
+            >
+              {run.title}
+            </TText>
+          </EditableField>
         </View>
 
         {/* via RUNSTAMP attribution, sits just above the air-mail stripe. */}

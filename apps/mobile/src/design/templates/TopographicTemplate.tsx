@@ -7,6 +7,8 @@ import { useColors } from '../theme';
 import { TText, Eyebrow } from '../typography';
 import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatLongDate, type Units } from './shared';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -113,13 +115,15 @@ export function TopographicTemplate({ run, width, height, background, units = 'k
             {formatLongDate(run.date)}
           </Eyebrow>
         </View>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 22, color: c.ink, marginTop: 5, lineHeight: 26, letterSpacing: -0.3 }}
-          numberOfLines={1}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 22, color: c.ink, marginTop: 5, lineHeight: 26, letterSpacing: -0.3 }}
+            numberOfLines={1}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* Contained route window — a ruled survey frame with corner ticks. */}

@@ -9,6 +9,8 @@ import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, formatMonthDay, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -102,9 +104,11 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
       {/* Run title + airmail stripe + mark — bottom */}
       <View style={{ position: 'absolute', bottom: PAD.lg, left: PAD.lg, right: PAD.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-          <TText variant="serifItalic" style={{ flex: 1, fontSize: 15, color: 'rgba(243,237,226,0.78)', lineHeight: 18 }} numberOfLines={1}>
-            {run.title}
-          </TText>
+          <EditableField field={titleField(run)}>
+            <TText variant="serifItalic" style={{ flex: 1, fontSize: 15, color: 'rgba(243,237,226,0.78)', lineHeight: 18 }} numberOfLines={1}>
+              {run.title}
+            </TText>
+          </EditableField>
           <RunstampMark tone="paper" opacity={0.5} />
         </View>
         <View style={{ flexDirection: 'row', marginTop: 12, height: 3 }}>

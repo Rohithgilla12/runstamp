@@ -9,6 +9,8 @@ import { RouteMap } from '../RouteMap';
 import { EYEBROW_SIZE, PAD, MONTHS_3, TONE, type Units } from './shared';
 import { PhotoBackground } from './PhotoBackground';
 import { RunstampMark } from '../RunstampMark';
+import { EditableField } from '../../editor/text/EditableField';
+import { titleField } from '../../editor/text/EditFieldContext';
 
 interface Props {
   run: Activity;
@@ -75,13 +77,15 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
       {/* Top eyebrow — "RECEIVED" reads office-clerk dry. */}
       <View style={{ paddingTop: PAD.xl, paddingHorizontal: PAD.xl }}>
         <Eyebrow style={{ color: inkTone, opacity: 0.5, fontSize: EYEBROW_SIZE }}>RUN — RECEIVED</Eyebrow>
-        <TText
-          variant="serifItalic"
-          style={{ fontSize: 16, color: inkTone, marginTop: 4, lineHeight: 20, opacity: 0.7 }}
-          numberOfLines={2}
-        >
-          {run.title}
-        </TText>
+        <EditableField field={titleField(run)}>
+          <TText
+            variant="serifItalic"
+            style={{ fontSize: 16, color: inkTone, marginTop: 4, lineHeight: 20, opacity: 0.7 }}
+            numberOfLines={2}
+          >
+            {run.title}
+          </TText>
+        </EditableField>
       </View>
 
       {/* The stamp block — rectangular, double-ruled, slightly tilted. */}
