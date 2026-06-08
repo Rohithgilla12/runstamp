@@ -8,6 +8,8 @@
     "render:vertical": "remotion render LaunchStory out/launch-story.mp4 --concurrency=1",
     "render:wide": "remotion render LaunchPost out/launch-post.mp4 --concurrency=1",
     "render:all": "pnpm render:vertical && pnpm render:wide",
+    "render:appstore": "node scripts/render-appstore.mjs",
+    "render:social-cut": "mkdir -p out/appstore && ffmpeg -y -i out/launch-story.mp4 -t 29.9 -c:v libx264 -pix_fmt yuv420p -movflags +faststart -c:a aac out/appstore/social-cut-1080x1920.mp4",
     "upgrade": "remotion upgrade"
   },
   "dependencies": {
