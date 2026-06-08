@@ -4,7 +4,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { TText } from '../../design/typography';
 import { profileUrl } from './profileUrl';
 
-// A QR styled as a perforated postage stamp, deep-linking to the public album.
+// A QR styled as a perforated postage stamp, linking to the public profile page at runstamp.gilla.fun/u/<handle>.
 // Rendered via react-native-svg so react-native-view-shot captures it cleanly.
 export function ProfileStamp({ handle }: { handle: string }) {
   const ink = '#14110d';

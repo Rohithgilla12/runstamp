@@ -20,6 +20,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // DateStampTemplate (PRD §6.3)
@@ -31,7 +32,7 @@ interface Props {
 //
 // The card sits on warm paper; the stamp itself is the only saturated thing.
 // Pace + time + elevation read along a thin baseline rule below.
-export function DateStampTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function DateStampTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const inkTone = TONE.inkDark;
@@ -140,9 +141,11 @@ export function DateStampTemplate({ run, width, height, background, units = 'km'
           <Foot label="ELEV" value={`${run.elev}m`} ink={inkTone} />
           {run.country ? <Foot label="REGION" value={run.country.toUpperCase()} ink={inkTone} /> : null}
         </View>
-        <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
-          <RunstampMark tone="ink" opacity={0.4} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
+            <RunstampMark tone="ink" opacity={0.4} />
+          </View>
+        )}
       </View>
     </View>
   );

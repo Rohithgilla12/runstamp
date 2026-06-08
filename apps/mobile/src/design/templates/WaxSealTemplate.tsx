@@ -27,6 +27,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // Seeded LCG — Mulberry32-inspired, deterministic.
@@ -58,7 +59,7 @@ function seedFromId(id: string): number {
 // Around the rim, curved TextPath reads: "PERSONAL BEST · <dist> KM · <city> · <date>"
 // In the centre: time in big mono, run title in italic underneath.
 // The background bleeds through the gaps between ribbons.
-export function WaxSealTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function WaxSealTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const sealSize = Math.min(width, height) * 0.72;
@@ -146,7 +147,7 @@ export function WaxSealTemplate({ run, width, height, background, units = 'km', 
           ))}
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: PAD.xs }}>
-          <RunstampMark tone="paper" opacity={0.5} />
+          {!hideAttribution && <RunstampMark tone="paper" opacity={0.5} />}
           <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.45)', letterSpacing: 1 }}>
             {formatWaxDate(run.date)}
           </TText>

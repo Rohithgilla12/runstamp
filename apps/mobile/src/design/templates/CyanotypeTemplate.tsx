@@ -22,6 +22,7 @@ interface Props {
   photoUri?: string | null;
   // Privacy-masked raw lat/lng — when present the map background renders real OSM tiles.
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // CyanotypeTemplate (PRD §6.3 — "Cyanotype")
@@ -33,7 +34,7 @@ interface Props {
 //
 // Bypasses the live theme accent intentionally — cyanotype is monochromatic
 // per the medium it imitates. The solar accent doesn't appear here.
-export function CyanotypeTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function CyanotypeTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
   // Mute the live theme; cyanotype is its own colour space.
   void c;
@@ -150,9 +151,11 @@ export function CyanotypeTemplate({ run, width, height, background, units = 'km'
             <Plate key={m.key} label={m.label} value={m.value} cream={CREAM} />
           ))}
         </View>
-        <View style={{ marginTop: PAD.md }}>
-          <RunstampMark tone="paper" opacity={0.55} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ marginTop: PAD.md }}>
+            <RunstampMark tone="paper" opacity={0.55} />
+          </View>
+        )}
       </View>
     </View>
   );

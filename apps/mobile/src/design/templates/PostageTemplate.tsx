@@ -41,6 +41,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // PostageTemplate
@@ -55,7 +56,7 @@ interface Props {
 //  - Postmark circle actually renders date + pace inside (was empty rings).
 //  - "DENOMINATION" eyebrow dropped in favour of plain DISTANCE — less jargon.
 //  - Padding uses the shared scale so spacing matches the rest of the family.
-export function PostageTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function PostageTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
   // Stamp inset — perforations sit just inside the outer rect so the paper
   // backdrop bleeds through the notches.
@@ -192,9 +193,11 @@ export function PostageTemplate({ run, width, height, background, units = 'km', 
         </View>
 
         {/* via RUNSTAMP attribution, sits just above the air-mail stripe. */}
-        <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, alignItems: 'center' }}>
-          <RunstampMark tone="paper" opacity={0.4} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, alignItems: 'center' }}>
+            <RunstampMark tone="paper" opacity={0.4} />
+          </View>
+        )}
 
         {/* Air-mail accent stripes at the bottom edge. */}
         <View pointerEvents="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, flexDirection: 'row' }}>

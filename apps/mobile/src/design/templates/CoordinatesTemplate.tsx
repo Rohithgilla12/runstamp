@@ -18,6 +18,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // CoordinatesTemplate
@@ -32,7 +33,7 @@ interface Props {
 //
 // Coordinate source, in order: run.startLat/startLon → centre of rawLatLng →
 // none (lead with city + distance instead, no empty slot).
-export function CoordinatesTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function CoordinatesTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   // Dark chart field regardless of theme — a surveyor's plate reads as ink.
@@ -199,9 +200,11 @@ export function CoordinatesTemplate({ run, width, height, background, units = 'k
       )}
 
       {/* Footer attribution. */}
-      <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, alignItems: 'center' }}>
-        <RunstampMark tone="paper" opacity={0.4} />
-      </View>
+      {!hideAttribution && (
+        <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, alignItems: 'center' }}>
+          <RunstampMark tone="paper" opacity={0.4} />
+        </View>
+      )}
     </View>
   );
 }

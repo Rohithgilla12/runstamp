@@ -22,6 +22,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // PassportTemplate
@@ -32,7 +33,7 @@ interface Props {
 // the left, distance + pace stacked on the right, faint horizontal guide
 // rules across the mid section like a real biometric page.
 // Bottom-right stamp zone uses PostmarkMark from SunMark.
-export function PassportTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function PassportTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   // Warm paper tones — passport pages are off-white / ecru
@@ -230,9 +231,11 @@ export function PassportTemplate({ run, width, height, background, units = 'km',
       <MRZZone lines={mrzLines} width={width} inkTone={inkTone} />
 
       {/* via Runstamp — tucked just above the MRZ. */}
-      <View style={{ position: 'absolute', bottom: 54, left: 14 }}>
-        <RunstampMark tone="ink" opacity={0.45} />
-      </View>
+      {!hideAttribution && (
+        <View style={{ position: 'absolute', bottom: 54, left: 14 }}>
+          <RunstampMark tone="ink" opacity={0.45} />
+        </View>
+      )}
     </View>
   );
 }

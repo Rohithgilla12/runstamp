@@ -24,6 +24,7 @@ interface Props {
   photoUri?: string | null;
   /** Engraved has no map backdrop — accepts for call-site uniformity, ignores. */
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // EngravedTemplate
@@ -35,7 +36,7 @@ interface Props {
 // No accent colour — pure ink (#14110d) on paper (#f3ede2) regardless of theme.
 // Background variant has no effect on colour; only the solid variant gets a
 // slightly darker paper to simulate thick card stock.
-export function EngravedTemplate({ run, width, height, background, units = 'km' }: Props) {
+export function EngravedTemplate({ run, width, height, background, units = 'km', hideAttribution }: Props) {
   // Monochrome — intentionally bypass theme accent
   const paper = background === 'solid' ? '#ede5d4' : '#f3ede2';
   const ink = '#14110d';
@@ -181,22 +182,24 @@ export function EngravedTemplate({ run, width, height, background, units = 'km' 
       </View>
 
       {/* Bottom ornament row */}
-      <View style={{ alignItems: 'center', position: 'absolute', bottom: 26, left: 0, right: 0 }}>
-        <OrnamentsRow ink={ink} width={width * 0.5} />
-        <TText
-          variant="serif"
-          style={{
-            fontSize: 7,
-            color: ink,
-            letterSpacing: 4,
-            textTransform: 'uppercase',
-            opacity: 0.35,
-            marginTop: 4
-          }}
-        >
-          RUNSTAMP · {run.country.toUpperCase()}
-        </TText>
-      </View>
+      {!hideAttribution && (
+        <View style={{ alignItems: 'center', position: 'absolute', bottom: 26, left: 0, right: 0 }}>
+          <OrnamentsRow ink={ink} width={width * 0.5} />
+          <TText
+            variant="serif"
+            style={{
+              fontSize: 7,
+              color: ink,
+              letterSpacing: 4,
+              textTransform: 'uppercase',
+              opacity: 0.35,
+              marginTop: 4
+            }}
+          >
+            RUNSTAMP · {run.country.toUpperCase()}
+          </TText>
+        </View>
+      )}
     </View>
   );
 }
