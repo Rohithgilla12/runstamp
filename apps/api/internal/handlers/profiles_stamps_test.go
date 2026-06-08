@@ -26,3 +26,13 @@ func TestToPublicStamps(t *testing.T) {
 		t.Fatalf("unknown stamp should have blank name/tier: %+v", out[1])
 	}
 }
+
+func TestToPublicStampsEmpty(t *testing.T) {
+	out := toPublicStamps(nil)
+	if out == nil {
+		t.Fatal("toPublicStamps(nil) returned nil; want non-nil empty slice (JSON [] not null)")
+	}
+	if len(out) != 0 {
+		t.Fatalf("len = %d, want 0", len(out))
+	}
+}

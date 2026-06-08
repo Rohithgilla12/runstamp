@@ -180,7 +180,9 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	totals, cities, err := loadPublicAggregates(ctx, h.Pool, user.ID)
 	if err != nil {
-		h.Log.Warn("profiles get: aggregates", "err", err)
+		h.Log.Error("profiles get: aggregates", "err", err, "handle", handle, "userID", user.ID)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
 	}
 
 	resp := publicProfileResponse{
@@ -192,6 +194,11 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		resp.DisplayName = *user.DisplayName
 	}
 	resp.Stamps = toPublicStamps(earned)
+	for _, e := range earned {
+		if _, ok := stamps.Lookup(e.StampID); !ok {
+			h.Log.Warn("profiles get: earned stamp not in catalog", "stampId", e.StampID, "userID", user.ID)
+		}
+	}
 
 	// New analytics sections. Each loads independently; a failure logs and
 	// leaves its field empty so the rest of the response still ships.
