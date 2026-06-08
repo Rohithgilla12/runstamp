@@ -42,6 +42,9 @@ import { useAuth } from '../state/AuthContext';
 import { updateActivity } from '../services/activityEdit';
 import { EditFieldProvider, type EditableTextField } from '../editor/text/EditFieldContext';
 import { EditTextSheet } from '../editor/text/EditTextSheet';
+import { useAccount } from '../state/useAccount';
+import { ProfileStamp } from '../editor/share/ProfileStamp';
+import { shouldShowProfileStamp } from '../editor/share/profileUrl';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
@@ -143,6 +146,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const id = route.params?.id;
   const { activities, loading, refresh: refreshActivities } = useActivities();
   const { getIdToken } = useAuth();
+  const { me } = useAccount();
+  const showProfileStamp = shouldShowProfileStamp(me ?? undefined);
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   // Lifted up so every sticker that renders charts/maps shares one fetch.
   // useActivityStreams gracefully no-ops when id is null.
@@ -460,10 +465,12 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
 
             {/* Watermark — the marketing "Runstamp" postmark on every export */}
-            <View style={{ position: 'absolute', bottom: 12, right: 12, alignItems: 'center' }}>
-              <PostmarkMark size={36} color="rgba(243,237,226,0.55)" />
-              <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.55)', marginTop: 2, letterSpacing: 1 }}>RUNSTAMP</TText>
-            </View>
+            {!showProfileStamp && (
+              <View style={{ position: 'absolute', bottom: 12, right: 12, alignItems: 'center' }}>
+                <PostmarkMark size={36} color="rgba(243,237,226,0.55)" />
+                <TText variant="mono" style={{ fontSize: 8, color: 'rgba(243,237,226,0.55)', marginTop: 2, letterSpacing: 1 }}>RUNSTAMP</TText>
+              </View>
+            )}
 
             {/* Stickers — hide any whose underlying data is missing for this
                 run. Keeps the sticker state intact in case the user navigates
@@ -492,6 +499,11 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           </Pressable>
           )}
           </EditFieldProvider>
+          {showProfileStamp && me?.handle && (
+            <View style={{ position: 'absolute', left: 12, bottom: 12 }} pointerEvents="none">
+              <ProfileStamp handle={me.handle} />
+            </View>
+          )}
           </View>
         </View>
 
