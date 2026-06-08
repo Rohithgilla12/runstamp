@@ -21,6 +21,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // SplitsLedgerTemplate
@@ -33,7 +34,7 @@ interface Props {
 //
 // No splits → a clean distance/pace/time stat block so the card never breaks.
 // The map is deliberately omitted/secondary: this card is about the numbers.
-export function SplitsLedgerTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function SplitsLedgerTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const splits = run.splits ?? [];
@@ -172,9 +173,11 @@ export function SplitsLedgerTemplate({ run, width, height, background, units = '
 
       {/* Torn-receipt bottom edge + attribution. */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-        <View style={{ alignItems: 'center', paddingBottom: 12 }}>
-          <RunstampMark tone="ink" opacity={0.42} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ alignItems: 'center', paddingBottom: 12 }}>
+            <RunstampMark tone="ink" opacity={0.42} />
+          </View>
+        )}
         <TornEdge width={width} seed={seedFromId(run.id)} paper={c.paper} line={c.line} />
       </View>
     </View>

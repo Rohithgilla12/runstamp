@@ -20,6 +20,7 @@ interface Props {
   // Privacy-masked raw lat/lng — when present, the map background renders real
   // OSM tiles. null/undefined falls back to the bare paper-and-ink path.
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // MinimalTemplate (PRD §6.3)
@@ -31,7 +32,7 @@ interface Props {
 // dominating the middle, pace / time / elevation in a small mono row, a
 // single solar hairline as the only colour. Background is paper (light or
 // dark theme-aware).
-export function MinimalTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function MinimalTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const distFont = Math.min(width * 0.30, 120);
@@ -108,9 +109,11 @@ export function MinimalTemplate({ run, width, height, background, units = 'km', 
       </View>
 
       {/* Footer mark — paper-thin "RUNSTAMP" so the surface is signed. */}
-      <View style={{ position: 'absolute', bottom: 4, right: PAD.xl }}>
-        <TText variant="mono" style={{ fontSize: 7, color: c.ink3, letterSpacing: 3, opacity: 0.55 }}>RUNSTAMP</TText>
-      </View>
+      {!hideAttribution && (
+        <View style={{ position: 'absolute', bottom: 4, right: PAD.xl }}>
+          <TText variant="mono" style={{ fontSize: 7, color: c.ink3, letterSpacing: 3, opacity: 0.55 }}>RUNSTAMP</TText>
+        </View>
+      )}
     </View>
   );
 }

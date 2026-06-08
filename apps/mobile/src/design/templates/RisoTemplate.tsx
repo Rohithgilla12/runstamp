@@ -21,6 +21,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // RisoTemplate (PRD §6.3 — "Riso")
@@ -33,7 +34,7 @@ interface Props {
 //
 // Like CyanotypeTemplate this bypasses the live theme accent — riso's
 // charm is the strict 2-spot-colour palette.
-export function RisoTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function RisoTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
   void c;
 
@@ -155,9 +156,11 @@ export function RisoTemplate({ run, width, height, background, units = 'km', pho
           <RisoStat label={third.label} value={third.value} pink={PINK} blue={BLUE} />
           {run.city ? <RisoStat label="CITY" value={run.city.toUpperCase()} pink={PINK} blue={BLUE} /> : null}
         </View>
-        <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
-          <RunstampMark tone="ink" opacity={0.5} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ marginTop: PAD.md, alignItems: 'center' }}>
+            <RunstampMark tone="ink" opacity={0.5} />
+          </View>
+        )}
       </View>
     </View>
   );

@@ -20,6 +20,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // PostmarkTemplate
@@ -30,7 +31,7 @@ interface Props {
 // denomination at the top of the ring, pace + time as small mono labels
 // along the lower arc. The route map (or photo / solid colour) bleeds behind
 // the stamp, muted by a dark scrim.
-export function PostmarkTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function PostmarkTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   return (
@@ -109,7 +110,7 @@ export function PostmarkTemplate({ run, width, height, background, units = 'km',
               {run.title}
             </TText>
           </EditableField>
-          <RunstampMark tone="paper" opacity={0.5} />
+          {!hideAttribution && <RunstampMark tone="paper" opacity={0.5} />}
         </View>
         <View style={{ flexDirection: 'row', marginTop: 12, height: 3 }}>
           {Array.from({ length: 16 }).map((_, i) => (

@@ -116,3 +116,16 @@ func TestCatalogTierValid(t *testing.T) {
 		}
 	}
 }
+
+func TestLookup(t *testing.T) {
+	def, ok := Lookup("first_5k")
+	if !ok {
+		t.Fatal("first_5k not found in catalog")
+	}
+	if def.Name == "" || def.Tier == "" {
+		t.Fatalf("first_5k missing name/tier: %+v", def)
+	}
+	if _, ok := Lookup("does_not_exist"); ok {
+		t.Fatal("unknown id should not be found")
+	}
+}

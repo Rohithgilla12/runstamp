@@ -12,6 +12,7 @@
 // the same as before.
 
 import { ImageResponse } from "workers-og";
+import { selectStripStamps, type StripStamp } from "./og/stampStrip";
 
 interface Env {
   ASSETS: Fetcher;
@@ -19,7 +20,7 @@ interface Env {
 
 const API_BASE = "https://runstamp-api.gilla.fun";
 const SITE_BASE = "https://runstamp.gilla.fun";
-const CACHE_VERSION = "3";
+const CACHE_VERSION = "5";
 
 // Palette literals — must match the design tokens in Base.astro.
 const PAPER = "#f3ede2";
@@ -27,6 +28,7 @@ const PAPER2 = "#ebe3d3";
 const INK = "#14110d";
 const INK3 = "#75695a";
 const SOLAR = "#e85d2f";
+const MOSS = "#4a6b3a";
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -164,7 +166,8 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
   if (cached) return cached;
 
   try {
-    const profile = await fetchProfile(handle);
+    const res = await fetchProfileResult(handle);
+    const profile = res.kind === "ok" ? res.profile : null;
     const html = ogCardHtml(handle, profile);
 
     // workers-og returns a streaming body. Returning the body directly
@@ -172,6 +175,15 @@ async function serveOgImage(rawHandle: string, ctx: ExecutionContext): Promise<R
     // response) leaves one side empty. Buffer to ArrayBuffer once.
     const png = new ImageResponse(html, { width: 1200, height: 630, format: "png" });
     const buf = await png.arrayBuffer();
+
+    if (res.kind === "error") {
+      // Transient upstream failure — serve the degraded card but don't freeze
+      // it into the cache, so it recovers as soon as the API is back.
+      return new Response(buf, {
+        status: 200,
+        headers: { "Content-Type": "image/png", "Cache-Control": "no-store" },
+      });
+    }
 
     const headers = new Headers({
       "Content-Type": "image/png",
@@ -201,21 +213,42 @@ interface PublicProfile {
   handle: string;
   displayName?: string;
   totals?: { runs: number; distanceKm: number; countries: number; cities: number };
-  stamps?: Array<{ stampId: string }>;
+  stamps?: StripStamp[];
   cities?: Array<{ city: string; country?: string; runs: number }>;
   yearToDate?: { year: number; runs: number; distanceKm: number };
 }
 
-async function fetchProfile(handle: string): Promise<PublicProfile | null> {
+type ProfileFetch =
+  | { kind: "ok"; profile: PublicProfile }
+  | { kind: "missing" }
+  | { kind: "error" };
+
+// fetchProfileResult distinguishes a real 404 (missing/private handle —
+// cacheable) from a transient failure (5xx/429/network/parse — must not be
+// cached, or an outage freezes into the OG image). Logs failures so blank
+// cards are debuggable via `wrangler tail`.
+async function fetchProfileResult(handle: string): Promise<ProfileFetch> {
   try {
     const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`, {
       cf: { cacheTtl: 60, cacheEverything: true },
     });
-    if (!r.ok) return null;
-    return (await r.json()) as PublicProfile;
-  } catch {
-    return null;
+    if (r.status === 404) return { kind: "missing" };
+    if (!r.ok) {
+      console.warn("fetchProfile non-ok", { handle, status: r.status });
+      return { kind: "error" };
+    }
+    return { kind: "ok", profile: (await r.json()) as PublicProfile };
+  } catch (err) {
+    console.error("fetchProfile failed", { handle, err: err instanceof Error ? err.message : String(err) });
+    return { kind: "error" };
   }
+}
+
+// fetchProfile keeps the graceful-null contract for the SPA meta path, where
+// a missing/failed profile just downgrades og:title/description.
+async function fetchProfile(handle: string): Promise<PublicProfile | null> {
+  const res = await fetchProfileResult(handle);
+  return res.kind === "ok" ? res.profile : null;
 }
 
 // ogCardHtml builds the OG card markup that Satori renders. Flexbox-only
@@ -230,7 +263,6 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
 
   const lifetimeKm = totals ? Math.round(totals.distanceKm).toLocaleString() : "—";
   const lifetimeRuns = totals ? String(totals.runs) : "—";
-  const stampsCount = p?.stamps ? String(p.stamps.length) : "—";
   const yearKm = ytd ? Math.round(ytd.distanceKm).toLocaleString() : "—";
   const yearLabel = ytd ? String(ytd.year) : "THIS YEAR";
 
@@ -247,7 +279,7 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
   return `
 <div style="display:flex; flex-direction:column; width:1200px; height:630px; background:${PAPER};">
   <!-- Ink hero panel — postcard. -->
-  <div style="display:flex; width:1200px; height:380px; background:${INK}; padding:54px 72px; align-items:center; justify-content:space-between;">
+  <div style="display:flex; width:1200px; height:300px; background:${INK}; padding:44px 72px; align-items:center; justify-content:space-between;">
     <div style="display:flex; flex-direction:column; max-width:760px;">
       <div style="display:flex; font-family:monospace; font-size:18px; color:${SOLAR}; letter-spacing:6px;">@${esc(handle)}</div>
       <div style="display:flex; margin-top:14px;">
@@ -258,9 +290,11 @@ function ogCardHtml(handle: string, p: PublicProfile | null): string {
     ${postmarkSvg(homeCity)}
   </div>
 
-  <!-- Paper strip — four big stats. -->
-  <div style="display:flex; width:1200px; flex:1; padding:40px 72px 20px 72px; justify-content:space-between; align-items:flex-start;">
-    ${statBlock("STAMPS", stampsCount, "")}
+  <!-- Stamp strip — rarest-first earned stamps. -->
+  ${stampStripBlock(p)}
+
+  <!-- Paper strip — three big stats. -->
+  <div style="display:flex; width:1200px; flex:1; padding:18px 72px 12px 72px; justify-content:space-between; align-items:flex-start;">
     ${statBlock("DISTANCE", lifetimeKm, " km")}
     ${statBlock("RUNS", lifetimeRuns, "")}
     ${statBlock(yearLabel, yearKm, " km")}
@@ -281,7 +315,44 @@ function statBlock(label: string, value: string, unit: string): string {
   return `
 <div style="display:flex; flex-direction:column;">
   <div style="display:flex; font-family:monospace; font-size:18px; color:${INK3}; letter-spacing:4px;">${esc(label)}</div>
-  <div style="display:flex; margin-top:14px; font-family:monospace; font-size:84px; color:${INK}; letter-spacing:-3px; font-weight:500;">${esc(value)}<span style="font-size:32px; color:${INK3}; margin-left:6px; align-self:flex-end; padding-bottom:14px;">${esc(unit)}</span></div>
+  <div style="display:flex; margin-top:10px; font-family:monospace; font-size:54px; color:${INK}; letter-spacing:-2px; font-weight:500;">${esc(value)}<span style="font-size:22px; color:${INK3}; margin-left:6px; align-self:flex-end; padding-bottom:8px;">${esc(unit)}</span></div>
+</div>`;
+}
+
+function tierColor(tier?: string): string {
+  return tier === "mythic" ? SOLAR : tier === "rare" ? MOSS : INK3;
+}
+
+// stampTile — a single perforated postage-style tile: tier dot + truncated name.
+function stampTile(s: { name?: string; tier?: string }): string {
+  const label = (s.name ?? "STAMP").slice(0, 14);
+  return `
+<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:170px; height:76px; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; padding:8px;">
+  <div style="display:flex; width:11px; height:11px; border-radius:9999px; background:${tierColor(s.tier)};"></div>
+  <div style="display:flex; margin-top:6px; font-family:monospace; font-size:13px; color:${INK}; text-align:center; line-height:1.1;">${esc(label)}</div>
+</div>`;
+}
+
+// stampStripBlock — the "STAMPS EARNED" row: rarest-first tiles + "+N".
+function stampStripBlock(p: PublicProfile | null): string {
+  const all = p?.stamps ?? [];
+  const inner =
+    all.length === 0
+      ? `<div style="display:flex; width:170px; height:76px; align-items:center; justify-content:center; background:${PAPER2}; border:2px dashed ${INK3}; border-radius:10px; font-family:monospace; font-size:14px; color:${INK3};">no stamps yet</div>`
+      : (() => {
+          const { shown, extra } = selectStripStamps(all, 5);
+          const tiles = shown.map(stampTile).join("");
+          const more =
+            extra > 0
+              ? `<div style="display:flex; align-items:center; font-family:monospace; font-size:30px; color:${INK3};">+${extra}</div>`
+              : "";
+          return tiles + more;
+        })();
+
+  return `
+<div style="display:flex; flex-direction:column; width:1200px; padding:16px 72px 0 72px;">
+  <div style="display:flex; font-family:monospace; font-size:18px; color:${INK3}; letter-spacing:4px;">STAMPS EARNED</div>
+  <div style="display:flex; margin-top:12px; gap:14px; align-items:center;">${inner}</div>
 </div>`;
 }
 

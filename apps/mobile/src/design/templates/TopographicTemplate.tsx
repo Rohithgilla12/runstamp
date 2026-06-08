@@ -18,6 +18,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // Seeded LCG — Mulberry32, deterministic. No Math.random() in render; seed
@@ -66,7 +67,7 @@ function dms(value: number, axis: 'NS' | 'EW'): string {
 // is the hero, set huge in JetBrains Mono. If the run has no elevation, the
 // hero falls back to distance. Paper backdrop, ink contours, one solar pop on
 // the benchmark contour line.
-export function TopographicTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function TopographicTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const hasElev = run.elev > 0;
@@ -206,9 +207,11 @@ export function TopographicTemplate({ run, width, height, background, units = 'k
       </View>
 
       {/* Footer mark — paper-thin "RUNSTAMP" so the survey sheet is signed. */}
-      <View style={{ position: 'absolute', bottom: 3, right: PAD.xl }}>
-        <TText variant="mono" style={{ fontSize: 7, color: c.ink3, letterSpacing: 3, opacity: 0.55 }}>RUNSTAMP</TText>
-      </View>
+      {!hideAttribution && (
+        <View style={{ position: 'absolute', bottom: 3, right: PAD.xl }}>
+          <TText variant="mono" style={{ fontSize: 7, color: c.ink3, letterSpacing: 3, opacity: 0.55 }}>RUNSTAMP</TText>
+        </View>
+      )}
     </View>
   );
 }

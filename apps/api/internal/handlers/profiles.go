@@ -50,6 +50,26 @@ type profileTotals struct {
 type publicStamp struct {
 	StampID  string `json:"stampId"`
 	EarnedAt string `json:"earnedAt"`
+	Name     string `json:"name,omitempty"`
+	Tier     string `json:"tier,omitempty"`
+}
+
+// toPublicStamps maps earned rows to the API shape, enriching each with the
+// catalogue name + tier. Unknown ids keep their id with blank name/tier.
+func toPublicStamps(earned []stamps.Earned) []publicStamp {
+	out := make([]publicStamp, 0, len(earned))
+	for _, e := range earned {
+		ps := publicStamp{
+			StampID:  e.StampID,
+			EarnedAt: e.EarnedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		}
+		if def, ok := stamps.Lookup(e.StampID); ok {
+			ps.Name = def.Name
+			ps.Tier = def.Tier
+		}
+		out = append(out, ps)
+	}
+	return out
 }
 
 type publicCity struct {
@@ -160,7 +180,9 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	totals, cities, err := loadPublicAggregates(ctx, h.Pool, user.ID)
 	if err != nil {
-		h.Log.Warn("profiles get: aggregates", "err", err)
+		h.Log.Error("profiles get: aggregates", "err", err, "handle", handle, "userID", user.ID)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
 	}
 
 	resp := publicProfileResponse{
@@ -171,12 +193,11 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if user.DisplayName != nil {
 		resp.DisplayName = *user.DisplayName
 	}
-	resp.Stamps = make([]publicStamp, 0, len(earned))
+	resp.Stamps = toPublicStamps(earned)
 	for _, e := range earned {
-		resp.Stamps = append(resp.Stamps, publicStamp{
-			StampID:  e.StampID,
-			EarnedAt: e.EarnedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		})
+		if _, ok := stamps.Lookup(e.StampID); !ok {
+			h.Log.Warn("profiles get: earned stamp not in catalog", "stampId", e.StampID, "userID", user.ID)
+		}
 	}
 
 	// New analytics sections. Each loads independently; a failure logs and

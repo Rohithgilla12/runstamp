@@ -22,6 +22,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // Seeded LCG — deterministic, no Math.random() in render paths.
@@ -46,7 +47,7 @@ function seededSequence(seed: number, count: number): number[] {
 // small circles). Left column holds ORIGIN → DESTINATION with city/country.
 // Right "stub" column shows distance, pace, time stacked. A fake barcode strip
 // sits at the bottom. Airmail red/blue diagonal stripe bands at top and bottom.
-export function BoardingPassTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function BoardingPassTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const stripH = 18;
@@ -254,7 +255,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
 
       {/* Barcode strip at the very bottom */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: barcodeH, backgroundColor: '#f0e9d8', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <RunstampMark tone="ink" opacity={0.45} />
+        {!hideAttribution && <RunstampMark tone="ink" opacity={0.45} />}
         <View style={{ flex: 1 }}>
           <Barcode width={0} height={28} seed={seedFromId(run.id)} inkColor={c.ink} />
         </View>

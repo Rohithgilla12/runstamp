@@ -22,6 +22,7 @@ interface Props {
   units?: Units;
   photoUri?: string | null;
   rawLatLng?: ReadonlyArray<readonly [number, number]> | null;
+  hideAttribution?: boolean;
 }
 
 // CustomsTemplate
@@ -32,7 +33,7 @@ interface Props {
 // "DECLARATION OF RUN" as the italic Instrument Serif title at the top.
 // Personal Best checkbox in the lower right.
 // Signature line at the very bottom.
-export function CustomsTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng }: Props) {
+export function CustomsTemplate({ run, width, height, background, units = 'km', photoUri, rawLatLng, hideAttribution }: Props) {
   const c = useColors();
 
   const paperTone = '#f5eedf';
@@ -207,9 +208,11 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
         </View>
 
         {/* via Runstamp footer */}
-        <View style={{ marginTop: 10, alignItems: 'flex-end' }}>
-          <RunstampMark tone="ink" opacity={0.4} />
-        </View>
+        {!hideAttribution && (
+          <View style={{ marginTop: 10, alignItems: 'flex-end' }}>
+            <RunstampMark tone="ink" opacity={0.4} />
+          </View>
+        )}
       </View>
     </View>
   );
