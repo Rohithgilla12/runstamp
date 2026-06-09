@@ -1,13 +1,16 @@
-import type { Activity, ActivityKind } from '../../data/models';
+import type { Activity } from '../../data/models';
 
-// Quick-pick presets surfaced as chips in the run-type editor. The label is
-// the human text stored as the override; templates uppercase it as needed.
-export const RUN_TYPE_PRESETS: { kind: ActivityKind; label: string }[] = [
-  { kind: 'easy', label: 'Recovery run' },
-  { kind: 'long', label: 'Long run' },
-  { kind: 'workout', label: 'Speed workout' },
-  { kind: 'travel', label: 'Travel run' },
-  { kind: 'race', label: 'Race' },
+// Quick-pick labels surfaced as chips in the run-type editor. Selecting one
+// stores it as the override text; templates uppercase it as needed.
+export const RUN_TYPE_PRESETS: string[] = [
+  'Easy run',
+  'Long run',
+  'Speed workout',
+  'Travel run',
+  'Race',
+  'MAF run',
+  'Tempo',
+  'Intervals',
 ];
 
 // The user-set run-type override, trimmed; null when the run has none.

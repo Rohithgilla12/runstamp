@@ -222,7 +222,7 @@ function purposeFromKind(kind: Activity['kind']): string {
   switch (kind) {
     case 'long':    return 'LONG RUN — ENDURANCE';
     case 'workout': return 'SPEED WORK — QUALITY';
-    case 'easy':    return 'EASY RUN — RECOVERY';
+    case 'easy':    return 'EASY RUN — AEROBIC';
     case 'travel':  return 'TRAVEL RUN — LEISURE';
     case 'race':    return 'RACE — COMPETITION';
     default:        return 'RUNNING — GENERAL';

@@ -16,8 +16,20 @@ describe('runTypeOverride', () => {
 });
 
 describe('RUN_TYPE_PRESETS', () => {
-  it('covers all five run kinds with human labels', () => {
-    expect(RUN_TYPE_PRESETS.map((p) => p.kind)).toEqual(['easy', 'long', 'workout', 'travel', 'race']);
-    expect(RUN_TYPE_PRESETS.every((p) => p.label.length > 0)).toBe(true);
+  it('lists the quick-pick run-type labels', () => {
+    expect(RUN_TYPE_PRESETS).toEqual([
+      'Easy run',
+      'Long run',
+      'Speed workout',
+      'Travel run',
+      'Race',
+      'MAF run',
+      'Tempo',
+      'Intervals',
+    ]);
+  });
+
+  it('has no empty labels', () => {
+    expect(RUN_TYPE_PRESETS.every((l) => l.length > 0)).toBe(true);
   });
 });

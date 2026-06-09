@@ -57,19 +57,19 @@ export function EditTextSheet({
 
           {field.kind === 'runType' && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
-              {RUN_TYPE_PRESETS.map((p) => {
-                const active = value.trim().toLowerCase() === p.label.toLowerCase();
+              {RUN_TYPE_PRESETS.map((preset) => {
+                const active = value.trim().toLowerCase() === preset.toLowerCase();
                 return (
                   <Pressable
-                    key={p.kind}
-                    onPress={() => setValue(p.label)}
+                    key={preset}
+                    onPress={() => setValue(preset)}
                     style={{
                       paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
                       backgroundColor: active ? c.ink : c.paper2,
                       borderWidth: 1, borderColor: active ? c.ink : c.line,
                     }}
                   >
-                    <TText style={{ fontSize: 12, color: active ? c.paper : c.ink2, fontWeight: '500' }}>{p.label}</TText>
+                    <TText style={{ fontSize: 12, color: active ? c.paper : c.ink2, fontWeight: '500' }}>{preset}</TText>
                   </Pressable>
                 );
               })}
