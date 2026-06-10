@@ -147,7 +147,11 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const { activities, loading, refresh: refreshActivities } = useActivities();
   const { getIdToken } = useAuth();
   const { me } = useAccount();
-  const showProfileStamp = shouldShowProfileStamp(me ?? undefined);
+  const profileStampAvailable = shouldShowProfileStamp(me ?? undefined);
+  // Lets the user drop the profile QR from the exported card. Falls back to
+  // the marketing watermark, same as a non-public profile.
+  const [showQr, setShowQr] = useState(true);
+  const showProfileStamp = profileStampAvailable && showQr;
   const run = id ? activities.find((a) => a.id === id) : activities[0];
   // Lifted up so every sticker that renders charts/maps shares one fetch.
   // useActivityStreams gracefully no-ops when id is null.
@@ -632,7 +636,33 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
 
           {tab === 'export' && (
             <Card>
-              <Eyebrow style={{ marginBottom: 12 }}>SHARE</Eyebrow>
+              {profileStampAvailable && (
+                <Pressable
+                  onPress={() => setShowQr((v) => !v)}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: showQr }}
+                  style={{
+                    paddingBottom: 14, marginBottom: 2, borderBottomWidth: 1, borderBottomColor: c.line2,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <TText style={{ fontSize: 14, fontWeight: '500', color: c.ink }}>Show profile QR</TText>
+                    <TText variant="mono" style={{ fontSize: 10.5, color: c.ink3, marginTop: 2 }}>
+                      Links to runstamp.gilla.fun/u/{me?.handle}
+                    </TText>
+                  </View>
+                  <View style={{
+                    width: 44, height: 26, borderRadius: 13, padding: 3,
+                    backgroundColor: showQr ? c.accent : c.paper3,
+                    borderWidth: 1, borderColor: showQr ? c.accent : c.line,
+                    alignItems: showQr ? 'flex-end' : 'flex-start', justifyContent: 'center',
+                  }}>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: c.paper }} />
+                  </View>
+                </Pressable>
+              )}
+              <Eyebrow style={{ marginBottom: 12, marginTop: profileStampAvailable ? 14 : 0 }}>SHARE</Eyebrow>
               {([
                 { mode: 'save'    as const, label: 'Save to camera roll',     desc: 'PNG · captured at retina scale' },
                 { mode: 'stories' as const, label: 'Instagram Stories',       desc: 'Saves to roll, opens Instagram' },
