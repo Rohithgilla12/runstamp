@@ -175,7 +175,7 @@ export function BoardingPassTemplate({ run, width, height, background, units = '
               <View>
                 <Eyebrow style={{ color: c.ink3, fontSize: EYEBROW_SIZE }}>SEAT</Eyebrow>
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink, marginTop: 1 }}>
-                  {run.id.toUpperCase()}
+                  {run.id.slice(0, 6).toUpperCase()}
                 </TText>
               </View>
             </View>

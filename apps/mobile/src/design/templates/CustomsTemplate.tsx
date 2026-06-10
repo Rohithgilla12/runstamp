@@ -154,7 +154,7 @@ export function CustomsTemplate({ run, width, height, background, units = 'km', 
             paddingHorizontal: 7, paddingVertical: 4, marginTop: 4
           }}>
             <TText variant="mono" style={{ fontSize: 8, color: 'rgba(28,24,18,0.5)' }}>
-              FORM {run.id.toUpperCase()}
+              FORM {run.id.slice(0, 6).toUpperCase()}
             </TText>
           </View>
         </View>
