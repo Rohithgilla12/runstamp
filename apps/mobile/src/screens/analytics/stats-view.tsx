@@ -151,19 +151,19 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
     [filteredByLens, selectedWeek],
   );
 
-  // VO₂ max trend — computed against full history (filtered by lens), not
-  // scope-windowed. The card hides itself when no measurements exist.
+  // VO₂ max trend — windowed to the selected scope, so "month" shows only that
+  // month's measurements. The card hides itself when no readings fall in scope.
   const vo2Trend = useMemo(
-    () => vo2Series(filteredByLens.map((a) => ({ date: a.date, vo2max: a.vo2max }))),
-    [filteredByLens],
+    () => vo2Series(filteredInScope.map((a) => ({ date: a.date, vo2max: a.vo2max }))),
+    [filteredInScope],
   );
   const vo2Now = useMemo(() => currentVo2(vo2Trend), [vo2Trend]);
   const vo2Delta = useMemo(() => deltaVo2(vo2Trend), [vo2Trend]);
   const hasVo2 = vo2Trend.length > 0;
 
   const cadenceTrend = useMemo(
-    () => cadenceSeries(filteredByLens.map((a) => ({ date: a.date, cadence: a.cadence }))),
-    [filteredByLens],
+    () => cadenceSeries(filteredInScope.map((a) => ({ date: a.date, cadence: a.cadence }))),
+    [filteredInScope],
   );
   const cadenceNow = useMemo(() => currentCadence(cadenceTrend), [cadenceTrend]);
   const cadenceDeltaV = useMemo(() => deltaCadence(cadenceTrend), [cadenceTrend]);
