@@ -181,16 +181,16 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
   // Aerobic decoupling — per-run Pa:HR from splits halves. Falls back to
   // empty when no run in scope has splits.
   const decoupling = useMemo(() => decouplingSeries(
-    filteredByLens.map((a) => ({ date: a.date, splits: a.splits })),
-  ), [filteredByLens]);
+    filteredInScope.map((a) => ({ date: a.date, splits: a.splits })),
+  ), [filteredInScope]);
   const decouplingRecent = useMemo(() => recentAvg(decoupling, 4), [decoupling]);
   const hasDecoupling = decoupling.length > 0;
 
   const strideTrend = useMemo(
-    () => strideSeries(filteredByLens.map((a) => ({
+    () => strideSeries(filteredInScope.map((a) => ({
       date: a.date, distance: a.distance, seconds: a.seconds, cadence: a.cadence,
     }))),
-    [filteredByLens],
+    [filteredInScope],
   );
   const strideNow = useMemo(() => currentStride(strideTrend), [strideTrend]);
   const strideDelta = useMemo(() => deltaStride(strideTrend), [strideTrend]);
