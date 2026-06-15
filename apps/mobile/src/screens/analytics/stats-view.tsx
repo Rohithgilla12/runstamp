@@ -31,6 +31,8 @@ import { RacePredictorCard } from '../../design/charts/RacePredictorCard';
 import { DecouplingCard } from '../../design/charts/DecouplingCard';
 import { StrideLengthCard } from '../../design/charts/StrideLengthCard';
 import { FormChartCard } from '../../design/charts/FormChartCard';
+import { acwrSeries, currentACWR, acwrRisk } from '../../analytics/acwr';
+import { ACWRCard } from '../../design/charts/ACWRCard';
 import { MafPaceCard } from '../../design/charts/MafPaceCard';
 import { ClimbingTaxCard } from '../../design/charts/ClimbingTaxCard';
 import { DailyBars } from '../../design/charts/DailyBars';
@@ -99,6 +101,19 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
     hrMax,
     hrResting,
   ), [filteredByLens, today, hrMax, hrResting]);
+  const fullLoad = useMemo(
+    () => buildLoadSeries(
+      activities.map((a) => ({ date: a.date, distance: a.distance, seconds: a.seconds, avgHr: a.avgHr })),
+      today,
+      hrMax,
+      hrResting,
+    ),
+    [activities, today, hrMax, hrResting],
+  );
+  const acwr = useMemo(() => acwrSeries(fullLoad), [fullLoad]);
+  const acwrNow = useMemo(() => currentACWR(acwr), [acwr]);
+  const acwrLevel = useMemo(() => acwrRisk(acwrNow), [acwrNow]);
+  const hasAcwr = acwr.length > 0;
   const hrBased = useMemo(() => hasAnyHr(ascending.map((a) => ({ avgHr: a.avgHr }))), [ascending]);
   const monthlyKm = useMemo(() => {
     const out: number[] = Array(12).fill(0);
@@ -632,6 +647,11 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               onTapProfile={onTapProfile}
             />
           </View>
+          {hasAcwr && (
+            <View style={{ marginTop: 12 }}>
+              <ACWRCard series={acwr} current={acwrNow} risk={acwrLevel} />
+            </View>
+          )}
         </>
       )}
       {scope === 'month' && (
@@ -776,6 +796,11 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               onTapProfile={onTapProfile}
             />
           </View>
+          {hasAcwr && (
+            <View style={{ marginTop: 12 }}>
+              <ACWRCard series={acwr} current={acwrNow} risk={acwrLevel} />
+            </View>
+          )}
         </>
       )}
 
