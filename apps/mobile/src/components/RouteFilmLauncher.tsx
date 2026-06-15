@@ -4,7 +4,6 @@
 
 import React, { useMemo, useState } from 'react';
 import { Pressable } from 'react-native';
-import { useActivityStreams } from '../state/useActivityStreams';
 import {
   bboxOf,
   cumulativeLengths,
@@ -22,9 +21,14 @@ const FILM_W = 1080;
 const FILM_H = 1920; // 9:16, even dims (H.264 requirement)
 const MIN_POINTS = 10;
 
-export function RouteFilmLauncher({ run }: { run: Activity }) {
+export function RouteFilmLauncher({
+  run,
+  rawLatLng,
+}: {
+  run: Activity;
+  rawLatLng: Array<readonly [number, number]> | null;
+}) {
   const c = useColors();
-  const { rawLatLng } = useActivityStreams(run.id);
   const [filming, setFilming] = useState(false);
 
   const film = useMemo(() => {
