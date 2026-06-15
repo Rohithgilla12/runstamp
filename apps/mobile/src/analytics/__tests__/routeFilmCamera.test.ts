@@ -125,7 +125,17 @@ describe('choreograph', () => {
     for (const b of [0.12, 0.22, 0.82]) {
       const before = choreograph(b - eps, fit, points, cum).zoom;
       const after = choreograph(b + eps, fit, points, cum).zoom;
-      expect(Math.abs(after - before)).toBeLessThan(fit.zoom * 0.05);
+      expect(Math.abs(after - before)).toBeLessThan(fit.zoom * 0.005);
+    }
+  });
+
+  it('has no center discontinuity at phase boundaries', () => {
+    const eps = 1e-4;
+    for (const b of [0.12, 0.22, 0.82]) {
+      const before = choreograph(b - eps, fit, points, cum).center;
+      const after = choreograph(b + eps, fit, points, cum).center;
+      expect(Math.abs(after.x - before.x)).toBeLessThan(1);
+      expect(Math.abs(after.y - before.y)).toBeLessThan(1);
     }
   });
 });

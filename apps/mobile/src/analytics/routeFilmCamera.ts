@@ -127,7 +127,7 @@ export interface CameraState {
 const T_ESTABLISH_END = 0.12;
 const T_ZOOMIN_END = 0.22;
 const T_FOLLOW_END = 0.82;
-const FLY_ZOOM = 2.4; // how far past the fit-zoom the follow camera pushes in
+const FLY_ZOOM = 2.4; // scale factor: follow zoom = fit.zoom × FLY_ZOOM
 
 function clamp01(t: number): number {
   return Math.max(0, Math.min(1, t));
