@@ -45,6 +45,7 @@ import { EditTextSheet } from '../editor/text/EditTextSheet';
 import { useAccount } from '../state/useAccount';
 import { ProfileStamp } from '../editor/share/ProfileStamp';
 import { shouldShowProfileStamp } from '../editor/share/profileUrl';
+import { RouteFilmLauncher } from '../components/RouteFilmLauncher';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
@@ -686,6 +687,9 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                   <Icon.chevR size={14} color={c.ink3} />
                 </Pressable>
               ))}
+              <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: c.line2, paddingTop: 14 }}>
+                <RouteFilmLauncher run={run} />
+              </View>
             </Card>
           )}
         </View>
