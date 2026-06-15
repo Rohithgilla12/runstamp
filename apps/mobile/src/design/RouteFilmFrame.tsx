@@ -61,7 +61,7 @@ export function RouteFilmFrame({ progress, points, cum, fit, totalKm, title, pla
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeDasharray={total}
+            strokeDasharray={`${total} ${total}`}
             strokeDashoffset={total * (1 - cam.trailFrac)}
           />
         </G>
@@ -79,6 +79,7 @@ export function RouteFilmFrame({ progress, points, cum, fit, totalKm, title, pla
           <Eyebrow style={{ color: c.ink3, fontSize: width * 0.026, letterSpacing: 2 }}>
             {place.toUpperCase()}
           </Eyebrow>
+          {/* serif title sits a hair larger (0.062) than the mono km figure (0.06) on purpose */}
           <TText variant="serifItalic" style={{ color: c.ink, fontSize: width * 0.062 }}>
             {title}
           </TText>
