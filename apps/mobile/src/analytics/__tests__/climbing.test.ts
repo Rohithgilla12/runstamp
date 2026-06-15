@@ -15,6 +15,9 @@ describe('everests', () => {
     expect(everests(8849)).toBeCloseTo(1);
     expect(everests(17698)).toBeCloseTo(2);
   });
+  it('is 0 for no climbing', () => {
+    expect(everests(0)).toBe(0);
+  });
 });
 
 describe('comparison', () => {
@@ -26,5 +29,8 @@ describe('comparison', () => {
     const c = comparison(100);
     expect(c.label).toBe('Eiffel Tower');
     expect(c.count).toBeLessThan(1);
+  });
+  it('returns Kilimanjaro exactly at its height', () => {
+    expect(comparison(5895).label).toBe('Kilimanjaro');
   });
 });

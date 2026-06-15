@@ -23,6 +23,7 @@ export function ClimbingCard({ totalM, everests, comparison }: Props) {
       ? `${Math.round(totalM * 3.28084).toLocaleString()} ft`
       : `${Math.round(totalM).toLocaleString()} m`;
 
+  // show the Everest fraction once you're at least halfway up one; smaller climbs fall back to comparison()
   const evocative =
     everests >= 0.5
       ? `${everests.toFixed(1)} × Everest`

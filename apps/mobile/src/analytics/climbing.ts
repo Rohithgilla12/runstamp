@@ -19,7 +19,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: 'Eiffel Tower', m: 330 },
 ];
 
-const EVEREST_M = 8849;
+const EVEREST_M = LANDMARKS[0].m;
 
 /** Sum of per-activity elevation gain, ignoring missing/negative values. */
 export function totalVerticalM(rows: readonly ClimbRow[]): number {
