@@ -9,8 +9,9 @@ import type { Activity } from '../data/models';
 const CELL_METERS = 100;
 const MAX_RUNS = 80;
 const CONCURRENCY = 6;
+const MAX_CACHE_ENTRIES = 200;
 
-const routeCache = new Map<string, Array<readonly [number, number]>>();
+const rawRouteCache = new Map<string, Array<readonly [number, number]>>();
 
 export interface CityBBox {
   minLat: number;
@@ -51,6 +52,8 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
     ? ''
     : cityRuns.map((r) => r.id).sort().join(',');
 
+  const zonesKey = zones.map((z) => `${z.id}:${z.lat}:${z.lng}:${z.radiusM}`).sort().join(',');
+
   useEffect(() => {
     if (!runKey) {
       setState(emptyState());
@@ -59,7 +62,8 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
 
     cancelledRef.current = false;
 
-    const sorted = [...(cityRuns ?? [])].sort(
+    if (!cityRuns) return;
+    const sorted = [...cityRuns].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     const capped = sorted.length > MAX_RUNS;
@@ -70,10 +74,9 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
     let completed = 0;
     const total = selected.length;
 
-    async function fetchMasked(activity: Activity): Promise<void> {
-      if (routeCache.has(activity.id)) return;
+    async function fetchRaw(activity: Activity, idToken: string | null): Promise<void> {
+      if (rawRouteCache.has(activity.id)) return;
       try {
-        const idToken = await getIdToken();
         const resp = await getActivityStreams(activity.id, idToken);
         const latlngStream = (resp.streams ?? []).find((s) => s.type === 'latlng');
         const raw = latlngStream?.data;
@@ -83,9 +86,12 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
           if (!Array.isArray(pt) || pt.length < 2) continue;
           tuples.push([pt[0] as number, pt[1] as number] as const);
         }
-        const masked = maskRouteRaw(tuples, zones);
-        if (masked.length > 0) {
-          routeCache.set(activity.id, masked);
+        if (tuples.length > 0) {
+          rawRouteCache.set(activity.id, tuples);
+          if (rawRouteCache.size > MAX_CACHE_ENTRIES) {
+            const oldest = rawRouteCache.keys().next().value;
+            if (oldest !== undefined) rawRouteCache.delete(oldest);
+          }
         }
       } catch {
         // tolerate per-activity failures — skip this run
@@ -93,12 +99,14 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
     }
 
     async function run(): Promise<void> {
+      const idToken = await getIdToken();
+
       // Fetch uncached runs with concurrency cap
-      const uncached = selected.filter((a) => !routeCache.has(a.id));
+      const uncached = selected.filter((a) => !rawRouteCache.has(a.id));
       for (let i = 0; i < uncached.length; i += CONCURRENCY) {
         if (cancelledRef.current) return;
         const slice = uncached.slice(i, i + CONCURRENCY);
-        await Promise.all(slice.map((a) => fetchMasked(a)));
+        await Promise.all(slice.map((a) => fetchRaw(a, idToken)));
         if (cancelledRef.current) return;
         completed = Math.min(i + CONCURRENCY, uncached.length);
         // already-cached runs count toward total progress
@@ -113,8 +121,9 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
 
       const spec: GridSpec = { cellMeters: CELL_METERS, refLat };
       const routes = selected
-        .map((a) => routeCache.get(a.id))
-        .filter((r): r is Array<readonly [number, number]> => r != null && r.length > 0);
+        .map((a) => rawRouteCache.get(a.id))
+        .filter((r): r is Array<readonly [number, number]> => r != null && r.length > 0)
+        .map((r) => maskRouteRaw(r, zones));
 
       const cells = coverCells(routes, spec);
 
@@ -151,11 +160,7 @@ export function useCityCoverage(cityRuns: Activity[] | null, refLat: number): Ci
     return () => {
       cancelledRef.current = true;
     };
-    // zones intentionally omitted — masking is applied during fetch; adding
-    // zones to deps would re-fetch everything rather than just re-mask, which
-    // is the wrong trade-off for this hook. Re-open the city sheet to refresh.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runKey, refLat]);
+  }, [runKey, refLat, zonesKey]);
 
   return state;
 }
