@@ -36,6 +36,14 @@ describe('coverCells', () => {
     const cells = coverCells([route], spec);
     expect(cells.size).toBeGreaterThanOrEqual(3);
   });
+  it('densifies a purely E-W segment (lng-dominant)', () => {
+    const route: Array<[number, number]> = [
+      [19.0, 72.8000],
+      [19.0, 72.8032], // ~300m east (lng only, no lat change)
+    ];
+    const cells = coverCells([route], spec);
+    expect(cells.size).toBeGreaterThanOrEqual(3);
+  });
   it('dedupes overlapping routes into the same cells', () => {
     const r: Array<[number, number]> = [[19.0, 72.8], [19.00005, 72.8]];
     const one = coverCells([r], spec);

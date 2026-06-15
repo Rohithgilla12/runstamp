@@ -82,6 +82,7 @@ export function coverCells(routes: ReadonlyArray<ReadonlyArray<LL>>, spec: GridS
   return cells;
 }
 
+/** Cell count + approximate explored area (valid within ~50km of spec.refLat). */
 export function coverageStats(cells: ReadonlySet<string>, spec: GridSpec): CoverageStats {
   const cellAreaKm2 = (spec.cellMeters * spec.cellMeters) / 1e6;
   return { cellCount: cells.size, areaKm2: cells.size * cellAreaKm2 };
