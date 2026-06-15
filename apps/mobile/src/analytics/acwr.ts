@@ -1,7 +1,7 @@
 // Acute:Chronic Workload Ratio — an injury-risk load-management heuristic
 // (Gabbett 2016). Acute = the 7-day EWMA of daily TRIMP (LoadPoint.atl);
-// chronic = a 28-day EWMA of the same daily load, using the app's 1/τ
-// smoothing so it stays consistent with the Form chart's atl/ctl. Pure +
+// chronic = a 28-day EWMA of the same daily load, using the same 1/τ
+// smoothing formula as the Form chart's atl/ctl (here with a 28-day τ). Pure +
 // react-native-free so the vitest (node) suite can cover it.
 
 import type { LoadPoint } from './trainingLoad';
@@ -25,7 +25,11 @@ export function computeACWR(acute: number, chronic: number): number | null {
   return acute / chronic;
 }
 
-/** Walks the daily load series, building a 28-day EWMA chronic load and the ACWR. */
+/**
+ * Walks the daily load series, building a 28-day EWMA chronic load and the ACWR.
+ * Expects a FULL (untrimmed) history: `point.atl` must be a converged 7-day EWMA,
+ * so passing a pre-trimmed window would under-state the acute load.
+ */
 export function acwrSeries(load: readonly LoadPoint[]): AcwrPoint[] {
   if (load.length === 0) return [];
   const out: AcwrPoint[] = [];

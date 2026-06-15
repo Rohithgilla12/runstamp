@@ -45,6 +45,16 @@ describe('acwrSeries', () => {
   it('returns [] for empty input', () => {
     expect(acwrSeries([])).toEqual([]);
   });
+
+  it('emits nothing at exactly the warm-up boundary (28 days)', () => {
+    const load = Array.from({ length: 28 }, (_, i) => day(i, 50, 50));
+    expect(acwrSeries(load)).toEqual([]);
+  });
+
+  it('emits nothing when chronic load never clears the noise floor', () => {
+    const load = Array.from({ length: 60 }, (_, i) => day(i, 0, 0));
+    expect(acwrSeries(load)).toEqual([]);
+  });
 });
 
 describe('currentACWR', () => {
