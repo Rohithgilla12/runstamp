@@ -32,7 +32,9 @@ import { DecouplingCard } from '../../design/charts/DecouplingCard';
 import { StrideLengthCard } from '../../design/charts/StrideLengthCard';
 import { FormChartCard } from '../../design/charts/FormChartCard';
 import { acwrSeries, currentACWR, acwrRisk } from '../../analytics/acwr';
+import { totalVerticalM, everests, comparison } from '../../analytics/climbing';
 import { ACWRCard } from '../../design/charts/ACWRCard';
+import { ClimbingCard } from '../../design/charts/ClimbingCard';
 import { MafPaceCard } from '../../design/charts/MafPaceCard';
 import { ClimbingTaxCard } from '../../design/charts/ClimbingTaxCard';
 import { DailyBars } from '../../design/charts/DailyBars';
@@ -235,6 +237,10 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
   );
   const gapLifetimeAvg = useMemo(() => lifetimeAvgTax(gapTrend), [gapTrend]);
   const showGap = (scope === 'year' || scope === 'all') && gapTrend.length > 0;
+
+  const climbM = useMemo(() => totalVerticalM(filteredByLens.map((a) => ({ elev: a.elev }))), [filteredByLens]);
+  const climbEverests = useMemo(() => everests(climbM), [climbM]);
+  const climbCmp = useMemo(() => comparison(climbM), [climbM]);
 
   const periodB = useMemo(() => {
     if (!comparePeriod) return null;
@@ -647,6 +653,11 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               onTapProfile={onTapProfile}
             />
           </View>
+          {climbM > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingCard totalM={climbM} everests={climbEverests} comparison={climbCmp} />
+            </View>
+          )}
           {hasAcwr && (
             <View style={{ marginTop: 12 }}>
               <ACWRCard series={acwr} current={acwrNow} risk={acwrLevel} />
@@ -796,6 +807,11 @@ export function StatsView({ scope, activities, filters, selectedYear, selectedMo
               onTapProfile={onTapProfile}
             />
           </View>
+          {climbM > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <ClimbingCard totalM={climbM} everests={climbEverests} comparison={climbCmp} />
+            </View>
+          )}
           {hasAcwr && (
             <View style={{ marginTop: 12 }}>
               <ACWRCard series={acwr} current={acwrNow} risk={acwrLevel} />
