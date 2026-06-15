@@ -7,15 +7,16 @@
 // normalized [0..1] fallback — means the camera rig already lives in the same
 // coordinate system map tiles use, so Phase 2 (map flyby) is a drop-in.
 
-import { simplifyPath } from './simplifyPath';
+import { simplifyPath, type XY } from './simplifyPath';
 
-export interface Pt {
-  x: number;
-  y: number;
-}
+// A 2D point; identical shape to simplifyPath's XY (re-aliased to avoid two
+// names for one shape in the same package).
+export type Pt = XY;
 
 export interface Transform {
   center: Pt;
+  // Camera zoom as a pixel-scale multiplier (canvas px per tile-pixel) —
+  // NOT an integer Web-Mercator zoom level like map SDKs use.
   zoom: number;
 }
 
@@ -53,7 +54,9 @@ export function projectRoute(
   return simplifyPath(projected, epsilon);
 }
 
+/** Per-vertex cumulative arc length, starting at 0. Empty in → empty out. */
 export function cumulativeLengths(points: readonly Pt[]): number[] {
+  if (points.length === 0) return [];
   const cum: number[] = [0];
   for (let i = 1; i < points.length; i++) {
     cum.push(cum[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
@@ -84,6 +87,7 @@ export function pointAtFrac(points: readonly Pt[], cum: readonly number[], f: nu
   };
 }
 
+/** Axis-aligned bounding box of the points. */
 export function bboxOf(points: readonly Pt[]): BBox {
   let minX = Infinity;
   let minY = Infinity;
