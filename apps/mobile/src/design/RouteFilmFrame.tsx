@@ -5,7 +5,9 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
+import { distUnit } from '../lib/format';
 import { useColors } from './theme';
+import type { Units } from './theme';
 import { Eyebrow, TText } from './typography';
 import { choreograph, pointAtFrac, type Pt, type Transform } from '../analytics/routeFilmCamera';
 
@@ -18,6 +20,7 @@ interface Props {
   cum: number[];
   fit: Transform;
   totalKm: number;
+  units: Units;
   title: string;
   place: string;
   width: number;
@@ -29,7 +32,7 @@ function toPath(points: readonly Pt[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
 }
 
-export function RouteFilmFrame({ progress, points, cum, fit, totalKm, title, place, width, height }: Props) {
+export function RouteFilmFrame({ progress, points, cum, fit, totalKm, units, title, place, width, height }: Props) {
   const c = useColors();
   const cam = choreograph(progress, fit, points, cum);
   const total = cum[cum.length - 1] || 1;
@@ -45,7 +48,10 @@ export function RouteFilmFrame({ progress, points, cum, fit, totalKm, title, pla
   const headX = width / 2 + (head.x - cam.center.x) * cam.zoom;
   const headY = height / 2 + (head.y - cam.center.y) * cam.zoom;
 
-  const km = (cam.trailFrac * totalKm).toFixed(1);
+  // Counter ticks in the user's unit; 1 decimal reads cleaner than fmtDist's 2 for an animated number.
+  const distTotal = units === 'mi' ? totalKm / 1.609 : totalKm;
+  const value = (cam.trailFrac * distTotal).toFixed(1);
+  const unitLabel = distUnit(units).toUpperCase();
 
   return (
     <View style={{ width, height, backgroundColor: c.paper, overflow: 'hidden' }}>
@@ -86,8 +92,8 @@ export function RouteFilmFrame({ progress, points, cum, fit, totalKm, title, pla
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <TText variant="monoSemi" style={{ color: c.ink, fontSize: width * 0.06 }}>
-            {km}
-            <TText variant="mono" style={{ color: c.ink3, fontSize: width * 0.022 }}> KM</TText>
+            {value}
+            <TText variant="mono" style={{ color: c.ink3, fontSize: width * 0.022 }}> {unitLabel}</TText>
           </TText>
           <Eyebrow style={{ color: c.ink3, fontSize: width * 0.022, letterSpacing: 1.5 }}>VIA RUNSTAMP</Eyebrow>
         </View>

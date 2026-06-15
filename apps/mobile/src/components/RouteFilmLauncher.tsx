@@ -15,6 +15,7 @@ import { VideoExportModal } from '../screens/share/VideoExportModal';
 import { shareExportedVideo } from '../services/videoExport';
 import { TText } from '../design/typography';
 import { useColors } from '../design/theme';
+import type { Units } from '../design/theme';
 import type { Activity } from '../data/models';
 
 const FILM_W = 1080;
@@ -24,9 +25,11 @@ const MIN_POINTS = 10;
 export function RouteFilmLauncher({
   run,
   rawLatLng,
+  units,
 }: {
   run: Activity;
   rawLatLng: Array<readonly [number, number]> | null;
+  units: Units;
 }) {
   const c = useColors();
   const [filming, setFilming] = useState(false);
@@ -35,8 +38,11 @@ export function RouteFilmLauncher({
     if (!rawLatLng || rawLatLng.length < MIN_POINTS) return null;
     const points = projectRoute(rawLatLng);
     if (points.length < 2) return null;
+    const bbox = bboxOf(points);
+    // Stationary GPS / near-total privacy masking collapses to one spot — no meaningful flythrough.
+    if (bbox.maxX - bbox.minX < 1e-6 && bbox.maxY - bbox.minY < 1e-6) return null;
     const cum = cumulativeLengths(points);
-    const fit = fitTransform(bboxOf(points), FILM_W, FILM_H);
+    const fit = fitTransform(bbox, FILM_W, FILM_H);
     return { points, cum, fit };
   }, [rawLatLng]);
 
@@ -71,6 +77,7 @@ export function RouteFilmLauncher({
             cum={film.cum}
             fit={film.fit}
             totalKm={run.distance}
+            units={units}
             title={run.title}
             place={run.place}
             width={FILM_W}
