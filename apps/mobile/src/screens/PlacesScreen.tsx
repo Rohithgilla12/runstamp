@@ -20,6 +20,8 @@ import { STRAVA_ENABLED } from '../config/features';
 import { countContinents } from '../design/worldGeometry';
 import { PlacesShareModal } from './PlacesShareModal';
 import type { TabProps } from '../nav/types';
+import { useCityCoverage } from '../state/useCityCoverage';
+import { CityCoverageMap } from '../design/CityCoverageMap';
 
 interface ComputedPlace {
   city: string;
@@ -448,6 +450,25 @@ function CityDetailSheet({
   const c = useColors();
   const { units } = useAppState();
   const insets = useSafeAreaInsets();
+  const screenW = Dimensions.get('window').width;
+
+  const cityRuns = useMemo<Activity[] | null>(() => {
+    if (!city) return null;
+    const filtered = activities.filter(
+      (a) => a.city?.trim() === city.city.trim() && (a.country?.trim() ?? '') === (city.country?.trim() ?? ''),
+    );
+    return filtered.length > 0 ? filtered : null;
+  }, [city, activities]);
+
+  const refLat = useMemo(() => {
+    if (city?.lat != null) return city.lat;
+    if (!cityRuns || cityRuns.length === 0) return 0;
+    const lats = cityRuns.map((a) => a.startLat).filter((v): v is number => typeof v === 'number');
+    if (lats.length === 0) return 0;
+    return lats.reduce((s, v) => s + v, 0) / lats.length;
+  }, [city, cityRuns]);
+
+  const coverage = useCityCoverage(cityRuns, refLat);
 
   const runs = useMemo(() => {
     if (!city) return [];
@@ -458,6 +479,8 @@ function CityDetailSheet({
   }, [city, activities]);
 
   if (!city) return null;
+
+  const mapWidth = screenW - 40;
 
   return (
     <Modal visible={!!city} transparent animationType="slide" onRequestClose={onClose}>
@@ -538,6 +561,35 @@ function CityDetailSheet({
               </View>
             </View>
           )}
+
+          <View style={{ marginTop: 22 }}>
+            <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>EXPLORED AREA</Eyebrow>
+            <View style={{ marginTop: 8 }}>
+              {coverage.loading && coverage.bbox == null ? (
+                <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+                  Mapping your runs… {Math.round(coverage.progress * 100)}%
+                </TText>
+              ) : coverage.bbox != null ? (
+                <View style={{ gap: 6 }}>
+                  <CityCoverageMap
+                    bbox={coverage.bbox}
+                    cells={coverage.cells}
+                    spec={{ cellMeters: 100, refLat }}
+                    width={mapWidth}
+                    height={220}
+                  />
+                  <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+                    {coverage.stats.cellCount} cells · ~{coverage.stats.areaKm2.toFixed(2)} km²
+                    {coverage.capped ? '  ·  showing latest 80 runs' : ''}
+                  </TText>
+                </View>
+              ) : (
+                <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+                  No GPS routes to map yet.
+                </TText>
+              )}
+            </View>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
