@@ -112,3 +112,74 @@ export function fitTransform(bbox: BBox, width: number, height: number, pad: num
     zoom,
   };
 }
+
+export type FilmPhase = 'establish' | 'zoomIn' | 'follow' | 'reveal';
+
+export interface CameraState {
+  center: Pt;
+  zoom: number;
+  trailFrac: number;
+  playheadVisible: boolean;
+  phase: FilmPhase;
+}
+
+// Timeline boundaries (fractions of total progress) and zoom factor.
+const T_ESTABLISH_END = 0.12;
+const T_ZOOMIN_END = 0.22;
+const T_FOLLOW_END = 0.82;
+const FLY_ZOOM = 2.4; // how far past the fit-zoom the follow camera pushes in
+
+function clamp01(t: number): number {
+  return Math.max(0, Math.min(1, t));
+}
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function lerpPt(a: Pt, b: Pt, t: number): Pt {
+  return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+}
+
+/** Pure camera state for a given progress (0..1). Drives every frame. */
+export function choreograph(
+  progress: number,
+  fit: Transform,
+  points: readonly Pt[],
+  cum: readonly number[],
+): CameraState {
+  const p = clamp01(progress);
+  const fly = fit.zoom * FLY_ZOOM;
+  const start = pointAtFrac(points, cum, 0);
+  const end = pointAtFrac(points, cum, 1);
+
+  if (p < T_ESTABLISH_END) {
+    return { center: fit.center, zoom: fit.zoom, trailFrac: 0, playheadVisible: false, phase: 'establish' };
+  }
+  if (p < T_ZOOMIN_END) {
+    const k = easeInOut((p - T_ESTABLISH_END) / (T_ZOOMIN_END - T_ESTABLISH_END));
+    return {
+      center: lerpPt(fit.center, start, k),
+      zoom: lerp(fit.zoom, fly, k),
+      trailFrac: 0,
+      playheadVisible: k > 0.5,
+      phase: 'zoomIn',
+    };
+  }
+  if (p < T_FOLLOW_END) {
+    const e = (p - T_ZOOMIN_END) / (T_FOLLOW_END - T_ZOOMIN_END);
+    return { center: pointAtFrac(points, cum, e), zoom: fly, trailFrac: e, playheadVisible: true, phase: 'follow' };
+  }
+  const k = easeInOut((p - T_FOLLOW_END) / (1 - T_FOLLOW_END));
+  return {
+    center: lerpPt(end, fit.center, k),
+    zoom: lerp(fly, fit.zoom, k),
+    trailFrac: 1,
+    playheadVisible: k < 0.6,
+    phase: 'reveal',
+  };
+}
