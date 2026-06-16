@@ -290,6 +290,11 @@ func main() {
 			Users: usersRepo,
 			Log:   log,
 		}
+		coverageHandler := &handlers.CoverageHandler{
+			Repo:  coverage.NewRepo(pool),
+			Users: usersRepo,
+			Log:   log,
+		}
 		// Public — no auth required. CORS is scoped inside the handler.
 		waitlistRepo := waitlist.NewRepository(pool)
 		waitlistHandler := waitlist.NewHandler(waitlistRepo, cfg.WaitlistIPSalt, log)
@@ -318,6 +323,7 @@ func main() {
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
 			r.Get("/best-efforts", bestEffortsHandler.List)
+			r.Get("/coverage/{city}", coverageHandler.Get)
 			r.Post("/places/backfill", placesHandler.Backfill)
 			r.Get("/privacy-zones", privacyZonesHandler.List)
 			r.Post("/privacy-zones", privacyZonesHandler.Create)
