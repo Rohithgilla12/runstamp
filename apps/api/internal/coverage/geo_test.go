@@ -25,9 +25,17 @@ func TestDensify(t *testing.T) {
 		t.Errorf("endpoints not preserved: %v .. %v", out[0], out[len(out)-1])
 	}
 	for i := 1; i < len(out); i++ {
-		if g := haversineM(out[i-1], out[i]); g > 55 {
+		if g := haversineM(out[i-1], out[i]); g > 51 { // linear lat/lng interpolation: actual max ~43m for a 50m step
 			t.Errorf("gap %.0f exceeds step", g)
 		}
+	}
+}
+
+func TestDensifyIdenticalPoints(t *testing.T) {
+	pts := []LL{{19, 72.8}, {19, 72.8}, {19.1, 72.9}}
+	out := Densify(pts, 50)
+	if len(out) < 3 {
+		t.Errorf("identical-consecutive densify -> %d, want >= 3", len(out))
 	}
 }
 

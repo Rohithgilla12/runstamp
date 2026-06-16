@@ -24,8 +24,10 @@ type Way struct {
 }
 
 // runnable highway types — what a runner can actually run on. Motorways/trunks
-// (and their links) and non-roads are excluded.
+// (and their links) are excluded; primary/secondary arterials are included
+// (commonly run, esp. in dense city grids).
 var runnable = map[string]bool{
+	"primary": true, "primary_link": true,
 	"residential": true, "living_street": true, "tertiary": true, "tertiary_link": true,
 	"secondary": true, "secondary_link": true, "unclassified": true, "service": true,
 	"footway": true, "path": true, "pedestrian": true, "track": true, "steps": true,
@@ -37,7 +39,7 @@ func isRunnable(h string) bool { return runnable[h] }
 // BuildQuery returns an Overpass QL query for runnable ways in the bbox,
 // returning full geometry.
 func BuildQuery(b BBox) string {
-	bbox := fmt.Sprintf("%g,%g,%g,%g", b.MinLat, b.MinLng, b.MaxLat, b.MaxLng)
+	bbox := fmt.Sprintf("%.7f,%.7f,%.7f,%.7f", b.MinLat, b.MinLng, b.MaxLat, b.MaxLng)
 	return fmt.Sprintf(`[out:json][timeout:60];way["highway"](%s);out geom;`, bbox)
 }
 

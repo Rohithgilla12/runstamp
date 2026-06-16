@@ -7,7 +7,7 @@ import (
 
 func TestBuildQuery(t *testing.T) {
 	q := BuildQuery(BBox{MinLat: 19.0, MinLng: 72.8, MaxLat: 19.1, MaxLng: 72.9})
-	if !strings.Contains(q, "19,72.8,19.1,72.9") {
+	if !strings.Contains(q, "19.0000000,72.8000000,19.1000000,72.9000000") {
 		t.Errorf("bbox not in query: %s", q)
 	}
 	if !strings.Contains(q, "highway") || !strings.Contains(q, "out geom") {
@@ -43,8 +43,18 @@ func TestParseWays(t *testing.T) {
 	}
 }
 
+func TestParseWaysBadInput(t *testing.T) {
+	if _, err := ParseWays([]byte("not json")); err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+	ways, err := ParseWays([]byte(`{"elements":[]}`))
+	if err != nil || len(ways) != 0 {
+		t.Errorf("empty elements: ways=%d err=%v", len(ways), err)
+	}
+}
+
 func TestIsRunnable(t *testing.T) {
-	for _, h := range []string{"residential", "footway", "path", "living_street", "service", "track", "steps", "pedestrian", "tertiary", "secondary", "unclassified"} {
+	for _, h := range []string{"primary", "residential", "footway", "path", "living_street", "service", "track", "steps", "pedestrian", "tertiary", "secondary", "unclassified"} {
 		if !isRunnable(h) {
 			t.Errorf("%s should be runnable", h)
 		}
