@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +22,8 @@ import { PlacesShareModal } from './PlacesShareModal';
 import type { TabProps } from '../nav/types';
 import { useCityCoverage } from '../state/useCityCoverage';
 import { CityCoverageMap } from '../design/CityCoverageMap';
+import { getCityCoverage, type CityCoverage } from '../services/coverage';
+import { CoverageStreetMap } from '../design/CoverageStreetMap';
 
 interface ComputedPlace {
   city: string;
@@ -449,8 +451,35 @@ function CityDetailSheet({
 }) {
   const c = useColors();
   const { units } = useAppState();
+  const { getIdToken } = useAuth();
   const insets = useSafeAreaInsets();
   const screenW = Dimensions.get('window').width;
+
+  const [streetCov, setStreetCov] = useState<CityCoverage | null>(null);
+  const [streetLoading, setStreetLoading] = useState(false);
+
+  useEffect(() => {
+    if (!city) {
+      setStreetCov(null);
+      setStreetLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setStreetCov(null);
+    setStreetLoading(true);
+    (async () => {
+      try {
+        const idToken = await getIdToken();
+        const cov = await getCityCoverage(city.city, idToken);
+        if (!cancelled) setStreetCov(cov);
+      } catch {
+        if (!cancelled) setStreetCov(null);
+      } finally {
+        if (!cancelled) setStreetLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [city, getIdToken]);
 
   const cityRuns = useMemo<Activity[] | null>(() => {
     if (!city) return null;
@@ -565,7 +594,26 @@ function CityDetailSheet({
           <View style={{ marginTop: 22 }}>
             <Eyebrow style={{ color: c.ink3, fontSize: 10 }}>EXPLORED AREA</Eyebrow>
             <View style={{ marginTop: 8 }}>
-              {coverage.loading && coverage.bbox == null ? (
+              {streetCov && streetCov.covered.length > 0 ? (
+                <View style={{ gap: 6 }}>
+                  <CoverageStreetMap
+                    covered={streetCov.covered}
+                    uncovered={streetCov.uncovered}
+                    width={mapWidth}
+                    height={220}
+                  />
+                  <TText variant="monoMedium" style={{ fontSize: 13, color: c.ink }}>
+                    {Math.round(streetCov.pct * 100)}% of your streets
+                  </TText>
+                  <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+                    {streetCov.uniqueStreets} streets · {streetCov.coveredKm.toFixed(1)} km
+                  </TText>
+                </View>
+              ) : streetLoading ? (
+                <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
+                  Mapping your streets…
+                </TText>
+              ) : coverage.loading && coverage.bbox == null ? (
                 <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>
                   Mapping your runs… {Math.round(coverage.progress * 100)}%
                 </TText>
