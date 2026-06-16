@@ -82,7 +82,7 @@ RETURNING way_id`
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("coverage: rows: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("coverage: commit: %w", err)

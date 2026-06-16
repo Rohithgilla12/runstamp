@@ -3,6 +3,7 @@ package coverage
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -97,15 +98,6 @@ func coveredWaysFor(t *testing.T, pool *pgxpool.Pool, activityID string) []int64
 	return ids
 }
 
-func containsWay(ids []int64, wayID int64) bool {
-	for _, id := range ids {
-		if id == wayID {
-			return true
-		}
-	}
-	return false
-}
-
 func TestSnapAndStore_Covered(t *testing.T) {
 	pool := testPool(t)
 	seedFixtures(t, pool)
@@ -124,12 +116,12 @@ func TestSnapAndStore_Covered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SnapAndStore: %v", err)
 	}
-	if !containsWay(ids, testWayID) {
+	if !slices.Contains(ids, testWayID) {
 		t.Errorf("returned ids %v — want way %d", ids, testWayID)
 	}
 
 	dbIDs := coveredWaysFor(t, pool, testActivityID)
-	if !containsWay(dbIDs, testWayID) {
+	if !slices.Contains(dbIDs, testWayID) {
 		t.Errorf("DB covered ways %v — want way %d persisted", dbIDs, testWayID)
 	}
 }
@@ -152,12 +144,12 @@ func TestSnapAndStore_TooFar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SnapAndStore: %v", err)
 	}
-	if containsWay(ids, testWayID) {
+	if slices.Contains(ids, testWayID) {
 		t.Errorf("way %d should NOT be returned for far-away points", testWayID)
 	}
 
 	dbIDs := coveredWaysFor(t, pool, testActivityID)
-	if containsWay(dbIDs, testWayID) {
+	if slices.Contains(dbIDs, testWayID) {
 		t.Errorf("way %d should NOT be in DB for far-away points", testWayID)
 	}
 }
@@ -178,12 +170,12 @@ func TestSnapAndStore_TooFewPoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SnapAndStore: %v", err)
 	}
-	if containsWay(ids, testWayID) {
+	if slices.Contains(ids, testWayID) {
 		t.Errorf("way %d should NOT be returned for only 2 points (need >= 3)", testWayID)
 	}
 
 	dbIDs := coveredWaysFor(t, pool, testActivityID)
-	if containsWay(dbIDs, testWayID) {
+	if slices.Contains(dbIDs, testWayID) {
 		t.Errorf("way %d should NOT be in DB for too-few points", testWayID)
 	}
 }
@@ -205,7 +197,7 @@ func TestSnapAndStore_Replaces(t *testing.T) {
 		t.Fatalf("first SnapAndStore: %v", err)
 	}
 	dbIDs := coveredWaysFor(t, pool, testActivityID)
-	if !containsWay(dbIDs, testWayID) {
+	if !slices.Contains(dbIDs, testWayID) {
 		t.Fatalf("expected way %d after first call, got %v", testWayID, dbIDs)
 	}
 
