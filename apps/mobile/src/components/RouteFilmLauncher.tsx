@@ -80,6 +80,11 @@ export function RouteFilmLauncher({
             units={units}
             title={run.title}
             place={run.place}
+            seconds={run.seconds}
+            avgPace={run.pace}
+            avgHr={run.avgHr}
+            streamHr={run.streamHr}
+            streamPace={run.streamPace}
             width={FILM_W}
             height={FILM_H}
           />
