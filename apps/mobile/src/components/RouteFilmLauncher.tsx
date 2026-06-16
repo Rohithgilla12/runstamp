@@ -26,10 +26,16 @@ export function RouteFilmLauncher({
   run,
   rawLatLng,
   units,
+  streamHr,
+  streamPace,
 }: {
   run: Activity;
   rawLatLng: Array<readonly [number, number]> | null;
   units: Units;
+  /** Live per-point HR (bpm). Falls back to the run's stored stream / average. */
+  streamHr?: number[] | null;
+  /** Live per-point pace (sec/km). Falls back to the run's stored stream / average. */
+  streamPace?: number[] | null;
 }) {
   const c = useColors();
   const [filming, setFilming] = useState(false);
@@ -83,8 +89,8 @@ export function RouteFilmLauncher({
             seconds={run.seconds}
             avgPace={run.pace}
             avgHr={run.avgHr}
-            streamHr={run.streamHr}
-            streamPace={run.streamPace}
+            streamHr={streamHr ?? run.streamHr}
+            streamPace={streamPace ?? run.streamPace}
             width={FILM_W}
             height={FILM_H}
           />

@@ -688,7 +688,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 </Pressable>
               ))}
               <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: c.line2, paddingTop: 14 }}>
-                <RouteFilmLauncher run={run} rawLatLng={realRawLatLng} units={units} />
+                <RouteFilmLauncher run={run} rawLatLng={realRawLatLng} units={units} streamHr={realHr} streamPace={realPace} />
               </View>
             </Card>
           )}
