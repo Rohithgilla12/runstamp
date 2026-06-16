@@ -124,6 +124,10 @@ func TestCityCoverage(t *testing.T) {
 			t.Errorf("len(Covered) = %d, want 2", len(cov.Covered))
 		}
 
+		if len(cov.Uncovered) < 1 {
+			t.Errorf("len(Uncovered) = %d, want >= 1 (C St should be uncovered)", len(cov.Uncovered))
+		}
+
 		for i, poly := range cov.Covered {
 			if len(poly) < 2 {
 				t.Errorf("Covered[%d] has %d points, want >= 2", i, len(poly))
@@ -154,6 +158,9 @@ func TestCityCoverage(t *testing.T) {
 		}
 		if cov.Pct != 0 {
 			t.Errorf("Nowhere Pct = %f, want 0", cov.Pct)
+		}
+		if cov.HullKm != 0 {
+			t.Errorf("Nowhere HullKm = %v, want 0", cov.HullKm)
 		}
 	})
 }

@@ -44,7 +44,7 @@ in_hull AS (
   SELECT w.way_id, w.geom, w.length_m, w.name,
          EXISTS (SELECT 1 FROM covered c WHERE c.way_id = w.way_id) AS is_covered
   FROM osm_ways w, hull h
-  WHERE h.g IS NOT NULL AND ST_Intersects(w.geom::geometry, h.g)
+  WHERE h.g IS NOT NULL AND ST_Intersects(w.geom, h.g::geography)
 )
 SELECT is_covered, length_m, name,
        ST_AsGeoJSON(ST_Simplify(geom::geometry, 0.00005)) AS gj
