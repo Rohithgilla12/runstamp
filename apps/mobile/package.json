@@ -61,7 +61,7 @@
     "@types/react": "~19.1.0",
     "@vitest/expect": "^4.1.8",
     "react-doctor": "^0.2.16",
-    "typescript": "~5.9.2",
+    "typescript": "~6.0.3",
     "vitest": "^4"
   }
 }
