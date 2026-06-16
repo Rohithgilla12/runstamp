@@ -23,10 +23,12 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/activities"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/auth"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/config"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/coverage"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/crypto"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/osm"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/places"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/privacy"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/push"
@@ -127,6 +129,8 @@ func main() {
 
 	geocoder := places.NewGeocoder(pool, log)
 	geoBackfiller := places.NewBackfiller(pool, geocoder, log)
+	osmImporter := osm.NewImporter(pool, log)
+	coverageMatcher := coverage.NewMatcher(pool, osmImporter, log)
 	activitiesService.SetPostIngest(func(ctx context.Context, userID string, canonical *activities.Activity) {
 		// Stamps eval runs synchronously — handful of indexed queries, awards
 		// visible by the time the HTTP response goes out.
@@ -159,6 +163,11 @@ func main() {
 					sendStampPushes(context.Background(), uid, fresh)
 				}
 			}(canonical.ID, userID)
+		}
+		if canonical != nil {
+			if err := coverageMatcher.MatchActivity(ctx, canonical.ID); err != nil {
+				log.Error("coverage: match on ingest", "err", err, "activity", canonical.ID)
+			}
 		}
 	})
 	if err := stamps.Sync(ctx, pool); err != nil {
