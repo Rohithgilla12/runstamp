@@ -16,7 +16,7 @@ import (
 const densifyStepM = 12.0 // half of snapM, so no street is skipped
 
 // Matcher snaps an activity's route to the OSM street network and persists
-// the covered ways. Safe to call from the post-ingest hook.
+// the covered ways.
 type Matcher struct {
 	pool *pgxpool.Pool
 	repo *Repo
@@ -28,8 +28,9 @@ func NewMatcher(pool *pgxpool.Pool, imp *osm.Importer, log *slog.Logger) *Matche
 	return &Matcher{pool: pool, repo: NewRepo(pool), osm: imp, log: log}
 }
 
-// MatchActivity snaps one activity's route to streets. Returns errors for the
-// caller to log (never panics).
+// MatchActivity snaps one activity's route to streets. It may make a slow
+// Overpass call on a new region, so callers must run it OFF the ingest hot
+// path (e.g. in a goroutine). Returns errors for the caller to log.
 func (m *Matcher) MatchActivity(ctx context.Context, activityID string) error {
 	pts, err := m.loadLatLng(ctx, activityID)
 	if err != nil {

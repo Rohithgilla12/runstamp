@@ -51,6 +51,10 @@ ORDER BY a.id`)
 		ids = append(ids, id)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		log.Error("iterate activities", "err", err)
+		os.Exit(1)
+	}
 
 	log.Info("coverage backfill: starting", "activities", len(ids))
 	for i, id := range ids {

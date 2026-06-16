@@ -109,9 +109,9 @@ VALUES (ST_MakeEnvelope($1,$2,$3,$4,4326)::geography)`,
 	return tx.Commit(ctx)
 }
 
-func nullStr(s string) any {
+func nullStr(s string) *string {
 	if s == "" {
 		return nil
 	}
-	return s
+	return &s
 }

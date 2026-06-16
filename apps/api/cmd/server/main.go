@@ -165,9 +165,13 @@ func main() {
 			}(canonical.ID, userID)
 		}
 		if canonical != nil {
-			if err := coverageMatcher.MatchActivity(ctx, canonical.ID); err != nil {
-				log.Error("coverage: match on ingest", "err", err, "activity", canonical.ID)
-			}
+			go func(actID string) {
+				bg, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+				defer cancel()
+				if err := coverageMatcher.MatchActivity(bg, actID); err != nil {
+					log.Error("coverage: match on ingest", "err", err, "activity", actID)
+				}
+			}(canonical.ID)
 		}
 	})
 	if err := stamps.Sync(ctx, pool); err != nil {
