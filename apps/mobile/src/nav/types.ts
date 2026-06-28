@@ -11,6 +11,8 @@ export type RootStackParamList = {
   Stamps: { openStampId?: string } | undefined;
   YearInStamps: undefined;
   HealthRuns: undefined;
+  Strength: undefined;
+  Routine: { id: string };
 };
 
 export type TabParamList = {

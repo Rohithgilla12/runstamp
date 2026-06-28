@@ -196,6 +196,13 @@ export const Icon: IconSet = {
       </Svg>
     );
   },
+  dumbbell: stroke(
+    <>
+      <Path d="M6.5 9v6M3.5 10.5v3" />
+      <Path d="M17.5 9v6M20.5 10.5v3" />
+      <Path d="M6.5 12h11" />
+    </>
+  ),
   x: stroke(<Path d="M6 6l12 12M18 6L6 18" />, 1.8),
   // Filled-triangle play glyph. Solid (not stroked) so it reads at small
   // sizes; consumers pass `color` for the fill to match the surrounding
