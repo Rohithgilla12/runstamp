@@ -21,6 +21,7 @@ import { ConnectedHome } from './home/connected-home';
 import { EmptyHome } from './home/empty-home';
 import { MissingRunsLine } from './home/missing-runs-line';
 import { StampCountChip } from './home/stamp-count-chip';
+import { StrengthCard } from './home/strength-card';
 import { formatTodayEyebrow, greetingForHour } from './home/week-stats';
 import { useMissingHealthKitRuns } from './home/use-missing-healthkit-runs';
 import type { TabProps } from '../nav/types';
@@ -84,6 +85,8 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
       ) : (
         <EmptyHome loading={loading} onConnect={() => navigation.navigate('Profile')} />
       )}
+
+      <StrengthCard onPress={() => navigation.navigate('Strength')} />
     </ScrollView>
   );
 }
