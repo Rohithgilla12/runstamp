@@ -13,6 +13,7 @@ export type RootStackParamList = {
   HealthRuns: undefined;
   Strength: undefined;
   Routine: { id: string };
+  ExerciseDetail: { exerciseId: string };
 };
 
 export type TabParamList = {
