@@ -26,6 +26,7 @@ import (
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/coverage"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/crypto"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/db"
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/exercisedb"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/handlers"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/middleware"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/osm"
@@ -196,6 +197,14 @@ func main() {
 		Log:             log,
 	}
 
+	exercisesService := exercisedb.NewService(
+		exercisedb.New(cfg.AscendRapidAPIKey, cfg.AscendBaseURL, cfg.AscendHost),
+	)
+	if !exercisesService.Enabled() {
+		log.Warn("ASCEND_RAPIDAPI_KEY not set — /v1/exercises returns 503; mobile falls back to bundled dataset")
+	}
+	exercisesHandler := &handlers.ExercisesHandler{Service: exercisesService, Log: log}
+
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
@@ -323,6 +332,9 @@ func main() {
 			r.Get("/stamps", stampsHandler.List)
 			r.Post("/stamps/reevaluate", stampsHandler.Reevaluate)
 			r.Get("/best-efforts", bestEffortsHandler.List)
+			r.Get("/exercises/search", exercisesHandler.Search)
+			r.Get("/exercises/find", exercisesHandler.Find)
+			r.Get("/exercises/{id}", exercisesHandler.Get)
 			r.Get("/coverage/{city}", coverageHandler.Get)
 			r.Post("/places/backfill", placesHandler.Backfill)
 			r.Get("/privacy-zones", privacyZonesHandler.List)

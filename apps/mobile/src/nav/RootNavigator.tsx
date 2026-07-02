@@ -30,6 +30,7 @@ import { YearInStampsScreen } from '../screens/YearInStampsScreen';
 import { HealthRunsScreen } from '../screens/HealthRunsScreen';
 import { StrengthScreen } from '../screens/StrengthScreen';
 import { RoutineScreen } from '../screens/RoutineScreen';
+import { ExerciseDetailScreen } from '../screens/ExerciseDetailScreen';
 import { useStampNotificationTap } from '../state/useStampNotificationTap';
 import type { RootStackParamList, TabParamList } from './types';
 
@@ -87,6 +88,7 @@ export function RootNavigator() {
       <Stack.Screen name="HealthRuns"   component={HealthRunsScreen}   options={{ presentation: 'card',  animation: 'slide_from_right' }} />
       <Stack.Screen name="Strength"     component={StrengthScreen}     options={{ presentation: 'card',  animation: 'slide_from_right' }} />
       <Stack.Screen name="Routine"      component={RoutineScreen}      options={{ presentation: 'card',  animation: 'slide_from_right' }} />
+      <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} options={{ presentation: 'card', animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 }
