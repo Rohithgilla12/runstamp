@@ -14,9 +14,11 @@ An open-source, post-run companion for runners — turn every Strava and Apple H
 │  • A world map "passport" of cities — every place you've run in  │
 │  • A catalogue of earned stamps (sub-3:45 marathon, Boston Q,    │
 │    every continent stamped, …) — common / rare / mythic tiers    │
-│  • A public web profile at runstamp.app/u/<handle>               │
+│  • A public web profile at runstamp.gilla.fun/u/<handle>         │
+│  • Street coverage — % of your city's streets you've run         │
 │  • Year-in-Stamps scrollytelling recap every December            │
-│  • Privacy zones, GPX export, manual canonical-source override   │
+│  • Strength routines for runners + launch-video export           │
+│  • Privacy zones, full-account export, canonical-source override │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -29,9 +31,10 @@ Design language is documented in [`.impeccable.md`](./.impeccable.md) — paper,
 ```
 apps/
   mobile/                  Expo SDK 54 + React Native 0.81 + TypeScript strict.
-  api/                     Go 1.24 + Chi + pgx + slog. Stateless, Postgres + PostGIS.
-  landing/                 Astro static site at runstamp.gilla.fun + the public
-                           profile pages at /u/<handle>.
+  api/                     Go 1.25 + Chi + pgx + slog. Stateless, Postgres + PostGIS.
+  landing/                 Astro static site at runstamp.gilla.fun. Public profile
+                           data is served by the Go API (GET /v1/profiles/{handle}).
+  marketing/               Remotion launch-video pipeline (renders to video/).
 packages/
   templates/               OSS-contributable stamp template definitions (MIT).
   shared-types/            Zod schemas shared between mobile + api (MIT).
@@ -112,7 +115,7 @@ Migrations run automatically at API boot via golang-migrate. Mobile points at th
 ## CI / CD
 
 - **Mobile** ([`.github/workflows/mobile.yml`](./.github/workflows/mobile.yml)) — pnpm install, `tsc --noEmit`, `vitest`, non-blocking `expo-doctor`.
-- **API** ([`.github/workflows/api.yml`](./.github/workflows/api.yml)) — `go build`, `go vet`, `go test ./... -race` on Go 1.24.
+- **API** ([`.github/workflows/api.yml`](./.github/workflows/api.yml)) — `go build`, `go vet`, `go test ./... -race` on Go 1.25.
 - **Docker API Build** ([`.github/workflows/docker.yml`](./.github/workflows/docker.yml)) — verifies the API Dockerfile still builds.
 - **Deploy API** ([`.github/workflows/deploy-api.yml`](./.github/workflows/deploy-api.yml)) — on push to `main` (when `apps/api/**` changes), SSHes to the VPS and runs `docker compose up -d --build api`. Migrations apply at boot.
 - **Landing** auto-deploys to Cloudflare via the Pages dashboard's GitHub integration — no `.github/workflows/*.yml` needed.

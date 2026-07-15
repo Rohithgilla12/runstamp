@@ -12,33 +12,42 @@ Open-source mobile app (iOS + Android via Expo) for runners. Post-run share-card
 
 ```
 apps/
-  mobile/                  Expo SDK 53 + React Native 0.79 + TypeScript 5.8
+  mobile/                  Expo SDK 54 + React Native 0.81 + TypeScript 5.9
     src/
       App.tsx              auth-gated shell + nav theme
-      data/sample.ts       sample dataset; formatters; stamp catalogue
+      data/                models, zod schemas, mapActivity, sample dataset
       design/              theme tokens, atoms, charts, templates
       design/templates/    Postage, Postmark, Passport, Customs, etc.
       nav/                 react-navigation stack + tabs
-      screens/             Home, Activity, Editor, Analytics, Places,
-                           Settings, Stamps, YearInStamps, Onboarding
-      services/            firebase, strava, api (typed fetch helper)
-      state/AppState.tsx   units, theme, hasOnboarded
-      state/AuthContext.tsx  Firebase auth provider
-  api/                     Go 1.24 + Chi + pgx + slog
+      screens/             Home, Activity, Activities, Editor, Analytics,
+                           Places, Settings, Stamps, YearInStamps, Onboarding,
+                           HealthRuns, Strength, Routine, share modals
+                           (+ subdirs home/, analytics/, settings/, share/)
+      services/            firebase, strava, api, healthkit, healthSync
+      state/               AppState, AuthContext, HealthContext, data hooks
+  api/                     Go 1.25 + Chi + pgx + slog
     cmd/server/            entrypoint (graceful shutdown, route wiring)
+    cmd/coverage-backfill/ snap existing activities to osm_ways
+    cmd/osm-load/          Geofabrik .osm.pbf street loader (prod OSM path)
     internal/
       auth/                Firebase Admin SDK verifier + middleware
       config/              env-var loader; fail-fast in production
       crypto/              AES-256-GCM Sealer for tokens at rest
       db/                  pgxpool boot + golang-migrate runner
-      handlers/            health, me, strava (connect/callback/status/...)
+      handlers/            ~30 routes: me, activities, streams, stamps,
+                           best_efforts, coverage, places, privacy_zones,
+                           profiles (public), export, device_token, account,
+                           health_workouts, strava, waitlist
       middleware/          slog request logger
-      strava/              client + service + repository
-      users/               users repo (firebase_uid keyed)
-    migrations/            golang-migrate file source (0001_init, 0002_strava_connections)
+      activities/ coverage/ export/ osm/ places/ privacy/ push/ stamps/
+      strava/ users/ waitlist/
+    migrations/            golang-migrate file source, 0001–0021 (activities,
+                           stamps, privacy_zones, street_coverage, ...)
+  landing/                 Astro landing site (Cloudflare Pages via dashboard)
+  marketing/               Remotion launch-video pipeline (see also video/)
 packages/
-  shared-types/            placeholder for shared zod schemas (M1)
-  templates/               placeholder for OSS-contributable template defs
+  shared-types/            shared zod schemas (activity, stamp, stream)
+  templates/               OSS-contributable template defs
 design/                    Claude Design handoff — REFERENCE ONLY (HTML/JSX prototype)
 ```
 
