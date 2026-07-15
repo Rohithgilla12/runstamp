@@ -17,6 +17,7 @@ import { useColors } from '../design/theme';
 import { Eyebrow, TText } from '../design/typography';
 import { useActivities } from '../state/useActivities';
 import { useFullRefresh } from '../state/useFullRefresh';
+import { useHealth } from '../state/HealthContext';
 import { ConnectedHome } from './home/connected-home';
 import { EmptyHome } from './home/empty-home';
 import { MissingRunsLine } from './home/missing-runs-line';
@@ -40,6 +41,7 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
   }, [fullRefresh]);
 
   const missingHk = useMissingHealthKitRuns(activities);
+  const { syncing: healthSyncing } = useHealth();
 
   return (
     <ScrollView
@@ -69,7 +71,8 @@ export function HomeScreen({ navigation }: TabProps<'Home'>) {
       {missingHk > 0 && (
         <MissingRunsLine
           count={missingHk}
-          onPress={() => navigation.navigate('HealthRuns')}
+          syncing={healthSyncing || refreshing}
+          onPress={handleRefresh}
         />
       )}
 
