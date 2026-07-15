@@ -25,7 +25,7 @@ interface UseFullRefreshOptions {
  * a Health failure so the user at least sees whatever IS on the server.
  */
 export function useFullRefresh({ withStamps = false }: UseFullRefreshOptions = {}) {
-  const { refresh: refreshActivities } = useActivities();
+  const { activities, refresh: refreshActivities } = useActivities();
   const { refresh: refreshStamps } = useStamps();
   const health = useHealth();
   const { status: healthStatus, resync: resyncHealth, syncing: healthSyncing } = health;
@@ -55,7 +55,12 @@ export function useFullRefresh({ withStamps = false }: UseFullRefreshOptions = {
       // We try the resync either way; if HK really rejects us, the error
       // tells the truth instead of a silent skip.
       try {
-        await resyncHealth();
+        // Anchor the sync window to the latest imported activity (with a
+        // 24h overlap for backdated Apple Watch arrivals) — the same window
+        // the missing-runs banner counts against, so a tap-import always
+        // reaches everything the banner shows. Without an anchor, resync
+        // falls back to its own bounded default.
+        await resyncHealth(latestImportedSince(activities));
       } catch (e) {
         healthError = e instanceof Error ? e.message : String(e);
       }
@@ -96,5 +101,17 @@ export function useFullRefresh({ withStamps = false }: UseFullRefreshOptions = {
     if (messages.length > 0) {
       Alert.alert('Sync issue', messages.join('\n\n'));
     }
-  }, [healthStatus, healthSyncing, resyncHealth, refreshActivities, refreshStamps, withStamps]);
+  }, [healthStatus, healthSyncing, resyncHealth, refreshActivities, refreshStamps, withStamps, activities]);
+}
+
+// Latest imported activity date minus 24h, or undefined when nothing is
+// imported yet (resync then uses its own fallback window).
+function latestImportedSince(activities: { date: string }[]): Date | undefined {
+  let latest = 0;
+  for (const a of activities) {
+    const t = new Date(a.date).getTime();
+    if (Number.isFinite(t) && t > latest) latest = t;
+  }
+  if (latest === 0) return undefined;
+  return new Date(latest - 24 * 60 * 60 * 1000);
 }
