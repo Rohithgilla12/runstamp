@@ -73,6 +73,19 @@ func (im *Importer) fetch(ctx context.Context, b BBox) ([]Way, error) {
 // Upsert writes the ways and records the imported region (one transaction).
 // Exported so integration tests can exercise it with fixture ways (no network).
 func (im *Importer) Upsert(ctx context.Context, b BBox, ways []Way) error {
+	if err := im.UpsertWays(ctx, ways); err != nil {
+		return err
+	}
+	if err := im.InsertRegion(ctx, b); err != nil {
+		return err
+	}
+	im.log.Info("osm: imported region", "ways", len(ways))
+	return nil
+}
+
+// UpsertWays writes ways without recording a region — used by the bulk pbf
+// loader, which upserts in chunks and records one region row at the end.
+func (im *Importer) UpsertWays(ctx context.Context, ways []Way) error {
 	tx, err := im.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("osm: begin: %w", err)
@@ -99,14 +112,18 @@ ON CONFLICT (way_id) DO UPDATE SET
 			return fmt.Errorf("osm: upsert way %d: %w", w.WayID, err)
 		}
 	}
-	if _, err := tx.Exec(ctx, `
+	return tx.Commit(ctx)
+}
+
+// InsertRegion records a bbox as imported so EnsureRegion no-ops over it.
+func (im *Importer) InsertRegion(ctx context.Context, b BBox) error {
+	if _, err := im.pool.Exec(ctx, `
 INSERT INTO osm_regions (bbox)
 VALUES (ST_MakeEnvelope($1,$2,$3,$4,4326)::geography)`,
 		b.MinLng, b.MinLat, b.MaxLng, b.MaxLat); err != nil {
 		return fmt.Errorf("osm: insert region: %w", err)
 	}
-	im.log.Info("osm: imported region", "ways", len(ways))
-	return tx.Commit(ctx)
+	return nil
 }
 
 func nullStr(s string) *string {
