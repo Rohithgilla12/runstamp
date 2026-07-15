@@ -237,6 +237,30 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
             <span>Z1</span><span>Z2</span><span>Z3</span><span>Z4</span><span>Z5</span>
           </div>
         </div>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z1: Recovery</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z2: Aerobic</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z3: Tempo</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--solar" id="profile-hr-legend-z4"></span>Z4: Threshold</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z5: Anaerobic</span>
+        </div>
+      </section>
+
+      <!-- Yearly HR -->
+      <section class="profile-section" id="profile-yearly-hr-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">YEARLY AVERAGE HR</p>
+          <p class="section-count" id="profile-yearly-hr-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-yearly-hr-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 120px">
+              <svg class="chart-svg" id="profile-yearly-hr-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-yearly-hr-foot"></div>
+        </div>
       </section>
 
       <!-- Calendar heatmap — 52×7 moss grid for the last 12 months. -->
@@ -257,6 +281,22 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           <p class="eyebrow">FROM THE ALBUM</p>
         </header>
         <ul class="highlight-list" id="profile-highlights-list"></ul>
+      </section>
+
+      <!-- Longest Runs Leaderboard -->
+      <section class="profile-section" id="profile-longest-runs-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">LONGEST RUNS</p>
+        </header>
+        <ul class="highlight-list" id="profile-longest-runs-list"></ul>
+      </section>
+
+      <!-- Recent Runs Feed -->
+      <section class="profile-section" id="profile-recent-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">RECENT RUNS</p>
+        </header>
+        <ul class="highlight-list" id="profile-recent-list"></ul>
       </section>
 
       <!-- Country breakdown — passport totals with hairline bars. -->
@@ -1938,6 +1978,86 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       btn.hidden = false;
     }
 
+    function renderYearlyHR(yearlyHR) {
+      const section = document.getElementById("profile-yearly-hr-section");
+      const svg = document.getElementById("profile-yearly-hr-svg");
+      const foot = document.getElementById("profile-yearly-hr-foot");
+      if (!section || !svg || !foot || !yearlyHR || yearlyHR.length === 0) return;
+
+      const maxHR = Math.max(...yearlyHR.map(y => y.avgHR));
+      if (maxHR === 0) return;
+
+      const W = 600;
+      const H = 120;
+      const slot = W / yearlyHR.length;
+      const barW = Math.max(10, slot * 0.85);
+      const usable = H - 10;
+      const baseY = H;
+
+      const bars = yearlyHR.map((y, i) => {
+        const x = i * slot + (slot - barW) / 2;
+        const h = Math.max(1, (y.avgHR / maxHR) * usable);
+        const yPos = baseY - h;
+        const title = `${y.year} · ${y.avgHR} bpm avg (${y.runs} runs)`;
+        return `<rect x="${x.toFixed(2)}" y="${yPos.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${PALETTE.ink}" rx="2"><title>${escapeAttr(title)}</title></rect>`;
+      }).join("");
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars;
+
+      foot.innerHTML = yearlyHR.map(y => `<span>${y.year}</span>`).join("");
+      setYAxis("profile-yearly-hr-yaxis", maxHR);
+      setText("profile-yearly-hr-count", `${yearlyHR.length} years tracked`);
+      section.hidden = false;
+    }
+
+    function renderRecentRuns(recentRuns) {
+      const section = document.getElementById("profile-recent-section");
+      const list = document.getElementById("profile-recent-list");
+      if (!section || !list || !recentRuns || recentRuns.length === 0) return;
+
+      list.innerHTML = recentRuns.map(r => {
+        const m = Math.floor(r.pace / 60);
+        const s = (r.pace % 60).toString().padStart(2, "0");
+        const paceStr = r.pace > 0 ? `${m}:${s}/km` : "";
+        return `
+          <li class="hl-item">
+            <div class="hl-metric">
+              <span class="hl-val">${r.distanceKm.toFixed(1)}</span>
+              <span class="hl-unit">km</span>
+            </div>
+            <div class="hl-rule"></div>
+            <div class="hl-desc">
+              <div class="hl-title">${escapeAttr(r.title)}</div>
+              <div class="hl-meta">${r.date} ${paceStr ? `· ${paceStr}` : ""}</div>
+            </div>
+          </li>`;
+      }).join("");
+      section.hidden = false;
+    }
+
+    function renderLongestRuns(longestRuns) {
+      const section = document.getElementById("profile-longest-runs-section");
+      const list = document.getElementById("profile-longest-runs-list");
+      if (!section || !list || !longestRuns || longestRuns.length === 0) return;
+
+      list.innerHTML = longestRuns.map(r => {
+        return `
+          <li class="hl-item">
+            <div class="hl-metric">
+              <span class="hl-val">${r.distanceKm.toFixed(1)}</span>
+              <span class="hl-unit">km</span>
+            </div>
+            <div class="hl-rule"></div>
+            <div class="hl-desc">
+              <div class="hl-title">${escapeAttr(r.title)}</div>
+              <div class="hl-meta">${r.date}${r.city ? ` · ${escapeAttr(r.city)}` : ""}</div>
+            </div>
+          </li>`;
+      }).join("");
+      section.hidden = false;
+    }
+
     async function load() {
       const handle = pathHandle();
       if (!handle) {
@@ -2002,6 +2122,9 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderCities(data.cities);
         renderHR(data.heartRateZones);
         renderMap(data.runLocations);
+        renderYearlyHR(data.yearlyHR);
+        renderRecentRuns(data.recentRuns);
+        renderLongestRuns(data.longestRuns);
 
         document.title = `${displayName} on Runstamp`;
         hide("profile");

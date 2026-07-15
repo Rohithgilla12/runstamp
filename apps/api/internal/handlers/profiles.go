@@ -40,6 +40,29 @@ type publicProfileResponse struct {
 	Countries      []countryBucket   `json:"countries,omitempty"`
 	HeartRateZones []int             `json:"heartRateZones,omitempty"`
 	RunLocations   [][2]float64      `json:"runLocations,omitempty"`
+	YearlyHR       []yearlyHRBucket  `json:"yearlyHR,omitempty"`
+	RecentRuns     []publicActivity  `json:"recentRuns,omitempty"`
+	LongestRuns    []longestRun      `json:"longestRuns,omitempty"`
+}
+
+type yearlyHRBucket struct {
+	Year  int `json:"year"`
+	AvgHR int `json:"avgHR"`
+	Runs  int `json:"runs"`
+}
+
+type publicActivity struct {
+	Title      string  `json:"title"`
+	DistanceKm float64 `json:"distanceKm"`
+	Pace       int     `json:"pace"`
+	Date       string  `json:"date"`
+}
+
+type longestRun struct {
+	Title      string  `json:"title"`
+	DistanceKm float64 `json:"distanceKm"`
+	City       string  `json:"city,omitempty"`
+	Date       string  `json:"date"`
 }
 
 type profileTotals struct {
@@ -265,6 +288,21 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		h.Log.Warn("profiles get: countries", "err", err)
 	} else {
 		resp.Countries = countries
+	}
+	if yearlyHR, err := loadYearlyHR(ctx, h.Pool, user.ID); err != nil {
+		h.Log.Warn("profiles get: yearlyHR", "err", err)
+	} else {
+		resp.YearlyHR = yearlyHR
+	}
+	if recentRuns, err := loadRecentActivities(ctx, h.Pool, user.ID); err != nil {
+		h.Log.Warn("profiles get: recentRuns", "err", err)
+	} else {
+		resp.RecentRuns = recentRuns
+	}
+	if longestRuns, err := loadLongestRuns(ctx, h.Pool, user.ID); err != nil {
+		h.Log.Warn("profiles get: longestRuns", "err", err)
+	} else {
+		resp.LongestRuns = longestRuns
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -745,4 +783,100 @@ func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, 
 	}
 	
 	return hrZones, locs, nil
+}
+
+// loadYearlyHR groups runs by year and calculates the average HR.
+func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string) ([]yearlyHRBucket, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			EXTRACT(YEAR FROM started_at)::int AS year,
+			ROUND(AVG(avg_hr))::int AS avg_hr,
+			COUNT(*) AS runs
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL AND avg_hr > 0
+		GROUP BY year
+		ORDER BY year ASC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var out []yearlyHRBucket
+	for rows.Next() {
+		var b yearlyHRBucket
+		if err := rows.Scan(&b.Year, &b.AvgHR, &b.Runs); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// loadRecentActivities fetches the 5 most recent runs.
+func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string) ([]publicActivity, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			COALESCE(title, 'Run'),
+			distance_m / 1000.0 AS distance_km,
+			COALESCE(avg_pace_s_per_km, 0) AS pace,
+			started_at
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL
+		ORDER BY started_at DESC
+		LIMIT 5
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var out []publicActivity
+	for rows.Next() {
+		var a publicActivity
+		var started time.Time
+		var pace float64
+		if err := rows.Scan(&a.Title, &a.DistanceKm, &pace, &started); err != nil {
+			return nil, err
+		}
+		a.Pace = int(pace)
+		a.Date = started.UTC().Format("2006-01-02")
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// loadLongestRuns fetches the top 5 longest runs.
+func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string) ([]longestRun, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			COALESCE(title, 'Run'),
+			distance_m / 1000.0 AS distance_km,
+			location_city,
+			started_at
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL
+		ORDER BY distance_m DESC
+		LIMIT 5
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var out []longestRun
+	for rows.Next() {
+		var r longestRun
+		var started time.Time
+		var city *string
+		if err := rows.Scan(&r.Title, &r.DistanceKm, &city, &started); err != nil {
+			return nil, err
+		}
+		if city != nil {
+			r.City = *city
+		}
+		r.Date = started.UTC().Format("2006-01-02")
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
