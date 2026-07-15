@@ -1855,7 +1855,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
-    function renderHR(zones) {
+    function renderHR(zones, maxHR) {
       const section = document.getElementById("profile-hr-section");
       const svg = document.getElementById("profile-hr-svg");
       if (!section || !svg || !zones || zones.length !== 5) return;
@@ -1879,7 +1879,17 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         const h = max > 0 ? Math.max(1, (count / max) * usable) : 1;
         const y = baseY - h;
         const fill = i === maxIdx && count > 0 ? PALETTE.solar : PALETTE.ink;
-        const title = `Z${i+1} · ${count} runs (${Math.round(count/total*100)}%)`;
+        
+        let rangeStr = "";
+        if (maxHR) {
+          if (i === 0) rangeStr = ` (< ${Math.round(maxHR * 0.6)} bpm)`;
+          else if (i === 1) rangeStr = ` (${Math.round(maxHR * 0.6)}–${Math.round(maxHR * 0.7)} bpm)`;
+          else if (i === 2) rangeStr = ` (${Math.round(maxHR * 0.7)}–${Math.round(maxHR * 0.8)} bpm)`;
+          else if (i === 3) rangeStr = ` (${Math.round(maxHR * 0.8)}–${Math.round(maxHR * 0.9)} bpm)`;
+          else rangeStr = ` (> ${Math.round(maxHR * 0.9)} bpm)`;
+        }
+        
+        const title = `Z${i+1} · ${count} runs (${Math.round(count/total*100)}%)${rangeStr}`;
         return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}" rx="2"><title>${escapeAttr(title)}</title></rect>`;
       }).join("");
 
@@ -1887,6 +1897,15 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       svg.innerHTML = bars;
 
       setYAxis("profile-hr-yaxis", max);
+      
+      if (maxHR) {
+        document.getElementById("profile-hr-legend-z1").textContent = `Z1: Recovery (<${Math.round(maxHR * 0.6)})`;
+        document.getElementById("profile-hr-legend-z2").textContent = `Z2: Aerobic (${Math.round(maxHR * 0.6)}–${Math.round(maxHR * 0.7)})`;
+        document.getElementById("profile-hr-legend-z3").textContent = `Z3: Tempo (${Math.round(maxHR * 0.7)}–${Math.round(maxHR * 0.8)})`;
+        document.getElementById("profile-hr-legend-z4").textContent = `Z4: Threshold (${Math.round(maxHR * 0.8)}–${Math.round(maxHR * 0.9)})`;
+        document.getElementById("profile-hr-legend-z5").textContent = `Z5: Anaerobic (>${Math.round(maxHR * 0.9)})`;
+      }
+      
       section.hidden = false;
     }
 
@@ -2020,18 +2039,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         const m = Math.floor(r.pace / 60);
         const s = (r.pace % 60).toString().padStart(2, "0");
         const paceStr = r.pace > 0 ? `${m}:${s}/km` : "";
-        return `
-          <li class="hl-item">
-            <div class="hl-metric">
-              <span class="hl-val">${r.distanceKm.toFixed(1)}</span>
-              <span class="hl-unit">km</span>
-            </div>
-            <div class="hl-rule"></div>
-            <div class="hl-desc">
-              <div class="hl-title">${escapeAttr(r.title)}</div>
-              <div class="hl-meta">${r.date} ${paceStr ? `· ${paceStr}` : ""}</div>
-            </div>
-          </li>`;
+        return highlightRow(r.title || "Run", [
+          { c: "num", t: `${r.distanceKm.toFixed(1)} km` },
+          paceStr ? { c: "num", t: paceStr } : null,
+          { c: "date", t: formatPBDate(r.date) }
+        ]);
       }).join("");
       section.hidden = false;
     }
@@ -2042,18 +2054,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       if (!section || !list || !longestRuns || longestRuns.length === 0) return;
 
       list.innerHTML = longestRuns.map(r => {
-        return `
-          <li class="hl-item">
-            <div class="hl-metric">
-              <span class="hl-val">${r.distanceKm.toFixed(1)}</span>
-              <span class="hl-unit">km</span>
-            </div>
-            <div class="hl-rule"></div>
-            <div class="hl-desc">
-              <div class="hl-title">${escapeAttr(r.title)}</div>
-              <div class="hl-meta">${r.date}${r.city ? ` · ${escapeAttr(r.city)}` : ""}</div>
-            </div>
-          </li>`;
+        return highlightRow(r.title || "Run", [
+          { c: "num", t: `${r.distanceKm.toFixed(1)} km` },
+          r.city ? { c: "place", t: r.city } : null,
+          { c: "date", t: formatPBDate(r.date) }
+        ]);
       }).join("");
       section.hidden = false;
     }
@@ -2120,7 +2125,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderCountries(data.countries);
         renderStamps(data.stamps);
         renderCities(data.cities);
-        renderHR(data.heartRateZones);
+        renderHR(data.heartRateZones, data.maxHR);
         renderMap(data.runLocations);
         renderYearlyHR(data.yearlyHR);
         renderRecentRuns(data.recentRuns);

@@ -39,6 +39,7 @@ type publicProfileResponse struct {
 	Highlights     *highlights       `json:"highlights,omitempty"`
 	Countries      []countryBucket   `json:"countries,omitempty"`
 	HeartRateZones []int             `json:"heartRateZones,omitempty"`
+	MaxHR          int               `json:"maxHR,omitempty"`
 	RunLocations   [][2]float64      `json:"runLocations,omitempty"`
 	YearlyHR       []yearlyHRBucket  `json:"yearlyHR,omitempty"`
 	RecentRuns     []publicActivity  `json:"recentRuns,omitempty"`
@@ -241,6 +242,7 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		}
 		if hasHR {
 			resp.HeartRateZones = hrZones
+			resp.MaxHR = maxHR
 		}
 		if len(runLocs) > 0 {
 			resp.RunLocations = runLocs
