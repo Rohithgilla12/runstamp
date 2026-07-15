@@ -36,8 +36,10 @@ type publicProfileResponse struct {
 	PersonalBests *personalBests    `json:"personalBests,omitempty"`
 	Weekly        []weeklyBucket    `json:"weekly,omitempty"`
 	Calendar      []calendarDay     `json:"calendar,omitempty"`
-	Highlights    *highlights       `json:"highlights,omitempty"`
-	Countries     []countryBucket   `json:"countries,omitempty"`
+	Highlights     *highlights       `json:"highlights,omitempty"`
+	Countries      []countryBucket   `json:"countries,omitempty"`
+	HeartRateZones []int             `json:"heartRateZones,omitempty"`
+	RunLocations   [][2]float64      `json:"runLocations,omitempty"`
 }
 
 type profileTotals struct {
@@ -192,6 +194,34 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		Handle: *user.Handle,
 		Totals: totals,
 		Cities: cities,
+	}
+
+	maxHR := 190
+	if user.HRMax != nil {
+		maxHR = *user.HRMax
+	} else if user.BirthYear != nil {
+		age := time.Now().Year() - *user.BirthYear
+		maxHR = 220 - age
+	}
+
+	hrZones, runLocs, err := loadHRAndLocations(ctx, h.Pool, user.ID, maxHR)
+	if err != nil {
+		h.Log.Warn("profiles get: hr/locations failed", "err", err)
+	} else {
+		// Only include hrZones if they actually have HR data
+		hasHR := false
+		for _, v := range hrZones {
+			if v > 0 {
+				hasHR = true
+				break
+			}
+		}
+		if hasHR {
+			resp.HeartRateZones = hrZones
+		}
+		if len(runLocs) > 0 {
+			resp.RunLocations = runLocs
+		}
 	}
 	if user.DisplayName != nil {
 		resp.DisplayName = *user.DisplayName
@@ -655,4 +685,64 @@ func loadCountries(ctx context.Context, pool *pgxpool.Pool, userID string) ([]co
 
 func isNoRows(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
+}
+
+func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, maxHR int) ([]int, [][2]float64, error) {
+	hrZones := make([]int, 5)
+	
+	rows, err := pool.Query(ctx, `
+		SELECT avg_hr
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL AND avg_hr > 0
+	`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var avg int
+		if err := rows.Scan(&avg); err != nil {
+			return nil, nil, err
+		}
+		pct := float64(avg) / float64(maxHR)
+		if pct < 0.6 {
+			hrZones[0]++
+		} else if pct < 0.7 {
+			hrZones[1]++
+		} else if pct < 0.8 {
+			hrZones[2]++
+		} else if pct < 0.9 {
+			hrZones[3]++
+		} else {
+			hrZones[4]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	
+	var locs [][2]float64
+	locRows, err := pool.Query(ctx, `
+		SELECT ST_X(location_start::geometry), ST_Y(location_start::geometry)
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL AND location_start IS NOT NULL
+	`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer locRows.Close()
+	
+	for locRows.Next() {
+		var lng, lat float64
+		if err := locRows.Scan(&lng, &lat); err != nil {
+			return nil, nil, err
+		}
+		locs = append(locs, [2]float64{lng, lat})
+	}
+	if err := locRows.Err(); err != nil {
+		return nil, nil, err
+	}
+	
+	return hrZones, locs, nil
 }
