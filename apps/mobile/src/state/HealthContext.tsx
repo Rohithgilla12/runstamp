@@ -153,8 +153,15 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
       // surface the real error.
       if (status === 'unavailable') return;
       // Manual re-sync: incremental from lastSyncAt with a 7-day overlap to
-      // catch any workouts that landed slightly out of order. Fall back to
-      // all-time when we have no anchor (first launch after granted).
+      // catch any workouts that landed slightly out of order.
+      //
+      // lastSyncAt is in-memory only, so it's null on every cold launch. The
+      // old fallback was all-time (epoch), which made every launch-time
+      // auto-sync fetch detail for the entire workout history before
+      // uploading anything — minutes of work that died on backgrounding, so
+      // new runs never auto-imported. Bound the no-anchor window to 30 days;
+      // the one-time full backfill belongs to connect(), and server dedup
+      // makes the overlap free.
       const syncFrom =
         since ??
         (() => {
@@ -163,7 +170,9 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
             overlap.setDate(overlap.getDate() - 7);
             return overlap;
           }
-          return new Date(0);
+          const recent = new Date();
+          recent.setDate(recent.getDate() - 30);
+          return recent;
         })();
       await runSync(syncFrom);
     },
