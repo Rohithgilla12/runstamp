@@ -246,6 +246,44 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- Time of Day -->
+      <section class="profile-section" id="profile-time-of-day-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">TIME OF DAY</p>
+          <p class="section-count" id="profile-tod-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-tod-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 120px">
+              <svg class="chart-svg" id="profile-tod-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-tod-foot">
+            <span>Morning</span><span>Afternoon</span><span>Evening</span><span>Night</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Distance Distribution -->
+      <section class="profile-section" id="profile-distance-buckets-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">DISTANCE DISTRIBUTION</p>
+          <p class="section-count" id="profile-dist-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-dist-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 120px">
+              <svg class="chart-svg" id="profile-dist-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-dist-foot">
+            <span>&lt; 5k</span><span>5k - 10k</span><span>10k - 21k</span><span>21k+</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Yearly HR -->
       <section class="profile-section" id="profile-yearly-hr-section" hidden>
         <header class="section-header">
@@ -1855,6 +1893,78 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
+    function renderTimeOfDay(buckets) {
+      const section = document.getElementById("profile-time-of-day-section");
+      const svg = document.getElementById("profile-tod-svg");
+      if (!section || !svg || !buckets || buckets.length !== 4) return;
+      const max = Math.max(...buckets);
+      if (max === 0) return;
+
+      const total = buckets.reduce((a, b) => a + b, 0);
+      setText("profile-tod-count", `${total} runs`);
+
+      const W = 600;
+      const H = 120;
+      const slot = W / 4;
+      const barW = Math.max(10, slot * 0.85);
+
+      const usable = H - 10;
+      const baseY = H;
+      const maxIdx = buckets.indexOf(max);
+      const labels = ["Morning", "Afternoon", "Evening", "Night"];
+
+      const bars = buckets.map((count, i) => {
+        const x = i * slot + (slot - barW) / 2;
+        const h = Math.max(1, (count / max) * usable);
+        const y = baseY - h;
+        const fill = i === maxIdx && count > 0 ? PALETTE.solar : PALETTE.ink;
+        const title = `${labels[i]} · ${count} runs (${Math.round(count/total*100)}%)`;
+        return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}" rx="2"><title>${escapeAttr(title)}</title></rect>`;
+      }).join("");
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars;
+
+      setYAxis("profile-tod-yaxis", max);
+      section.hidden = false;
+    }
+
+    function renderDistanceBuckets(buckets) {
+      const section = document.getElementById("profile-distance-buckets-section");
+      const svg = document.getElementById("profile-dist-svg");
+      if (!section || !svg || !buckets || buckets.length !== 4) return;
+      const max = Math.max(...buckets);
+      if (max === 0) return;
+
+      const total = buckets.reduce((a, b) => a + b, 0);
+      setText("profile-dist-count", `${total} runs`);
+
+      const W = 600;
+      const H = 120;
+      const slot = W / 4;
+      const barW = Math.max(10, slot * 0.85);
+
+      const usable = H - 10;
+      const baseY = H;
+      const maxIdx = buckets.indexOf(max);
+      const labels = ["< 5k", "5k - 10k", "10k - 21k", "21k+"];
+
+      const bars = buckets.map((count, i) => {
+        const x = i * slot + (slot - barW) / 2;
+        const h = Math.max(1, (count / max) * usable);
+        const y = baseY - h;
+        const fill = i === maxIdx && count > 0 ? PALETTE.solar : PALETTE.ink;
+        const title = `${labels[i]} · ${count} runs (${Math.round(count/total*100)}%)`;
+        return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}" rx="2"><title>${escapeAttr(title)}</title></rect>`;
+      }).join("");
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars;
+
+      setYAxis("profile-dist-yaxis", max);
+      section.hidden = false;
+    }
+
     function renderHR(zones, maxHR) {
       const section = document.getElementById("profile-hr-section");
       const svg = document.getElementById("profile-hr-svg");
@@ -2125,6 +2235,8 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderCountries(data.countries);
         renderStamps(data.stamps);
         renderCities(data.cities);
+        renderTimeOfDay(data.timeOfDay);
+        renderDistanceBuckets(data.distanceBuckets);
         renderHR(data.heartRateZones, data.maxHR);
         renderMap(data.runLocations);
         renderYearlyHR(data.yearlyHR);

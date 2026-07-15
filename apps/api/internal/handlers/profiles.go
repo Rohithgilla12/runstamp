@@ -41,9 +41,11 @@ type publicProfileResponse struct {
 	HeartRateZones []int             `json:"heartRateZones,omitempty"`
 	MaxHR          int               `json:"maxHR,omitempty"`
 	RunLocations   [][2]float64      `json:"runLocations,omitempty"`
-	YearlyHR       []yearlyHRBucket  `json:"yearlyHR,omitempty"`
-	RecentRuns     []publicActivity  `json:"recentRuns,omitempty"`
-	LongestRuns    []longestRun      `json:"longestRuns,omitempty"`
+	YearlyHR        []yearlyHRBucket  `json:"yearlyHR,omitempty"`
+	RecentRuns      []publicActivity  `json:"recentRuns,omitempty"`
+	LongestRuns     []longestRun      `json:"longestRuns,omitempty"`
+	TimeOfDay       []int             `json:"timeOfDay,omitempty"`
+	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
 }
 
 type yearlyHRBucket struct {
@@ -301,10 +303,22 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	} else {
 		resp.RecentRuns = recentRuns
 	}
-	if longestRuns, err := loadLongestRuns(ctx, h.Pool, user.ID); err != nil {
+	if longest, err := loadLongestRuns(ctx, h.Pool, user.ID); err != nil {
 		h.Log.Warn("profiles get: longestRuns", "err", err)
 	} else {
-		resp.LongestRuns = longestRuns
+		if len(longest) > 0 {
+			resp.LongestRuns = longest
+		}
+	}
+
+	tod, err := loadTimeOfDay(ctx, h.Pool, user.ID)
+	if err == nil && len(tod) == 4 {
+		resp.TimeOfDay = tod
+	}
+
+	distBuckets, err := loadDistanceBuckets(ctx, h.Pool, user.ID)
+	if err == nil && len(distBuckets) == 4 {
+		resp.DistanceBuckets = distBuckets
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -850,35 +864,83 @@ func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string
 
 // loadLongestRuns fetches the top 5 longest runs.
 func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string) ([]longestRun, error) {
-	rows, err := pool.Query(ctx, `
-		SELECT
-			COALESCE(title, 'Run'),
-			distance_m / 1000.0 AS distance_km,
-			location_city,
-			started_at
+	q := `
+		SELECT distance_m, avg_pace_s_per_km, started_at, title, location_city
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0
 		ORDER BY distance_m DESC
 		LIMIT 5
-	`, userID)
+	`
+	rows, err := pool.Query(ctx, q, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var out []longestRun
 	for rows.Next() {
 		var r longestRun
+		var dist float64
+		var pace *float64
+		var title, city *string
 		var started time.Time
-		var city *string
-		if err := rows.Scan(&r.Title, &r.DistanceKm, &city, &started); err != nil {
-			return nil, err
+		if err := rows.Scan(&dist, &pace, &started, &title, &city); err != nil {
+			continue
+		}
+		r.DistanceKm = dist / 1000.0
+		r.Date = started.UTC().Format("2006-01-02")
+		if title != nil {
+			r.Title = *title
+		} else {
+			r.Title = "Run"
 		}
 		if city != nil {
 			r.City = *city
 		}
-		r.Date = started.UTC().Format("2006-01-02")
 		out = append(out, r)
 	}
-	return out, rows.Err()
+	return out, nil
+}
+
+func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+	q := `
+		SELECT
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 5 AND EXTRACT(HOUR FROM started_at) < 12),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 12 AND EXTRACT(HOUR FROM started_at) < 17),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 17 AND EXTRACT(HOUR FROM started_at) < 21),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 21 OR EXTRACT(HOUR FROM started_at) < 5)
+		FROM activities
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+	`
+	var m, a, e, n int
+	err := pool.QueryRow(ctx, q, userID).Scan(&m, &a, &e, &n)
+	if err != nil {
+		return nil, err
+	}
+	// Return only if there is data
+	if m+a+e+n == 0 {
+		return nil, nil
+	}
+	return []int{m, a, e, n}, nil
+}
+
+func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+	q := `
+		SELECT
+			COUNT(*) FILTER (WHERE distance_m < 5000),
+			COUNT(*) FILTER (WHERE distance_m >= 5000 AND distance_m < 10000),
+			COUNT(*) FILTER (WHERE distance_m >= 10000 AND distance_m < 21000),
+			COUNT(*) FILTER (WHERE distance_m >= 21000)
+		FROM activities
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0
+	`
+	var s, m, l, e int
+	err := pool.QueryRow(ctx, q, userID).Scan(&s, &m, &l, &e)
+	if err != nil {
+		return nil, err
+	}
+	if s+m+l+e == 0 {
+		return nil, nil
+	}
+	return []int{s, m, l, e}, nil
 }
