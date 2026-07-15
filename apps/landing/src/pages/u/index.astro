@@ -238,11 +238,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           </div>
         </div>
         <div class="legend-row">
-          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z1: Recovery</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z2: Aerobic</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z3: Tempo</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--solar" id="profile-hr-legend-z4"></span>Z4: Threshold</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span>Z5: Anaerobic</span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span><span id="profile-hr-legend-z1">Z1: Recovery</span></span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span><span id="profile-hr-legend-z2">Z2: Aerobic</span></span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span><span id="profile-hr-legend-z3">Z3: Tempo</span></span>
+          <span class="legend-item"><span class="legend-dot legend-dot--solar"></span><span id="profile-hr-legend-z4">Z4: Threshold</span></span>
+          <span class="legend-item"><span class="legend-dot legend-dot--ink"></span><span id="profile-hr-legend-z5">Z5: Anaerobic</span></span>
         </div>
       </section>
 
@@ -1899,11 +1899,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       setYAxis("profile-hr-yaxis", max);
       
       if (maxHR) {
-        document.getElementById("profile-hr-legend-z1").textContent = `Z1: Recovery (<${Math.round(maxHR * 0.6)})`;
-        document.getElementById("profile-hr-legend-z2").textContent = `Z2: Aerobic (${Math.round(maxHR * 0.6)}–${Math.round(maxHR * 0.7)})`;
-        document.getElementById("profile-hr-legend-z3").textContent = `Z3: Tempo (${Math.round(maxHR * 0.7)}–${Math.round(maxHR * 0.8)})`;
-        document.getElementById("profile-hr-legend-z4").textContent = `Z4: Threshold (${Math.round(maxHR * 0.8)}–${Math.round(maxHR * 0.9)})`;
-        document.getElementById("profile-hr-legend-z5").textContent = `Z5: Anaerobic (>${Math.round(maxHR * 0.9)})`;
+        setText("profile-hr-legend-z1", `Z1: Recovery (<${Math.round(maxHR * 0.6)})`);
+        setText("profile-hr-legend-z2", `Z2: Aerobic (${Math.round(maxHR * 0.6)}–${Math.round(maxHR * 0.7)})`);
+        setText("profile-hr-legend-z3", `Z3: Tempo (${Math.round(maxHR * 0.7)}–${Math.round(maxHR * 0.8)})`);
+        setText("profile-hr-legend-z4", `Z4: Threshold (${Math.round(maxHR * 0.8)}–${Math.round(maxHR * 0.9)})`);
+        setText("profile-hr-legend-z5", `Z5: Anaerobic (>${Math.round(maxHR * 0.9)})`);
       }
       
       section.hidden = false;
@@ -2136,7 +2136,10 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         show("profile-card");
         initReveal();
         setupShare(displayName);
-      } catch {
+      } catch (e) {
+        // A render bug must not masquerade as "album isn't public" — keep
+        // the quiet state but leave the real error in the console.
+        console.error("profile render failed", e);
         hide("profile");
         show("profile-missing");
       }
