@@ -386,14 +386,22 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     align-items: center;
     min-height: 280px;
   }
-  /* Subtle paper grain over the ink so it reads as printed, not flat. */
+  @keyframes grain-shift {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-1%, 2%); }
+    50% { transform: translate(1%, -1%); }
+    75% { transform: translate(-2%, -2%); }
+  }
   .hero-grain {
     position: absolute;
-    inset: 0;
+    inset: -10%;
+    width: 120%;
+    height: 120%;
     pointer-events: none;
-    opacity: 0.08;
+    opacity: 0.12;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 300px;
+    animation: grain-shift 4s steps(4) infinite;
   }
   .hero-content { position: relative; z-index: 1; }
   .hero-eyebrow {
@@ -520,6 +528,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
   .stamp {
     aspect-ratio: 1;
     display: block;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+  .stamp:hover {
+    transform: translateY(-2px) scale(1.02);
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.06));
   }
   .stamp svg {
     width: 100%;
@@ -634,6 +647,11 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     aspect-ratio: 5 / 7;
     display: block;
     width: 100%;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+  .pb-stamp:hover {
+    transform: translateY(-2px) scale(1.02);
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.06));
   }
   .pb-stamp svg { display: block; width: 100%; height: 100%; }
 
@@ -1117,13 +1135,25 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     function hide(id) { const el = document.getElementById(id); if (el) el.hidden = true; }
     function setText(id, t) { const el = document.getElementById(id); if (el) el.textContent = t; }
 
+    function formatPace(secondsPerKm) {
+      if (!secondsPerKm || secondsPerKm <= 0) return "—";
+      const s = Math.max(0, Math.round(secondsPerKm));
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}:${String(sec).padStart(2, "0")}`;
+    }
+
     function renderTotals(t) {
       const el = document.getElementById("profile-totals");
       if (!el) return;
       const cells = [
         { label: "STAMPS",    value: String(t.stamps != null ? t.stamps : 0) },
         { label: "DISTANCE",  value: Math.round(t.distanceKm || 0).toLocaleString(), unit: "km" },
+        { label: "ELEVATION", value: Math.round(t.elevationM || 0).toLocaleString(), unit: "m" },
+        { label: "TIME",      value: Math.round(t.durationHours || 0).toLocaleString(), unit: "hrs" },
+        { label: "CALORIES",  value: Math.round(t.calories || 0).toLocaleString(), unit: "kcal" },
         { label: "COUNTRIES", value: String(t.countries || 0) },
+        { label: "CITIES",    value: String(t.cities || 0) },
         { label: "RUNS",      value: String(t.runs || 0) },
       ];
       el.innerHTML = cells.map((c) => `
@@ -1510,12 +1540,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 </li>`;
     }
 
-    function formatPace(secondsPerKm) {
-      const s = Math.max(0, Math.round(secondsPerKm));
-      const m = Math.floor(s / 60);
-      const sec = s % 60;
-      return `${m}:${String(sec).padStart(2, "0")}`;
-    }
+    // Note: formatPace is now hoisted above renderTotals.
 
     // ── Country breakdown ──────────────────────────────────────────
     function renderCountries(countries) {

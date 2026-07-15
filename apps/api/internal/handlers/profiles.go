@@ -41,10 +41,13 @@ type publicProfileResponse struct {
 }
 
 type profileTotals struct {
-	Runs       int     `json:"runs"`
-	DistanceKm float64 `json:"distanceKm"`
-	Countries  int     `json:"countries"`
-	Cities     int     `json:"cities"`
+	Runs          int     `json:"runs"`
+	DistanceKm    float64 `json:"distanceKm"`
+	Countries     int     `json:"countries"`
+	Cities        int     `json:"cities"`
+	ElevationM    float64 `json:"elevationM"`
+	DurationHours int     `json:"durationHours"`
+	Calories      int     `json:"calories"`
 }
 
 type publicStamp struct {
@@ -242,18 +245,24 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 // dupe_of filter so we never double-count cross-source duplicates.
 func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string) (profileTotals, []publicCity, error) {
 	var t profileTotals
+	var totalSeconds float64
 	err := pool.QueryRow(ctx, `
 		SELECT
 			COUNT(*),
 			COALESCE(SUM(distance_m), 0) / 1000.0,
 			COUNT(DISTINCT NULLIF(location_country, '')),
-			COUNT(DISTINCT NULLIF(location_city, ''))
+			COUNT(DISTINCT NULLIF(location_city, '')),
+			COALESCE(SUM(elevation_gain_m), 0),
+			COALESCE(SUM(CASE WHEN moving_seconds > 0 THEN moving_seconds ELSE elapsed_seconds END), 0),
+			COALESCE(SUM(calories), 0)
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL
-	`, userID).Scan(&t.Runs, &t.DistanceKm, &t.Countries, &t.Cities)
+	`, userID).Scan(&t.Runs, &t.DistanceKm, &t.Countries, &t.Cities, &t.ElevationM, &totalSeconds, &t.Calories)
 	if err != nil {
 		return t, nil, err
 	}
+	t.DurationHours = int(totalSeconds / 3600)
+
 
 	rows, err := pool.Query(ctx, `
 		SELECT location_city, COALESCE(MAX(location_country), ''), COUNT(*) AS runs

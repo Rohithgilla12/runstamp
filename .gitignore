@@ -79,3 +79,6 @@ apps/mobile/*.apk
 # Agent scratch dirs (Serena symbol cache, Superpowers brainstorm sessions).
 /.serena/
 /.superpowers/
+
+# Compiled Go server binary (go build output); build artifact, not source.
+/apps/api/server
