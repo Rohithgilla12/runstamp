@@ -235,7 +235,10 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	availableYears, _ := loadAvailableYears(ctx, h.Pool, user.ID)
+	availableYears, err := loadAvailableYears(ctx, h.Pool, user.ID)
+	if err != nil {
+		h.Log.Error("profiles get: loadAvailableYears failed", "err", err, "userID", user.ID)
+	}
 
 	resp := publicProfileResponse{
 		Handle:         *user.Handle,
@@ -361,10 +364,10 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 // dupe_of filter so we never double-count cross-source duplicates.
 func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
 	rows, err := pool.Query(ctx, `
-		SELECT DISTINCT EXTRACT(YEAR FROM started_at AT TIME ZONE 'UTC')::int AS y
+		SELECT DISTINCT EXTRACT(YEAR FROM started_at)::int AS y
 		FROM activities
 		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
-		ORDER BY y DESC
+		ORDER BY 1 DESC
 	`, userID)
 	if err != nil {
 		return nil, err
