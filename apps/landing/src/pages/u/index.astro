@@ -284,6 +284,25 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- Pace Distribution -->
+      <section class="profile-section" id="profile-pace-buckets-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">PACE DISTRIBUTION</p>
+          <p class="section-count" id="profile-pace-count"></p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="profile-pace-yaxis"></div>
+            <div class="chart-plot" style="--chart-h: 120px">
+              <svg class="chart-svg" id="profile-pace-svg" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--even" id="profile-pace-foot">
+            <span>&lt; 4:30/km</span><span>4:30-5:30</span><span>5:30-6:30</span><span>6:30+</span>
+          </div>
+        </div>
+      </section>
+
       <!-- Yearly HR -->
       <section class="profile-section" id="profile-yearly-hr-section" hidden>
         <header class="section-header">
@@ -1598,7 +1617,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     }
 
     // ── Highlights ─────────────────────────────────────────────────
-    function renderHighlights(h) {
+    function renderHighlights(h, t) {
       const section = document.getElementById("profile-highlights-section");
       const list = document.getElementById("profile-highlights-list");
       if (!section || !list) return;
@@ -1631,6 +1650,22 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           h.highestClimb.city ? { c: "place", t: h.highestClimb.city } : null,
           { c: "date", t: formatPBDate(h.highestClimb.date) },
         ]));
+      }
+      if (t) {
+        if (t.elevationM > 0) {
+          const everests = (t.elevationM / 8848).toFixed(1);
+          rows.push(highlightRow("MT. EVERESTS CLIMBED", [
+            { c: "num", t: `${everests}x` },
+            { c: "place", t: `(${Math.round(t.elevationM).toLocaleString()}m total)` }
+          ]));
+        }
+        if (t.calories > 0) {
+          const pizzas = Math.round(t.calories / 285);
+          rows.push(highlightRow("PIZZA SLICES BURNED", [
+            { c: "num", t: `${pizzas.toLocaleString()} slices` },
+            { c: "place", t: `(${Math.round(t.calories).toLocaleString()} kcal total)` }
+          ]));
+        }
       }
       if (rows.length === 0) { section.hidden = true; return; }
       list.innerHTML = rows.join("");
@@ -1965,6 +2000,42 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
+    function renderPaceBuckets(buckets) {
+      const section = document.getElementById("profile-pace-buckets-section");
+      const svg = document.getElementById("profile-pace-svg");
+      if (!section || !svg || !buckets || buckets.length !== 4) return;
+      const max = Math.max(...buckets);
+      if (max === 0) return;
+
+      const total = buckets.reduce((a, b) => a + b, 0);
+      setText("profile-pace-count", `${total} runs`);
+
+      const W = 600;
+      const H = 120;
+      const slot = W / 4;
+      const barW = Math.max(10, slot * 0.85);
+
+      const usable = H - 10;
+      const baseY = H;
+      const maxIdx = buckets.indexOf(max);
+      const labels = ["< 4:30/km", "4:30-5:30", "5:30-6:30", "6:30+"];
+
+      const bars = buckets.map((count, i) => {
+        const x = i * slot + (slot - barW) / 2;
+        const h = Math.max(1, (count / max) * usable);
+        const y = baseY - h;
+        const fill = i === maxIdx && count > 0 ? PALETTE.solar : PALETTE.ink;
+        const title = `${labels[i]} · ${count} runs (${Math.round(count/total*100)}%)`;
+        return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}" rx="2"><title>${escapeAttr(title)}</title></rect>`;
+      }).join("");
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = bars;
+
+      setYAxis("profile-pace-yaxis", max);
+      section.hidden = false;
+    }
+
     function renderHR(zones, maxHR) {
       const section = document.getElementById("profile-hr-section");
       const svg = document.getElementById("profile-hr-svg");
@@ -2231,12 +2302,13 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderWeekday(data.calendar);
         renderConsistency(data.calendar);
         renderHeatmap(data.calendar);
-        renderHighlights(data.highlights);
+        renderHighlights(data.highlights, totalsWithStamps);
         renderCountries(data.countries);
         renderStamps(data.stamps);
         renderCities(data.cities);
         renderTimeOfDay(data.timeOfDay);
         renderDistanceBuckets(data.distanceBuckets);
+        renderPaceBuckets(data.paceBuckets);
         renderHR(data.heartRateZones, data.maxHR);
         renderMap(data.runLocations);
         renderYearlyHR(data.yearlyHR);

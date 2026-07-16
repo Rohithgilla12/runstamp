@@ -46,6 +46,7 @@ type publicProfileResponse struct {
 	LongestRuns     []longestRun      `json:"longestRuns,omitempty"`
 	TimeOfDay       []int             `json:"timeOfDay,omitempty"`
 	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
+	PaceBuckets     []int             `json:"paceBuckets,omitempty"`
 }
 
 type yearlyHRBucket struct {
@@ -319,6 +320,11 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	distBuckets, err := loadDistanceBuckets(ctx, h.Pool, user.ID)
 	if err == nil && len(distBuckets) == 4 {
 		resp.DistanceBuckets = distBuckets
+	}
+
+	paceBuckets, err := loadPaceBuckets(ctx, h.Pool, user.ID)
+	if err == nil && len(paceBuckets) == 4 {
+		resp.PaceBuckets = paceBuckets
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -943,4 +949,25 @@ func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string)
 		return nil, nil
 	}
 	return []int{s, m, l, e}, nil
+}
+
+func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+	q := `
+		SELECT
+			COUNT(*) FILTER (WHERE avg_pace_s_per_km < 270),
+			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 270 AND avg_pace_s_per_km < 330),
+			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 330 AND avg_pace_s_per_km < 390),
+			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 390)
+		FROM activities
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0 AND avg_pace_s_per_km > 0
+	`
+	var b1, b2, b3, b4 int
+	err := pool.QueryRow(ctx, q, userID).Scan(&b1, &b2, &b3, &b4)
+	if err != nil {
+		return nil, err
+	}
+	if b1+b2+b3+b4 == 0 {
+		return nil, nil
+	}
+	return []int{b1, b2, b3, b4}, nil
 }
