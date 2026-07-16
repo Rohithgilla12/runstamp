@@ -47,11 +47,12 @@ type publicProfileResponse struct {
 	YearlyHR        []yearlyHRBucket  `json:"yearlyHR,omitempty"`
 	RecentRuns      []publicActivity  `json:"recentRuns,omitempty"`
 	LongestRuns     []longestRun      `json:"longestRuns,omitempty"`
-	AvailableYears  []int             `json:"availableYears,omitempty"`
+	AvailableYears  []int             `json:"availableYears"`
 	TimeOfDay       []int             `json:"timeOfDay,omitempty"`
 	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
 	PaceBuckets     []int             `json:"paceBuckets,omitempty"`
 	Dynamics        *advancedDynamics `json:"dynamics,omitempty"`
+	DebugError      string            `json:"debugError,omitempty"`
 }
 
 type advancedDynamics struct {
@@ -236,9 +237,11 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var debugErrStr string
 	availableYears, err := loadAvailableYears(ctx, h.Pool, user.ID)
 	if err != nil {
 		h.Log.Error("profiles get: loadAvailableYears failed", "err", err, "userID", user.ID)
+		debugErrStr = err.Error()
 	}
 
 	resp := publicProfileResponse{
@@ -246,6 +249,7 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		Totals:         totals,
 		Cities:         cities,
 		AvailableYears: availableYears,
+		DebugError:     debugErrStr,
 	}
 
 	maxHR := 190
