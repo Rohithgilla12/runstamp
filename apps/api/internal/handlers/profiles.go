@@ -369,7 +369,7 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 // dupe_of filter so we never double-count cross-source duplicates.
 func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
 	rows, err := pool.Query(ctx, `
-		SELECT DISTINCT EXTRACT(YEAR FROM started_at)::int AS y
+		SELECT DISTINCT EXTRACT(YEAR FROM COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::int AS y
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL AND started_at IS NOT NULL
 	`, userID)
@@ -395,10 +395,10 @@ func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) 
 }
 
 func yearClause(year int) string {
-	if year > 0 {
-		return fmt.Sprintf(" AND EXTRACT(YEAR FROM started_at AT TIME ZONE 'UTC') = %d", year)
+	if year == 0 {
+		return ""
 	}
-	return ""
+	return fmt.Sprintf(" AND EXTRACT(YEAR FROM COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata')) = %d", year)
 }
 
 func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string, year int) (profileTotals, []publicCity, error) {
@@ -455,7 +455,7 @@ func loadYearToDate(ctx context.Context, pool *pgxpool.Pool, userID string, year
 			COUNT(DISTINCT NULLIF(location_city, ''))
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL`+yearClause(year)+`
-		  AND started_at >= make_date($2::int, 1, 1)
+		  AND COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata') >= make_date($2::int, 1, 1)
 	`, userID, year).Scan(&ytd.Runs, &ytd.DistanceKm, &ytd.ElevationM, &ytd.Cities)
 	if err != nil {
 		return nil, err
@@ -541,12 +541,12 @@ LIMIT 1`, userID, distanceM).Scan(&seconds, &actualM, &started, &city)
 func loadWeekly(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]weeklyBucket, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
-			date_trunc('week', started_at AT TIME ZONE 'UTC')::date AS week_start,
+			date_trunc('week', COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::date AS week_start,
 			COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 			COUNT(*) AS runs
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL`+yearClause(year)+`
-		  AND started_at >= (date_trunc('week', now() AT TIME ZONE 'UTC') - interval '25 weeks')
+		  AND COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata') >= (date_trunc('week', now() AT TIME ZONE 'UTC') - interval '25 weeks')
 		GROUP BY week_start
 		ORDER BY week_start ASC
 	`, userID)
@@ -618,7 +618,7 @@ func isoWeekStart(t time.Time) time.Time {
 func loadCalendarDays(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]calendarDay, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
-			date_trunc('day', started_at AT TIME ZONE 'UTC')::date AS d,
+			date_trunc('day', COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::date AS d,
 			COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 			COUNT(*) AS runs
 		FROM activities
@@ -627,7 +627,7 @@ func loadCalendarDays(ctx context.Context, pool *pgxpool.Pool, userID string, ye
 		if year > 0 {
 			return ""
 		} else {
-			return "AND started_at >= now() - interval '365 days'"
+			return "AND COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata') >= now() - interval '365 days'"
 		}
 	}()+`
 		GROUP BY d
@@ -734,7 +734,7 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year
 		)
 		err := pool.QueryRow(ctx, `
 			SELECT
-				date_trunc('week', started_at AT TIME ZONE 'UTC')::date AS week_start,
+				date_trunc('week', COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::date AS week_start,
 				COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 				COUNT(*) AS runs
 			FROM activities
@@ -884,7 +884,7 @@ func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, 
 func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]yearlyHRBucket, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
-			EXTRACT(YEAR FROM started_at)::int AS year,
+			EXTRACT(YEAR FROM COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::int AS year,
 			ROUND(AVG(avg_hr))::int AS avg_hr,
 			COUNT(*) AS runs
 		FROM activities
@@ -983,13 +983,17 @@ func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string, yea
 
 func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]int, error) {
 	q := `
+		WITH local_times AS (
+			SELECT COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata') AS local_t
+			FROM activities
+			WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
+		)
 		SELECT
-			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 5 AND EXTRACT(HOUR FROM started_at) < 12),
-			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 12 AND EXTRACT(HOUR FROM started_at) < 17),
-			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 17 AND EXTRACT(HOUR FROM started_at) < 21),
-			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 21 OR EXTRACT(HOUR FROM started_at) < 5)
-		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM local_t) >= 5 AND EXTRACT(HOUR FROM local_t) < 12),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM local_t) >= 12 AND EXTRACT(HOUR FROM local_t) < 17),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM local_t) >= 17 AND EXTRACT(HOUR FROM local_t) < 21),
+			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM local_t) >= 21 OR EXTRACT(HOUR FROM local_t) < 5)
+		FROM local_times
 	`
 	var m, a, e, n int
 	err := pool.QueryRow(ctx, q, userID).Scan(&m, &a, &e, &n)
