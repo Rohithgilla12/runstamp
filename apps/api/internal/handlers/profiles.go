@@ -366,7 +366,7 @@ func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) 
 	rows, err := pool.Query(ctx, `
 		SELECT DISTINCT EXTRACT(YEAR FROM started_at)::int AS y
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND started_at IS NOT NULL
 		ORDER BY 1 DESC
 	`, userID)
 	if err != nil {
