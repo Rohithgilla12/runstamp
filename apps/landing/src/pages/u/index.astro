@@ -1675,8 +1675,8 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           ]));
         }
       }
-      if (cal && cal.length > 0) {
-        const sorted = [...cal].sort((a, b) => b.localeCompare(a));
+      if (cal && Object.keys(cal).length > 0) {
+        const sorted = Object.keys(cal).sort((a, b) => b.localeCompare(a));
         const parseD = (s) => { const p = s.split("-"); return new Date(p[0], p[1]-1, p[2]); };
         const lastRun = parseD(sorted[0]);
         const today = new Date();
