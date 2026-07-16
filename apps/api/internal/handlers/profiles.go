@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
@@ -44,6 +46,7 @@ type publicProfileResponse struct {
 	YearlyHR        []yearlyHRBucket  `json:"yearlyHR,omitempty"`
 	RecentRuns      []publicActivity  `json:"recentRuns,omitempty"`
 	LongestRuns     []longestRun      `json:"longestRuns,omitempty"`
+	AvailableYears  []int             `json:"availableYears,omitempty"`
 	TimeOfDay       []int             `json:"timeOfDay,omitempty"`
 	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
 	PaceBuckets     []int             `json:"paceBuckets,omitempty"`
@@ -214,23 +217,31 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	
+	reqYear := 0
+	if yStr := r.URL.Query().Get("year"); yStr != "" {
+		reqYear, _ = strconv.Atoi(yStr)
+	}
 
 	earned, err := h.Stamps.ListEarnedForUser(ctx, user.ID)
 	if err != nil {
 		h.Log.Warn("profiles get: stamps", "err", err)
 		earned = nil
 	}
-	totals, cities, err := loadPublicAggregates(ctx, h.Pool, user.ID)
+	totals, cities, err := loadPublicAggregates(ctx, h.Pool, user.ID, reqYear)
 	if err != nil {
 		h.Log.Error("profiles get: aggregates", "err", err, "handle", handle, "userID", user.ID)
 		writeError(w, http.StatusInternalServerError, "lookup failed")
 		return
 	}
 
+	availableYears, _ := loadAvailableYears(ctx, h.Pool, user.ID)
+
 	resp := publicProfileResponse{
-		Handle: *user.Handle,
-		Totals: totals,
-		Cities: cities,
+		Handle:         *user.Handle,
+		Totals:         totals,
+		Cities:         cities,
+		AvailableYears: availableYears,
 	}
 
 	maxHR := 190
@@ -241,7 +252,7 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		maxHR = 220 - age
 	}
 
-	hrZones, runLocs, err := loadHRAndLocations(ctx, h.Pool, user.ID, maxHR)
+	hrZones, runLocs, err := loadHRAndLocations(ctx, h.Pool, user.ID, maxHR, reqYear)
 	if err != nil {
 		h.Log.Warn("profiles get: hr/locations failed", "err", err)
 	} else {
@@ -279,42 +290,42 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	} else {
 		resp.YearToDate = ytd
 	}
-	if pbs, err := loadPersonalBests(ctx, h.Pool, user.ID); err != nil {
+	if pbs, err := loadPersonalBests(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: pbs", "err", err)
 	} else {
 		resp.PersonalBests = pbs
 	}
-	if weekly, err := loadWeekly(ctx, h.Pool, user.ID); err != nil {
+	if weekly, err := loadWeekly(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: weekly", "err", err)
 	} else {
 		resp.Weekly = weekly
 	}
-	if cal, err := loadCalendarDays(ctx, h.Pool, user.ID); err != nil {
+	if cal, err := loadCalendarDays(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: calendar", "err", err)
 	} else {
 		resp.Calendar = cal
 	}
-	if hl, err := loadHighlights(ctx, h.Pool, user.ID); err != nil {
+	if hl, err := loadHighlights(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: highlights", "err", err)
 	} else {
 		resp.Highlights = hl
 	}
-	if countries, err := loadCountries(ctx, h.Pool, user.ID); err != nil {
+	if countries, err := loadCountries(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: countries", "err", err)
 	} else {
 		resp.Countries = countries
 	}
-	if yearlyHR, err := loadYearlyHR(ctx, h.Pool, user.ID); err != nil {
+	if yearlyHR, err := loadYearlyHR(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: yearlyHR", "err", err)
 	} else {
 		resp.YearlyHR = yearlyHR
 	}
-	if recentRuns, err := loadRecentActivities(ctx, h.Pool, user.ID); err != nil {
+	if recentRuns, err := loadRecentActivities(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: recentRuns", "err", err)
 	} else {
 		resp.RecentRuns = recentRuns
 	}
-	if longest, err := loadLongestRuns(ctx, h.Pool, user.ID); err != nil {
+	if longest, err := loadLongestRuns(ctx, h.Pool, user.ID, reqYear); err != nil {
 		h.Log.Warn("profiles get: longestRuns", "err", err)
 	} else {
 		if len(longest) > 0 {
@@ -322,22 +333,22 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tod, err := loadTimeOfDay(ctx, h.Pool, user.ID)
-	if err == nil && len(tod) == 4 {
+	if tod, err := loadTimeOfDay(ctx, h.Pool, user.ID, reqYear); err != nil {
+		h.Log.Warn("profiles get: tod", "err", err)
+	} else if len(tod) == 4 {
 		resp.TimeOfDay = tod
 	}
 
-	distBuckets, err := loadDistanceBuckets(ctx, h.Pool, user.ID)
-	if err == nil && len(distBuckets) == 4 {
-		resp.DistanceBuckets = distBuckets
+	if distanceBuckets, err := loadDistanceBuckets(ctx, h.Pool, user.ID, reqYear); err == nil && len(distanceBuckets) == 5 {
+		resp.DistanceBuckets = distanceBuckets
 	}
 
-	paceBuckets, err := loadPaceBuckets(ctx, h.Pool, user.ID)
+	paceBuckets, err := loadPaceBuckets(ctx, h.Pool, user.ID, reqYear)
 	if err == nil && len(paceBuckets) == 4 {
 		resp.PaceBuckets = paceBuckets
 	}
 
-	dynamics, err := loadAdvancedDynamics(ctx, h.Pool, user.ID)
+	dynamics, err := loadAdvancedDynamics(ctx, h.Pool, user.ID, reqYear)
 	if err == nil && dynamics != nil {
 		resp.Dynamics = dynamics
 	}
@@ -348,7 +359,36 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 // loadPublicAggregates pulls the cheap roll-ups that drive the headline
 // metrics. Single query that does totals + city counts; SQL handles the
 // dupe_of filter so we never double-count cross-source duplicates.
-func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string) (profileTotals, []publicCity, error) {
+func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT DISTINCT EXTRACT(YEAR FROM started_at AT TIME ZONE 'UTC')::int AS y
+		FROM activities
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+		ORDER BY y DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var years []int
+	for rows.Next() {
+		var y int
+		if err := rows.Scan(&y); err != nil {
+			return nil, err
+		}
+		years = append(years, y)
+	}
+	return years, nil
+}
+
+func yearClause(year int) string {
+	if year > 0 {
+		return fmt.Sprintf(" AND EXTRACT(YEAR FROM started_at AT TIME ZONE 'UTC') = %d", year)
+	}
+	return ""
+}
+
+func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string, year int) (profileTotals, []publicCity, error) {
 	var t profileTotals
 	var totalSeconds float64
 	err := pool.QueryRow(ctx, `
@@ -361,7 +401,7 @@ func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string
 			COALESCE(SUM(CASE WHEN moving_seconds > 0 THEN moving_seconds ELSE elapsed_seconds END), 0),
 			COALESCE(SUM(calories), 0)
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 	`, userID).Scan(&t.Runs, &t.DistanceKm, &t.Countries, &t.Cities, &t.ElevationM, &totalSeconds, &t.Calories)
 	if err != nil {
 		return t, nil, err
@@ -372,7 +412,7 @@ func loadPublicAggregates(ctx context.Context, pool *pgxpool.Pool, userID string
 	rows, err := pool.Query(ctx, `
 		SELECT location_city, COALESCE(MAX(location_country), ''), COUNT(*) AS runs
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL AND location_city IS NOT NULL AND location_city <> ''
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND location_city IS NOT NULL AND location_city <> ''
 		GROUP BY location_city
 		ORDER BY runs DESC, location_city ASC
 		LIMIT 200
@@ -402,7 +442,7 @@ func loadYearToDate(ctx context.Context, pool *pgxpool.Pool, userID string, year
 			COALESCE(SUM(elevation_gain_m), 0),
 			COUNT(DISTINCT NULLIF(location_city, ''))
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 		  AND started_at >= make_date($2::int, 1, 1)
 	`, userID, year).Scan(&ytd.Runs, &ytd.DistanceKm, &ytd.ElevationM, &ytd.Cities)
 	if err != nil {
@@ -425,10 +465,10 @@ var profilePBDistances = []struct {
 
 // loadPersonalBests picks the fastest full run near each distance.
 // Returns the struct with nil entries where no qualifying run exists.
-func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (*personalBests, error) {
+func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string, year int) (*personalBests, error) {
 	pbs := &personalBests{}
 	for _, d := range profilePBDistances {
-		pb, err := loadOnePB(ctx, pool, userID, d.distance)
+		pb, err := loadOnePB(ctx, pool, userID, d.distance, year)
 		if err != nil {
 			return nil, err
 		}
@@ -450,7 +490,7 @@ func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string) (
 // Apple Health runs carry no segment efforts, so the PB is a whole-run
 // best — the run with the smallest moving time (falling back to elapsed)
 // in the band. Matches the "best full run · ±5% of distance" card copy.
-func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM int) (*personalBest, error) {
+func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM int, year int) (*personalBest, error) {
 	var (
 		seconds int
 		actualM float64
@@ -462,7 +502,7 @@ SELECT
 	CASE WHEN moving_seconds > 0 THEN moving_seconds ELSE elapsed_seconds END AS t,
 	distance_m, started_at, location_city
 FROM activities
-WHERE user_id = $1 AND dupe_of IS NULL
+WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
   AND distance_m BETWEEN $2 * 0.95 AND $2 * 1.05
   AND (moving_seconds > 0 OR elapsed_seconds > 0)
 ORDER BY t ASC
@@ -486,14 +526,14 @@ LIMIT 1`, userID, distanceM).Scan(&seconds, &actualM, &started, &city)
 
 // loadWeekly returns the most recent 26 ISO weeks (oldest first), padded
 // with zero-km entries for weeks where the user didn't run.
-func loadWeekly(ctx context.Context, pool *pgxpool.Pool, userID string) ([]weeklyBucket, error) {
+func loadWeekly(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]weeklyBucket, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			date_trunc('week', started_at AT TIME ZONE 'UTC')::date AS week_start,
 			COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 			COUNT(*) AS runs
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 		  AND started_at >= (date_trunc('week', now() AT TIME ZONE 'UTC') - interval '25 weeks')
 		GROUP BY week_start
 		ORDER BY week_start ASC
@@ -563,15 +603,15 @@ func isoWeekStart(t time.Time) time.Time {
 
 // loadCalendarDays returns one row per day the user ran in the last 365
 // days. Sparse — empty days are filled in client-side.
-func loadCalendarDays(ctx context.Context, pool *pgxpool.Pool, userID string) ([]calendarDay, error) {
+func loadCalendarDays(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]calendarDay, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			date_trunc('day', started_at AT TIME ZONE 'UTC')::date AS d,
 			COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 			COUNT(*) AS runs
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
-		  AND started_at >= now() - interval '365 days'
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
+		  ` + func() string { if year > 0 { return "" } else { return "AND started_at >= now() - interval '365 days'" } }() + `
 		GROUP BY d
 		ORDER BY d ASC
 	`, userID)
@@ -601,7 +641,7 @@ func loadCalendarDays(ctx context.Context, pool *pgxpool.Pool, userID string) ([
 // loadHighlights surfaces the runner's "from the album" lines: longest
 // run, fastest pace (with 4 km minimum to exclude sprint outliers),
 // biggest week, highest single-run climb.
-func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*highlights, error) {
+func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year int) (*highlights, error) {
 	h := &highlights{}
 
 	// Longest run.
@@ -614,7 +654,7 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*hi
 		err := pool.QueryRow(ctx, `
 			SELECT distance_m, started_at, location_city
 			FROM activities
-			WHERE user_id = $1 AND dupe_of IS NULL
+			WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 			ORDER BY distance_m DESC
 			LIMIT 1
 		`, userID).Scan(&dm, &started, &city)
@@ -646,7 +686,7 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*hi
 				     ELSE elapsed_seconds::float / (distance_m / 1000.0) END AS pace_s_per_km,
 				distance_m, started_at, location_city
 			FROM activities
-			WHERE user_id = $1 AND dupe_of IS NULL
+			WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 			  AND distance_m >= 4000
 			  AND elapsed_seconds > 0
 			ORDER BY pace_s_per_km ASC
@@ -680,7 +720,7 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*hi
 				COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 				COUNT(*) AS runs
 			FROM activities
-			WHERE user_id = $1 AND dupe_of IS NULL
+			WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 			GROUP BY week_start
 			ORDER BY km DESC
 			LIMIT 1
@@ -706,7 +746,7 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*hi
 		err := pool.QueryRow(ctx, `
 			SELECT elevation_gain_m, started_at, location_city
 			FROM activities
-			WHERE user_id = $1 AND dupe_of IS NULL
+			WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 			  AND elevation_gain_m IS NOT NULL
 			  AND elevation_gain_m > 0
 			ORDER BY elevation_gain_m DESC
@@ -730,14 +770,14 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string) (*hi
 }
 
 // loadCountries returns the top 10 countries by total distance.
-func loadCountries(ctx context.Context, pool *pgxpool.Pool, userID string) ([]countryBucket, error) {
+func loadCountries(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]countryBucket, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			location_country,
 			COALESCE(SUM(distance_m), 0) / 1000.0 AS km,
 			COUNT(*) AS runs
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 		  AND location_country IS NOT NULL AND location_country <> ''
 		GROUP BY location_country
 		ORDER BY km DESC
@@ -762,13 +802,13 @@ func isNoRows(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows)
 }
 
-func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, maxHR int) ([]int, [][2]float64, error) {
+func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, maxHR int, year int) ([]int, [][2]float64, error) {
 	hrZones := make([]int, 5)
 	
 	rows, err := pool.Query(ctx, `
 		SELECT avg_hr
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL AND avg_hr > 0
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND avg_hr > 0
 	`, userID)
 	if err != nil {
 		return nil, nil, err
@@ -801,7 +841,7 @@ func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, 
 	locRows, err := pool.Query(ctx, `
 		SELECT ST_X(location_start::geometry), ST_Y(location_start::geometry)
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL AND location_start IS NOT NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND location_start IS NOT NULL
 	`, userID)
 	if err != nil {
 		return nil, nil, err
@@ -823,14 +863,14 @@ func loadHRAndLocations(ctx context.Context, pool *pgxpool.Pool, userID string, 
 }
 
 // loadYearlyHR groups runs by year and calculates the average HR.
-func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string) ([]yearlyHRBucket, error) {
+func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]yearlyHRBucket, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			EXTRACT(YEAR FROM started_at)::int AS year,
 			ROUND(AVG(avg_hr))::int AS avg_hr,
 			COUNT(*) AS runs
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL AND avg_hr > 0
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND avg_hr > 0
 		GROUP BY year
 		ORDER BY year ASC
 	`, userID)
@@ -851,7 +891,7 @@ func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string) ([]yea
 }
 
 // loadRecentActivities fetches the 5 most recent runs.
-func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string) ([]publicActivity, error) {
+func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]publicActivity, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			COALESCE(title, 'Run'),
@@ -859,7 +899,7 @@ func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string
 			COALESCE(avg_pace_s_per_km, 0) AS pace,
 			started_at
 		FROM activities
-		WHERE user_id = $1 AND dupe_of IS NULL
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 		ORDER BY started_at DESC
 		LIMIT 5
 	`, userID)
@@ -884,11 +924,11 @@ func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string
 }
 
 // loadLongestRuns fetches the top 5 longest runs.
-func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string) ([]longestRun, error) {
+func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]longestRun, error) {
 	q := `
 		SELECT distance_m, avg_pace_s_per_km, started_at, title, location_city
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
 		ORDER BY distance_m DESC
 		LIMIT 5
 	`
@@ -923,7 +963,7 @@ func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string) ([]
 	return out, nil
 }
 
-func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]int, error) {
 	q := `
 		SELECT
 			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 5 AND EXTRACT(HOUR FROM started_at) < 12),
@@ -931,7 +971,7 @@ func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string) ([]in
 			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 17 AND EXTRACT(HOUR FROM started_at) < 21),
 			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 21 OR EXTRACT(HOUR FROM started_at) < 5)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + `
 	`
 	var m, a, e, n int
 	err := pool.QueryRow(ctx, q, userID).Scan(&m, &a, &e, &n)
@@ -945,7 +985,7 @@ func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string) ([]in
 	return []int{m, a, e, n}, nil
 }
 
-func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]int, error) {
 	q := `
 		SELECT
 			COUNT(*) FILTER (WHERE distance_m < 5000),
@@ -953,7 +993,7 @@ func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string)
 			COUNT(*) FILTER (WHERE distance_m >= 10000 AND distance_m < 21000),
 			COUNT(*) FILTER (WHERE distance_m >= 21000)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
 	`
 	var s, m, l, e int
 	err := pool.QueryRow(ctx, q, userID).Scan(&s, &m, &l, &e)
@@ -966,7 +1006,7 @@ func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string)
 	return []int{s, m, l, e}, nil
 }
 
-func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]int, error) {
+func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]int, error) {
 	q := `
 		SELECT
 			COUNT(*) FILTER (WHERE avg_pace_s_per_km < 270),
@@ -974,7 +1014,7 @@ func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]
 			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 330 AND avg_pace_s_per_km < 390),
 			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 390)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND distance_m > 0 AND avg_pace_s_per_km > 0
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0 AND avg_pace_s_per_km > 0
 	`
 	var b1, b2, b3, b4 int
 	err := pool.QueryRow(ctx, q, userID).Scan(&b1, &b2, &b3, &b4)
@@ -987,7 +1027,7 @@ func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]
 	return []int{b1, b2, b3, b4}, nil
 }
 
-func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string) (*advancedDynamics, error) {
+func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string, year int) (*advancedDynamics, error) {
 	q := `
 		SELECT
 			COALESCE(AVG(cadence_spm), 0),
@@ -997,7 +1037,7 @@ func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string
 			COALESCE(AVG(vertical_oscillation_cm), 0),
 			COALESCE(AVG(ground_contact_ms), 0)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + `
 	`
 	var d advancedDynamics
 	err := pool.QueryRow(ctx, q, userID).Scan(

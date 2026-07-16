@@ -328,10 +328,13 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- Year Selector -->
+      <div class="year-selector" id="profile-year-selector" hidden></div>
+
       <!-- Calendar heatmap — 52×7 moss grid for the last 12 months. -->
       <section class="profile-section" id="profile-heatmap-section" hidden>
         <header class="section-header">
-          <p class="eyebrow">THE LAST 12 MONTHS</p>
+          <p class="eyebrow" id="profile-heatmap-eyebrow">THE LAST 12 MONTHS</p>
           <p class="section-count" id="profile-heatmap-summary">darker = farther</p>
         </header>
         <div class="heatmap-wrap">
@@ -1136,6 +1139,39 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     text-decoration-color: var(--line);
   }
   .profile-footer-line a:hover { text-decoration-color: var(--solar); }
+  
+  .year-selector {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
+    scrollbar-width: none; /* Firefox */
+  }
+  .year-selector::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+  .year-pill {
+    padding: var(--space-1) var(--space-3);
+    border-radius: 9999px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--sage);
+    background: transparent;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .year-pill:hover {
+    border-color: var(--moss);
+    color: var(--ink);
+  }
+  .year-pill.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
 </style>
 
 <script is:inline>
@@ -2319,8 +2355,16 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         show("profile-missing");
         return;
       }
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const year = urlParams.get("year");
+      let apiUrl = `${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`;
+      if (year) {
+        apiUrl += `?year=${year}`;
+      }
+
       try {
-        const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}`);
+        const r = await fetch(apiUrl);
         if (!r.ok) {
           hide("profile");
           show("profile-missing");
@@ -2384,6 +2428,12 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderRecentRuns(data.recentRuns);
         renderLongestRuns(data.longestRuns);
 
+        renderYearSelector(data.availableYears, year);
+        const heatmapEyebrow = document.getElementById("profile-heatmap-eyebrow");
+        if (heatmapEyebrow) {
+          heatmapEyebrow.innerText = year ? `YEAR IN REVIEW: ${year}` : "THE LAST 12 MONTHS";
+        }
+
         document.title = `${displayName} on Runstamp`;
         hide("profile");
         show("profile-card");
@@ -2396,6 +2446,43 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         hide("profile");
         show("profile-missing");
       }
+    }
+
+    function renderYearSelector(years, currentYear) {
+      const container = document.getElementById("profile-year-selector");
+      if (!container || !years || years.length === 0) {
+        if (container) container.hidden = true;
+        return;
+      }
+      
+      const isLifetime = !currentYear || currentYear == "0";
+      let html = `<button class="year-pill ${isLifetime ? 'active' : ''}" data-year="">Lifetime</button>`;
+      
+      years.forEach(y => {
+        const active = currentYear == y ? 'active' : '';
+        html += `<button class="year-pill ${active}" data-year="${y}">${y}</button>`;
+      });
+      
+      container.innerHTML = html;
+      container.hidden = false;
+      
+      const pills = container.querySelectorAll(".year-pill");
+      pills.forEach(pill => {
+        pill.addEventListener("click", () => {
+          const targetYear = pill.getAttribute("data-year");
+          const url = new URL(window.location);
+          if (targetYear) {
+            url.searchParams.set("year", targetYear);
+          } else {
+            url.searchParams.delete("year");
+          }
+          window.history.pushState({}, "", url);
+          
+          hide("profile-card");
+          show("profile");
+          load();
+        });
+      });
     }
 
     load();
