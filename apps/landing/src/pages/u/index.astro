@@ -133,6 +133,45 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- Year-over-Year progress — cumulative distance from Jan 1 overlaying multiple years. -->
+      <section class="profile-section" id="profile-yoy-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">YEAR OVER YEAR</p>
+          <p class="section-count" id="profile-yoy-count">Total distance since January 1st</p>
+        </header>
+        <div class="yoy-container">
+          <div class="chart">
+            <div class="chart-grid">
+              <div class="chart-yaxis" id="profile-yoy-yaxis"></div>
+              <div class="chart-plot" style="--chart-h: 220px">
+                <svg class="chart-svg" id="profile-yoy-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+                <!-- We will draw dots dynamically -->
+              </div>
+            </div>
+            <div class="chart-foot chart-foot--ends">
+              <span>Jan 01</span>
+              <span>Dec 31</span>
+            </div>
+          </div>
+          <div class="yoy-table-container">
+            <table class="yoy-table">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Distance</th>
+                  <th>&Delta; Prev Year</th>
+                  <th id="yoy-current-year-col">&Delta; With 2026</th>
+                  <th id="yoy-target-col" hidden>&Delta; With target</th>
+                </tr>
+              </thead>
+              <tbody id="profile-yoy-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- Monthly volume — 12 coarse bars with a 12-month mean line. -->
       <section class="profile-section" id="profile-monthly-section" hidden>
         <header class="section-header">
@@ -659,6 +698,52 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     color: var(--ink-3);
   }
 
+  /* ── Year Over Year ───────────────────────────────────────────── */
+  .yoy-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+  @media (min-width: 800px) {
+    .yoy-container {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+  .yoy-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .yoy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-align: right;
+  }
+  .yoy-table th, .yoy-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .yoy-table th {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: normal;
+  }
+  .yoy-table td.yoy-year {
+    text-align: left;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .yoy-table .pos-delta {
+    color: var(--moss);
+  }
+  .yoy-table .neg-delta {
+    color: var(--solar);
+  }
+  
   /* ── Stamps grid ──────────────────────────────────────────────── */
   .stamps-grid {
     display: grid;
@@ -1846,6 +1931,154 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
+    // ── Year Over Year ─────────────────────────────────────────────
+    function renderYoY(yoyProgress, annualDistanceGoal) {
+      const section = document.getElementById("profile-yoy-section");
+      const svg = document.getElementById("profile-yoy-svg");
+      const tbody = document.getElementById("profile-yoy-tbody");
+      if (!section || !svg || !tbody) return;
+      if (!yoyProgress || Object.keys(yoyProgress).length === 0) { section.hidden = true; return; }
+
+      const years = Object.keys(yoyProgress).map(Number).sort((a, b) => b - a);
+      if (years.length === 0) { section.hidden = true; return; }
+
+      const currentYear = years[0];
+      const today = new Date();
+      const startOfYear = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
+      let currentDoy = Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // If currentYear is a past year (e.g. user selected ?year=2024), we should render full year
+      // But typically we show all years in this component, so current year means the latest year they ran.
+      // If latest year is not this calendar year, render full year.
+      if (currentYear !== today.getUTCFullYear()) {
+         currentDoy = 366;
+      }
+
+      const W = 600, H = 220, top = 10, baseY = H - 8, usable = baseY - top;
+      
+      const cumsByYear = {};
+      let maxCum = 0;
+      
+      for (const y of years) {
+        const daily = yoyProgress[y];
+        const cum = [];
+        let runningTotal = 0;
+        
+        let maxDays = 366;
+        if (y === today.getUTCFullYear()) {
+          maxDays = currentDoy;
+        }
+
+        for (let i = 0; i < maxDays; i++) {
+          runningTotal += (daily[i] || 0);
+          cum.push(runningTotal);
+        }
+        cumsByYear[y] = cum;
+        if (runningTotal > maxCum) maxCum = runningTotal;
+      }
+
+      if (annualDistanceGoal && annualDistanceGoal > maxCum) {
+        maxCum = annualDistanceGoal;
+      }
+
+      if (maxCum === 0) { section.hidden = true; return; }
+
+      const xAt = (i) => (i / 365) * W; 
+      const yAt = (v) => baseY - (v / maxCum) * usable;
+
+      let svgContent = '';
+      if (annualDistanceGoal) {
+        const yTarget = yAt(annualDistanceGoal).toFixed(1);
+        svgContent += `<line x1="0" y1="${yTarget}" x2="${W}" y2="${yTarget}" stroke="${PALETTE.solar}" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>`;
+      }
+      
+      const reversedYears = [...years].reverse();
+      for (const y of reversedYears) {
+        const cums = cumsByYear[y];
+        if (cums.length === 0) continue;
+        
+        let line = `M 0 ${yAt(0).toFixed(1)}`;
+        for (let i = 1; i < cums.length; i++) {
+          line += ` L ${xAt(i).toFixed(1)} ${yAt(cums[i]).toFixed(1)}`;
+        }
+        
+        const isCurrent = (y === currentYear);
+        const strokeColor = isCurrent ? PALETTE.ink : PALETTE.ink3;
+        const strokeWidth = isCurrent ? 2.5 : 1;
+        const opacity = isCurrent ? 1 : 0.4;
+        
+        svgContent += `<path d="${line}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+        
+        const lastVal = cums[cums.length - 1];
+        const lx = xAt(cums.length - 1).toFixed(1);
+        const ly = yAt(lastVal).toFixed(1);
+        svgContent += `<circle cx="${lx}" cy="${ly}" r="${isCurrent ? 4 : 2}" fill="${strokeColor}" />`;
+      }
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.innerHTML = svgContent;
+      setYAxis("profile-yoy-yaxis", maxCum);
+
+      document.getElementById("yoy-current-year-col").innerHTML = `&Delta; With ${currentYear}`;
+      const targetCol = document.getElementById("yoy-target-col");
+      if (annualDistanceGoal) targetCol.hidden = false;
+      
+      let tableRows = '';
+      for (let i = 0; i < years.length; i++) {
+        const y = years[i];
+        const prevYear = years[i+1];
+        
+        const dist = cumsByYear[y][cumsByYear[y].length - 1] || 0;
+        
+        let deltaPrevStr = '—';
+        if (prevYear && cumsByYear[prevYear]) {
+          const doyToCompare = cumsByYear[y].length - 1;
+          const prevDistAtSameTime = (doyToCompare < cumsByYear[prevYear].length) ? cumsByYear[prevYear][doyToCompare] : (cumsByYear[prevYear][cumsByYear[prevYear].length - 1] || 0);
+          const delta = dist - prevDistAtSameTime;
+          deltaPrevStr = formatDelta(delta);
+        }
+
+        let deltaCurrentStr = '—';
+        if (y !== currentYear) {
+          const currentDistAtSameTime = cumsByYear[currentYear][cumsByYear[currentYear].length - 1] || 0;
+          const doyToCompare = cumsByYear[currentYear].length - 1;
+          const distAtSameTime = (doyToCompare < cumsByYear[y].length) ? cumsByYear[y][doyToCompare] : dist;
+          const delta = distAtSameTime - currentDistAtSameTime;
+          deltaCurrentStr = formatDelta(delta);
+        }
+
+        let deltaTargetStr = '';
+        if (annualDistanceGoal) {
+          const delta = dist - annualDistanceGoal;
+          deltaTargetStr = `<td class="${delta > 0 ? 'pos-delta' : (delta < 0 ? 'neg-delta' : '')}">${delta > 0 ? '+' : ''}${Math.round(delta).toLocaleString()} km</td>`;
+        }
+        
+        tableRows += `
+          <tr>
+            <td class="yoy-year">${y}</td>
+            <td>${Math.round(dist).toLocaleString()} km</td>
+            <td class="${getDeltaClass(deltaPrevStr)}">${deltaPrevStr}</td>
+            <td class="${getDeltaClass(deltaCurrentStr)}">${deltaCurrentStr}</td>
+            ${annualDistanceGoal ? deltaTargetStr : ''}
+          </tr>
+        `;
+      }
+      
+      tbody.innerHTML = tableRows;
+      section.hidden = false;
+    }
+
+    function formatDelta(delta) {
+      if (Math.abs(delta) < 0.5) return '0 km';
+      return (delta > 0 ? '+' : '') + Math.round(delta).toLocaleString() + ' km';
+    }
+    
+    function getDeltaClass(deltaStr) {
+      if (deltaStr.startsWith('+')) return 'pos-delta';
+      if (deltaStr.startsWith('-')) return 'neg-delta';
+      return '';
+    }
+
     // ── Monthly volume — 12 month bars + mean line ─────────────────
     function renderMonthly(cal) {
       const section = document.getElementById("profile-monthly-section");
@@ -2406,6 +2639,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         }
 
         renderTotals(totalsWithStamps);
+        renderYoY(data.yoyProgress, data.annualDistanceGoal);
         renderYearLedger(data.yearToDate);
         renderClimb(data.calendar);
         renderMonthly(data.calendar);

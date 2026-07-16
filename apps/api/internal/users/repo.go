@@ -40,6 +40,7 @@ type User struct {
 	// ProfilePublic is the opt-in switch. Both default to NULL/false.
 	Handle        *string
 	ProfilePublic bool
+	AnnualDistanceGoal *int
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -64,9 +65,9 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 		ON CONFLICT (firebase_uid) DO UPDATE SET
 			email      = EXCLUDED.email,
 			updated_at = now()
-		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, created_at, updated_at
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, annual_distance_goal, created_at, updated_at
 	`, firebaseUID, email).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface, &u.Handle, &u.ProfilePublic, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface, &u.Handle, &u.ProfilePublic, &u.AnnualDistanceGoal, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("users: upsert by firebase uid: %w", err)
@@ -79,11 +80,11 @@ func (r *Repo) UpsertByFirebaseUID(ctx context.Context, firebaseUID, email strin
 func (r *Repo) FindByFirebaseUID(ctx context.Context, firebaseUID string) (*User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, created_at, updated_at
+		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, annual_distance_goal, created_at, updated_at
 		FROM users
 		WHERE firebase_uid = $1
 	`, firebaseUID).Scan(
-		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface, &u.Handle, &u.ProfilePublic, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear, &u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface, &u.Handle, &u.ProfilePublic, &u.AnnualDistanceGoal, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -103,13 +104,13 @@ func (r *Repo) FindByFirebaseUID(ctx context.Context, firebaseUID string) (*User
 func (r *Repo) FindPublicByHandle(ctx context.Context, handle string) (*User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, created_at, updated_at
+		SELECT id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, annual_distance_goal, created_at, updated_at
 		FROM users
 		WHERE lower(handle) = lower($1) AND profile_public = true
 	`, handle).Scan(
 		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units, &u.HRMax, &u.HRResting, &u.BirthYear,
 		&u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface,
-		&u.Handle, &u.ProfilePublic, &u.CreatedAt, &u.UpdatedAt,
+		&u.Handle, &u.ProfilePublic, &u.AnnualDistanceGoal, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -161,6 +162,7 @@ type ProfilePatch struct {
 	UIDefaultSurface *string
 	Handle           *string
 	ProfilePublic    *bool
+	AnnualDistanceGoal *int
 }
 
 // UpdateProfile applies a partial update and returns the refreshed row.
@@ -225,17 +227,21 @@ func (r *Repo) UpdateProfile(ctx context.Context, userID string, p ProfilePatch)
 		args = append(args, *p.ProfilePublic)
 		sets = append(sets, fmt.Sprintf("profile_public = $%d", len(args)))
 	}
+	if p.AnnualDistanceGoal != nil {
+		args = append(args, *p.AnnualDistanceGoal)
+		sets = append(sets, fmt.Sprintf("annual_distance_goal = $%d", len(args)))
+	}
 	q := fmt.Sprintf(`
 		UPDATE users SET %s
 		WHERE id = $1
-		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, created_at, updated_at
+		RETURNING id, firebase_uid, email, display_name, home_city, units, hr_max, hr_resting, birth_year, ui_dark, ui_accent, ui_tile_style, ui_onboarded, ui_default_surface, handle, profile_public, annual_distance_goal, created_at, updated_at
 	`, strings.Join(sets, ", "))
 	var u User
 	err := r.pool.QueryRow(ctx, q, args...).Scan(
 		&u.ID, &u.FirebaseUID, &u.Email, &u.DisplayName, &u.HomeCity, &u.Units,
 		&u.HRMax, &u.HRResting, &u.BirthYear,
 		&u.UIDark, &u.UIAccent, &u.UITileStyle, &u.UIOnboarded, &u.UIDefaultSurface,
-		&u.Handle, &u.ProfilePublic,
+		&u.Handle, &u.ProfilePublic, &u.AnnualDistanceGoal,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {

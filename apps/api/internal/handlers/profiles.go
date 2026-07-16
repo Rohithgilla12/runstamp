@@ -52,6 +52,8 @@ type publicProfileResponse struct {
 	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
 	PaceBuckets     []int             `json:"paceBuckets,omitempty"`
 	Dynamics        *advancedDynamics `json:"dynamics,omitempty"`
+	YoYProgress     map[int][]float64 `json:"yoyProgress,omitempty"`
+	AnnualDistanceGoal *int           `json:"annualDistanceGoal,omitempty"`
 	DebugError      string            `json:"debugError,omitempty"`
 }
 
@@ -244,12 +246,19 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		debugErrStr = err.Error()
 	}
 
+	yoy, err := loadYoYProgress(ctx, h.Pool, user.ID)
+	if err != nil {
+		h.Log.Error("profiles get: loadYoYProgress failed", "err", err, "userID", user.ID)
+	}
+
 	resp := publicProfileResponse{
 		Handle:         *user.Handle,
 		Totals:         totals,
 		Cities:         cities,
 		AvailableYears: availableYears,
 		DebugError:     debugErrStr,
+		YoYProgress:    yoy,
+		AnnualDistanceGoal: user.AnnualDistanceGoal,
 	}
 
 	maxHR := 190
@@ -1061,21 +1070,46 @@ func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 	`
-	var d advancedDynamics
-	err := pool.QueryRow(ctx, q, userID).Scan(
-		&d.CadenceSPM,
-		&d.RunningPowerW,
-		&d.VO2Max,
-		&d.StrideLengthM,
-		&d.VerticalOscillationCm,
-		&d.GroundContactMs,
-	)
+	var c advancedDynamics
+	err := pool.QueryRow(ctx, q, userID).Scan(&c.CadenceSPM, &c.RunningPowerW, &c.VO2Max, &c.StrideLengthM, &c.VerticalOscillationCm, &c.GroundContactMs)
 	if err != nil {
 		return nil, err
 	}
-	if d.CadenceSPM == 0 && d.RunningPowerW == 0 && d.VO2Max == 0 &&
-		d.StrideLengthM == 0 && d.VerticalOscillationCm == 0 && d.GroundContactMs == 0 {
+	if c.CadenceSPM == 0 && c.RunningPowerW == 0 && c.VO2Max == 0 && c.StrideLengthM == 0 && c.VerticalOscillationCm == 0 && c.GroundContactMs == 0 {
 		return nil, nil
 	}
-	return &d, nil
+	return &c, nil
+}
+
+func loadYoYProgress(ctx context.Context, pool *pgxpool.Pool, userID string) (map[int][]float64, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			EXTRACT(YEAR FROM COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::int AS year,
+			EXTRACT(DOY FROM COALESCE((raw->>'start_date_local')::timestamp, started_at AT TIME ZONE 'Asia/Kolkata'))::int AS doy,
+			SUM(distance_m)/1000.0 AS dist
+		FROM activities
+		WHERE user_id = $1 AND dupe_of IS NULL
+		GROUP BY year, doy
+		ORDER BY year, doy
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[int][]float64)
+	for rows.Next() {
+		var year, doy int
+		var dist float64
+		if err := rows.Scan(&year, &doy, &dist); err != nil {
+			return nil, err
+		}
+		if _, ok := out[year]; !ok {
+			out[year] = make([]float64, 366)
+		}
+		if doy >= 1 && doy <= 366 {
+			out[year][doy-1] = dist
+		}
+	}
+	return out, nil
 }
