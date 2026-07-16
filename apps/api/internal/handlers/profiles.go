@@ -371,7 +371,7 @@ func loadAvailableYears(ctx context.Context, pool *pgxpool.Pool, userID string) 
 	rows, err := pool.Query(ctx, `
 		SELECT DISTINCT EXTRACT(YEAR FROM started_at)::int AS y
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL AND started_at IS NOT NULL
+		WHERE user_id = $1 AND dupe_of IS NULL AND started_at IS NOT NULL
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -946,7 +946,7 @@ func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string, yea
 	q := `
 		SELECT distance_m, avg_pace_s_per_km, started_at, title, location_city
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
 		ORDER BY distance_m DESC
 		LIMIT 5
 	`
@@ -989,7 +989,7 @@ func loadTimeOfDay(ctx context.Context, pool *pgxpool.Pool, userID string, year 
 			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 17 AND EXTRACT(HOUR FROM started_at) < 21),
 			COUNT(*) FILTER (WHERE EXTRACT(HOUR FROM started_at) >= 21 OR EXTRACT(HOUR FROM started_at) < 5)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + `
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 	`
 	var m, a, e, n int
 	err := pool.QueryRow(ctx, q, userID).Scan(&m, &a, &e, &n)
@@ -1011,7 +1011,7 @@ func loadDistanceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string,
 			COUNT(*) FILTER (WHERE distance_m >= 10000 AND distance_m < 21000),
 			COUNT(*) FILTER (WHERE distance_m >= 21000)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
 	`
 	var s, m, l, e int
 	err := pool.QueryRow(ctx, q, userID).Scan(&s, &m, &l, &e)
@@ -1032,7 +1032,7 @@ func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string, yea
 			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 330 AND avg_pace_s_per_km < 390),
 			COUNT(*) FILTER (WHERE avg_pace_s_per_km >= 390)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0 AND avg_pace_s_per_km > 0
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0 AND avg_pace_s_per_km > 0
 	`
 	var b1, b2, b3, b4 int
 	err := pool.QueryRow(ctx, q, userID).Scan(&b1, &b2, &b3, &b4)
@@ -1055,7 +1055,7 @@ func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string
 			COALESCE(AVG(vertical_oscillation_cm), 0),
 			COALESCE(AVG(ground_contact_ms), 0)
 		FROM activities
-		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL` + yearClause(year) + `
+		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + `
 	`
 	var d advancedDynamics
 	err := pool.QueryRow(ctx, q, userID).Scan(
