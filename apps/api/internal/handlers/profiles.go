@@ -47,6 +47,16 @@ type publicProfileResponse struct {
 	TimeOfDay       []int             `json:"timeOfDay,omitempty"`
 	DistanceBuckets []int             `json:"distanceBuckets,omitempty"`
 	PaceBuckets     []int             `json:"paceBuckets,omitempty"`
+	Dynamics        *advancedDynamics `json:"dynamics,omitempty"`
+}
+
+type advancedDynamics struct {
+	CadenceSPM            float64 `json:"cadenceSpm,omitempty"`
+	RunningPowerW         float64 `json:"runningPowerW,omitempty"`
+	VO2Max                float64 `json:"vo2Max,omitempty"`
+	StrideLengthM         float64 `json:"strideLengthM,omitempty"`
+	VerticalOscillationCm float64 `json:"verticalOscillationCm,omitempty"`
+	GroundContactMs       float64 `json:"groundContactMs,omitempty"`
 }
 
 type yearlyHRBucket struct {
@@ -325,6 +335,11 @@ func (h *ProfilesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	paceBuckets, err := loadPaceBuckets(ctx, h.Pool, user.ID)
 	if err == nil && len(paceBuckets) == 4 {
 		resp.PaceBuckets = paceBuckets
+	}
+
+	dynamics, err := loadAdvancedDynamics(ctx, h.Pool, user.ID)
+	if err == nil && dynamics != nil {
+		resp.Dynamics = dynamics
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -970,4 +985,35 @@ func loadPaceBuckets(ctx context.Context, pool *pgxpool.Pool, userID string) ([]
 		return nil, nil
 	}
 	return []int{b1, b2, b3, b4}, nil
+}
+
+func loadAdvancedDynamics(ctx context.Context, pool *pgxpool.Pool, userID string) (*advancedDynamics, error) {
+	q := `
+		SELECT
+			COALESCE(AVG(cadence_spm), 0),
+			COALESCE(AVG(running_power_w), 0),
+			COALESCE(AVG(vo2max_ml_kg_min), 0),
+			COALESCE(AVG(stride_length_m), 0),
+			COALESCE(AVG(vertical_oscillation_cm), 0),
+			COALESCE(AVG(ground_contact_ms), 0)
+		FROM activities
+		WHERE user_id = $1 AND sport = 'Run' AND dupe_of IS NULL
+	`
+	var d advancedDynamics
+	err := pool.QueryRow(ctx, q, userID).Scan(
+		&d.CadenceSPM,
+		&d.RunningPowerW,
+		&d.VO2Max,
+		&d.StrideLengthM,
+		&d.VerticalOscillationCm,
+		&d.GroundContactMs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if d.CadenceSPM == 0 && d.RunningPowerW == 0 && d.VO2Max == 0 &&
+		d.StrideLengthM == 0 && d.VerticalOscillationCm == 0 && d.GroundContactMs == 0 {
+		return nil, nil
+	}
+	return &d, nil
 }

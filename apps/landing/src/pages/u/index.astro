@@ -303,6 +303,14 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         </div>
       </section>
 
+      <!-- Advanced Dynamics -->
+      <section class="profile-section" id="profile-dynamics-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">ADVANCED RUNNING DYNAMICS</p>
+        </header>
+        <div class="tally" id="profile-dynamics-grid"></div>
+      </section>
+
       <!-- Yearly HR -->
       <section class="profile-section" id="profile-yearly-hr-section" hidden>
         <header class="section-header">
@@ -1617,7 +1625,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
     }
 
     // ── Highlights ─────────────────────────────────────────────────
-    function renderHighlights(h, t) {
+    function renderHighlights(h, t, cal) {
       const section = document.getElementById("profile-highlights-section");
       const list = document.getElementById("profile-highlights-list");
       if (!section || !list) return;
@@ -1665,6 +1673,27 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
             { c: "num", t: `${pizzas.toLocaleString()} slices` },
             { c: "place", t: `(${Math.round(t.calories).toLocaleString()} kcal total)` }
           ]));
+        }
+      }
+      if (cal && cal.length > 0) {
+        const sorted = [...cal].sort((a, b) => b.localeCompare(a));
+        const parseD = (s) => { const p = s.split("-"); return new Date(p[0], p[1]-1, p[2]); };
+        const lastRun = parseD(sorted[0]);
+        const today = new Date();
+        const diffDays = Math.floor((today - lastRun) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 2) {
+          let streak = 1;
+          for (let i = 1; i < sorted.length; i++) {
+            const gap = Math.round((parseD(sorted[i-1]) - parseD(sorted[i])) / (1000 * 60 * 60 * 24));
+            if (gap === 1) streak++;
+            else break;
+          }
+          if (streak > 2) {
+            rows.push(highlightRow("CURRENT ACTIVE STREAK", [
+              { c: "num", t: `${streak} days` },
+              { c: "place", t: `(last run: ${formatPBDate(sorted[0])})` }
+            ]));
+          }
         }
       }
       if (rows.length === 0) { section.hidden = true; return; }
@@ -2036,6 +2065,45 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
+    function renderDynamics(d) {
+      const section = document.getElementById("profile-dynamics-section");
+      const grid = document.getElementById("profile-dynamics-grid");
+      if (!section || !grid || !d) return;
+
+      const cells = [];
+      if (d.cadenceSpm > 0) {
+        cells.push({ label: "CADENCE", value: Math.round(d.cadenceSpm), unit: "spm" });
+      }
+      if (d.runningPowerW > 0) {
+        cells.push({ label: "POWER", value: Math.round(d.runningPowerW), unit: "W" });
+      }
+      if (d.vo2Max > 0) {
+        cells.push({ label: "VO2 MAX", value: d.vo2Max.toFixed(1) });
+      }
+      if (d.strideLengthM > 0) {
+        cells.push({ label: "STRIDE", value: d.strideLengthM.toFixed(2), unit: "m" });
+      }
+      if (d.verticalOscillationCm > 0) {
+        cells.push({ label: "VERT. OSC.", value: d.verticalOscillationCm.toFixed(1), unit: "cm" });
+      }
+      if (d.groundContactMs > 0) {
+        cells.push({ label: "GCT", value: Math.round(d.groundContactMs), unit: "ms" });
+      }
+
+      if (cells.length === 0) {
+        section.hidden = true;
+        return;
+      }
+
+      grid.innerHTML = cells.map((c) => `
+        <div class="tally-cell">
+          <div class="tally-label">${c.label}</div>
+          <div class="tally-value">${c.value}${c.unit ? `<span class="tally-unit">${c.unit}</span>` : ""}</div>
+        </div>
+      `).join("");
+      section.hidden = false;
+    }
+
     function renderHR(zones, maxHR) {
       const section = document.getElementById("profile-hr-section");
       const svg = document.getElementById("profile-hr-svg");
@@ -2302,13 +2370,14 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         renderWeekday(data.calendar);
         renderConsistency(data.calendar);
         renderHeatmap(data.calendar);
-        renderHighlights(data.highlights, totalsWithStamps);
+        renderHighlights(data.highlights, totalsWithStamps, data.calendar);
         renderCountries(data.countries);
         renderStamps(data.stamps);
         renderCities(data.cities);
         renderTimeOfDay(data.timeOfDay);
         renderDistanceBuckets(data.distanceBuckets);
         renderPaceBuckets(data.paceBuckets);
+        renderDynamics(data.dynamics);
         renderHR(data.heartRateZones, data.maxHR);
         renderMap(data.runLocations);
         renderYearlyHR(data.yearlyHR);
