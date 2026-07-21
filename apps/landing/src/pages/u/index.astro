@@ -219,7 +219,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           </div>
           <div class="chart-foot chart-foot--ends">
             <span id="profile-weekly-start">—</span>
-            <span>This week</span>
+            <span id="profile-weekly-end">This week</span>
           </div>
         </div>
         <div class="legend-row">
@@ -1630,6 +1630,8 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       placeMeanTag("profile-weekly-mean", meanY, H, `avg ${Math.round(mean)} km`);
       setText("profile-weekly-max", `${Math.round(max).toLocaleString()} km · max week`);
       setText("profile-weekly-start", formatMonthYear(weekly[0].weekStart));
+      const recentKm = weekly[weekly.length - 1].distanceKm || 0;
+      setText("profile-weekly-end", `${Math.round(recentKm)} km · this week`);
       section.hidden = false;
     }
 
@@ -1757,14 +1759,14 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           { c: "num", t: `${h.longestRun.distanceKm.toFixed(1)} km` },
           h.longestRun.city ? { c: "place", t: h.longestRun.city } : null,
           { c: "date", t: formatPBDate(h.longestRun.date) },
-        ]));
+        ], h.longestRun.id ? `/u/${pathHandle()}/r/${h.longestRun.id}` : null));
       }
       if (h.fastestPace) {
         rows.push(highlightRow("FASTEST PACE", [
           { c: "num", t: `${formatPace(h.fastestPace.paceSecondsPerKm)}/km` },
           h.fastestPace.city ? { c: "place", t: h.fastestPace.city } : null,
           { c: "date", t: formatPBDate(h.fastestPace.date) },
-        ]));
+        ], h.fastestPace.id ? `/u/${pathHandle()}/r/${h.fastestPace.id}` : null));
       }
       if (h.biggestWeek) {
         rows.push(highlightRow("BIGGEST WEEK", [
@@ -1778,7 +1780,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           { c: "num", t: `${Math.round(h.highestClimb.elevationM)} m` },
           h.highestClimb.city ? { c: "place", t: h.highestClimb.city } : null,
           { c: "date", t: formatPBDate(h.highestClimb.date) },
-        ]));
+        ], h.highestClimb.id ? `/u/${pathHandle()}/r/${h.highestClimb.id}` : null));
       }
       if (t) {
         if (t.elevationM > 0) {
@@ -1822,17 +1824,24 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       section.hidden = false;
     }
 
-    function highlightRow(label, fragments) {
-      const value = fragments
+    function highlightRow(label, fragments, href) {
+      let value = fragments
         .filter(Boolean)
         .map((f) => `<span class="${f.c}">${escapeAttr(f.t)}</span>`)
         .join('<span class="sep">·</span>');
-      return `
-<li class="highlight-row">
+      
+      if (href) {
+        value += `<span aria-hidden="true" style="opacity:0.4; margin-left:6px; font-family:var(--font-sans);">›</span>`;
+      }
+
+      const inner = `
   <span class="highlight-label">${escapeAttr(label)}</span>
   <span class="highlight-leader" aria-hidden="true"></span>
-  <span class="highlight-value">${value}</span>
-</li>`;
+  <span class="highlight-value">${value}</span>`;
+      if (href) {
+        return `<li class="highlight-row"><a href="${escapeAttr(href)}" style="display:contents;text-decoration:none;color:inherit;cursor:pointer;">${inner}</a></li>`;
+      }
+      return `<li class="highlight-row">${inner}</li>`;
     }
 
     // Note: formatPace is now hoisted above renderTotals.
@@ -2561,7 +2570,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           { c: "num", t: `${r.distanceKm.toFixed(1)} km` },
           paceStr ? { c: "num", t: paceStr } : null,
           { c: "date", t: formatPBDate(r.date) }
-        ]);
+        ], r.id ? `/u/${pathHandle()}/r/${r.id}` : null);
       }).join("");
       section.hidden = false;
     }
@@ -2576,7 +2585,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
           { c: "num", t: `${r.distanceKm.toFixed(1)} km` },
           r.city ? { c: "place", t: r.city } : null,
           { c: "date", t: formatPBDate(r.date) }
-        ]);
+        ], r.id ? `/u/${pathHandle()}/r/${r.id}` : null);
       }).join("");
       section.hidden = false;
     }
