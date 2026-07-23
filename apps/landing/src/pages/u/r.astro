@@ -95,9 +95,15 @@ const description = "View this run on Runstamp.";
       <section class="profile-section" id="run-map-section" hidden>
         <header class="section-header">
           <p class="eyebrow">GPS ROUTE</p>
-          <p class="section-count" id="run-map-count">Route</p>
+          <p class="section-count" id="run-map-count">VOYAGER MAP</p>
         </header>
-        <div class="map-container" id="run-map-container" style="height: 340px; border-radius: 8px; border: 1px solid var(--line);"></div>
+        <div class="map-wrapper">
+          <div class="map-controls-bar">
+            <button type="button" class="map-control-btn" id="map-style-btn" onclick="toggleMapStyle()">DARK MAP</button>
+            <button type="button" class="map-control-btn" id="map-recenter-btn" onclick="recenterMap()">RECENTER 🎯</button>
+          </div>
+          <div class="map-container" id="run-map-container"></div>
+        </div>
       </section>
       
       <section class="profile-section" id="run-chart-section" hidden>
@@ -436,9 +442,87 @@ const description = "View this run on Runstamp.";
       color: var(--ink-3);
       text-transform: uppercase;
     }
-    .chart-foot--ends {
+    /* Enhanced Map styling */
+    .map-wrapper {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 30px rgba(28, 27, 24, 0.08);
+    }
+    .map-container {
+      height: 420px;
+      width: 100%;
+    }
+    .map-badge {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      border: 1.5px solid var(--paper);
+      white-space: nowrap;
+    }
+    .map-badge--start { background: #4a6b3a; }
+    .map-badge--finish { background: #e85d2f; }
+    .km-badge {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
       display: flex;
-      justify-content: space-between;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid var(--paper);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .scrubber-marker-pulse {
+      width: 16px;
+      height: 16px;
+      background: #e85d2f;
+      border: 2.5px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px rgba(232, 93, 47, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+      animation: mapPulse 1.5s infinite;
+    }
+    @keyframes mapPulse {
+      0% { box-shadow: 0 0 0 0 rgba(232, 93, 47, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3); }
+      70% { box-shadow: 0 0 0 10px rgba(232, 93, 47, 0), 0 4px 12px rgba(0, 0, 0, 0.3); }
+      100% { box-shadow: 0 0 0 0 rgba(232, 93, 47, 0), 0 4px 12px rgba(0, 0, 0, 0.3); }
+    }
+    .map-controls-bar {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 6px;
+    }
+    .map-control-btn {
+      background: rgba(243, 237, 226, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 5px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
+    }
+    .map-control-btn:hover {
+      background: var(--ink);
+      color: var(--paper);
     }
 
     /* Modal */
@@ -702,6 +786,33 @@ const description = "View this run on Runstamp.";
       return { samples, latlngs };
     }
 
+    let mapInstance = null;
+    let mapBounds = null;
+    let currentTileIndex = 0;
+    const TILE_STYLES = [
+      { name: "VOYAGER MAP", url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" },
+      { name: "DARK MAP",    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" },
+      { name: "LIGHT MAP",   url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }
+    ];
+    let tileLayerInstance = null;
+
+    function toggleMapStyle() {
+      if (!mapInstance || !window.L) return;
+      currentTileIndex = (currentTileIndex + 1) % TILE_STYLES.length;
+      const style = TILE_STYLES[currentTileIndex];
+      if (tileLayerInstance) mapInstance.removeLayer(tileLayerInstance);
+      tileLayerInstance = window.L.tileLayer(style.url, { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 20 }).addTo(mapInstance);
+      const btn = document.getElementById("map-style-btn");
+      if (btn) btn.textContent = TILE_STYLES[(currentTileIndex + 1) % TILE_STYLES.length].name;
+      const count = document.getElementById("run-map-count");
+      if (count) count.textContent = style.name;
+    }
+    function recenterMap() {
+      if (mapInstance && mapBounds) mapInstance.fitBounds(mapBounds, { padding: [28, 28], maxZoom: 16 });
+    }
+    window.toggleMapStyle = toggleMapStyle;
+    window.recenterMap = recenterMap;
+
     function renderMapAndChart(run) {
       const { samples, latlngs } = extractStreamData(run);
       if (samples.length === 0 && latlngs.length === 0) return;
@@ -719,7 +830,9 @@ const description = "View this run on Runstamp.";
           mapContainer.innerHTML = "";
 
           const map = window.L.map('run-map-container', { scrollWheelZoom: false }).setView([20, 0], 2);
-          window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          mapInstance = map;
+
+          tileLayerInstance = window.L.tileLayer(TILE_STYLES[0].url, {
               attribution: '&copy; OpenStreetMap &copy; CARTO',
               maxZoom: 20
           }).addTo(map);
@@ -731,38 +844,69 @@ const description = "View this run on Runstamp.";
              cleanLL.push(ll);
              bounds.extend(ll);
           }
+          mapBounds = bounds;
 
+          // Outer dark casing line for high contrast
+          window.L.polyline(cleanLL, {
+             color: '#1c1b18',
+             weight: 6.5,
+             opacity: 0.35,
+             lineCap: 'round',
+             lineJoin: 'round'
+          }).addTo(map);
+
+          // Inner solar route line
           window.L.polyline(cleanLL, {
              color: PALETTE.solar,
              weight: 3.5,
-             opacity: 0.85
+             opacity: 0.95,
+             lineCap: 'round',
+             lineJoin: 'round'
           }).addTo(map);
 
+          // Add Start & Finish Badges
           const startPin = window.L.divIcon({
-            className: 'pin-start',
-            html: '<div style="width:10px;height:10px;background:#4a6b3a;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>',
-            iconSize: [10, 10],
-            iconAnchor: [5, 5]
+            className: 'pin-start-icon',
+            html: '<div class="map-badge map-badge--start"><span>START</span></div>',
+            iconSize: [60, 24],
+            iconAnchor: [30, 12]
           });
           const finishPin = window.L.divIcon({
-            className: 'pin-finish',
-            html: '<div style="width:10px;height:10px;background:#e85d2f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>',
-            iconSize: [10, 10],
-            iconAnchor: [5, 5]
+            className: 'pin-finish-icon',
+            html: '<div class="map-badge map-badge--finish"><span>FINISH</span></div>',
+            iconSize: [60, 24],
+            iconAnchor: [30, 12]
           });
 
-          window.L.marker(cleanLL[0], { icon: startPin }).addTo(map);
-          window.L.marker(cleanLL[cleanLL.length - 1], { icon: finishPin }).addTo(map);
+          window.L.marker(cleanLL[0], { icon: startPin, zIndexOffset: 100 }).addTo(map);
+          window.L.marker(cleanLL[cleanLL.length - 1], { icon: finishPin, zIndexOffset: 100 }).addTo(map);
 
-          map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+          // Add KM Split Markers along polyline
+          if (samples.length > 0) {
+            let nextKm = 1;
+            for (let i = 0; i < samples.length; i++) {
+              if (samples[i].distM >= nextKm * 1000 && samples[i].lat != null && samples[i].lng != null) {
+                const kmIcon = window.L.divIcon({
+                  className: 'km-pin-icon',
+                  html: `<div class="km-badge">${nextKm}</div>`,
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10]
+                });
+                window.L.marker([samples[i].lat, samples[i].lng], { icon: kmIcon, zIndexOffset: 50 }).addTo(map);
+                nextKm++;
+              }
+            }
+          }
+
+          map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
 
           const markerIcon = window.L.divIcon({
             className: 'scrubber-marker',
-            html: '<div style="width:14px;height:14px;background:#e85d2f;border:2.5px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(232,93,47,0.9);"></div>',
-            iconSize: [14, 14],
-            iconAnchor: [7, 7]
+            html: '<div class="scrubber-marker-pulse"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
           });
-          highlightMarker = window.L.marker(cleanLL[0], { icon: markerIcon }).addTo(map);
+          highlightMarker = window.L.marker(cleanLL[0], { icon: markerIcon, zIndexOffset: 200 }).addTo(map);
         }, 50);
       }
 
