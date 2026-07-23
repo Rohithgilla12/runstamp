@@ -1166,18 +1166,16 @@ const description = "View this run on Runstamp.";
       const dateStr = new Date(run.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
       ctx.fillText(dateStr, 45, 135);
       
-      if (run.streams && run.streams.length > 0) {
-        let lats = [], lngs = [];
-        run.streams.forEach(s => {
-          if (s.lat != null && s.lng != null) { lats.push(s.lat); lngs.push(s.lng); }
-        });
-        if (lats.length > 0) {
-          const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-          const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-          const pad = 120;
-          const boxW = W - pad * 2;
-          const boxH = 500;
-          const boxY = 280;
+      const { latlngs } = extractStreamData(run);
+      if (latlngs.length > 0) {
+        let lats = latlngs.map(ll => ll[0]);
+        let lngs = latlngs.map(ll => ll[1]);
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+        const pad = 120;
+        const boxW = W - pad * 2;
+        const boxH = 500;
+        const boxY = 280;
           
           const scale = Math.min(boxW / (maxLng - minLng || 1), boxH / (maxLat - minLat || 1));
           const cx = (minLng + maxLng) / 2;
