@@ -446,14 +446,17 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
 
       <!-- Interactive Stamp Detail Modal -->
       <div id="stamp-modal" class="modal-backdrop" hidden onclick="if(event.target===this)closeStampModal()">
-        <div class="modal-card">
+        <div class="modal-card stamp-modal-card">
           <button type="button" class="modal-close" onclick="closeStampModal()" aria-label="Close modal">×</button>
-          <div class="modal-stamp-preview" id="stamp-modal-preview"></div>
+          <div class="stamp-artwork-wrapper">
+            <div class="modal-stamp-preview" id="stamp-modal-preview"></div>
+          </div>
           <span id="stamp-modal-badge" class="stamp-tier-badge">COMMON</span>
           <h2 id="stamp-modal-title" class="modal-title">—</h2>
           <p id="stamp-modal-desc" class="modal-desc">—</p>
           <p id="stamp-modal-date" class="modal-date">—</p>
-          <div class="modal-actions">
+          <div class="modal-actions" id="stamp-modal-actions">
+            <a id="stamp-modal-run-link" class="profile-cta modal-btn modal-btn--solar" href="#" hidden>VIEW UNLOCK RUN →</a>
             <button type="button" class="profile-cta modal-btn" onclick="closeStampModal()">Close</button>
           </div>
         </div>
@@ -1323,10 +1326,23 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
   }
   .modal-close:hover { opacity: 1; }
 
-  .modal-stamp-preview {
-    width: 120px;
-    height: 120px;
+  .stamp-artwork-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
     margin: 0 auto 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.15));
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .stamp-artwork-wrapper:hover {
+    transform: scale(1.08) rotate(2deg);
+  }
+  .modal-stamp-preview {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1334,6 +1350,20 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
   .modal-stamp-preview svg {
     width: 100%;
     height: 100%;
+    filter: drop-shadow(0 4px 12px rgba(28,27,24,0.15));
+  }
+  .modal-btn--solar {
+    background: var(--solar);
+    color: #ffffff !important;
+    border: 1px solid var(--solar);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-btn--solar:hover {
+    background: var(--ink);
+    border-color: var(--ink);
   }
 
   .stamp-tier-badge {
@@ -1564,7 +1594,8 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
         const tier = tierFor(s.stampId);
         const name = nameFromStampId(s.stampId);
         const date = s.earnedAt ? formatPBDate(s.earnedAt) : "";
-        return `<div class="stamp stamp--interactive" data-stamp-id="${escapeAttr(s.stampId)}" data-stamp-name="${escapeAttr(name)}" data-stamp-tier="${escapeAttr(tier)}" data-stamp-date="${escapeAttr(date)}">${stampSVG(name, tier)}</div>`;
+        const actId = s.activityId || "";
+        return `<div class="stamp stamp--interactive" data-stamp-id="${escapeAttr(s.stampId)}" data-stamp-name="${escapeAttr(name)}" data-stamp-tier="${escapeAttr(tier)}" data-stamp-date="${escapeAttr(date)}" data-activity-id="${escapeAttr(actId)}">${stampSVG(name, tier)}</div>`;
       }).join("");
       section.hidden = false;
 
@@ -1574,13 +1605,14 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
             el.getAttribute("data-stamp-id"),
             el.getAttribute("data-stamp-name"),
             el.getAttribute("data-stamp-tier"),
-            el.getAttribute("data-stamp-date")
+            el.getAttribute("data-stamp-date"),
+            el.getAttribute("data-activity-id")
           );
         });
       });
     }
 
-    function openStampModal(id, name, tier, date) {
+    function openStampModal(id, name, tier, date, activityId) {
       const modal = document.getElementById("stamp-modal");
       if (!modal) return;
       const preview = document.getElementById("stamp-modal-preview");
@@ -1588,6 +1620,7 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       const badge = document.getElementById("stamp-modal-badge");
       const desc = document.getElementById("stamp-modal-desc");
       const dateEl = document.getElementById("stamp-modal-date");
+      const runLink = document.getElementById("stamp-modal-run-link");
       
       if (preview) preview.innerHTML = stampSVG(name, tier);
       if (title) title.textContent = name;
@@ -1597,6 +1630,16 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       }
       if (desc) desc.textContent = getStampDescription(id);
       if (dateEl) dateEl.textContent = date ? `Earned on ${date}` : "Earned";
+
+      if (runLink) {
+        const handle = pathHandle();
+        if (activityId && handle) {
+          runLink.href = `/u/${encodeURIComponent(handle)}/r/${encodeURIComponent(activityId)}`;
+          runLink.hidden = false;
+        } else {
+          runLink.hidden = true;
+        }
+      }
 
       modal.hidden = false;
       document.body.style.overflow = "hidden";
