@@ -636,53 +636,108 @@ const description = "View this run on Runstamp.";
       section.hidden = false;
     }
 
-    function renderMapAndChart(run) {
-      if (!run.streams || run.streams.length === 0) return;
-      
-      let lats = [];
-      let lngs = [];
-      let dists = [];
-      let hrs = [];
-      let elevs = [];
-      let highlightMarker = null;
-      
-      run.streams.forEach(s => {
-        if (s.distance_m != null) {
-          if (s.lat != null) lats.push(s.lat);
-          if (s.lng != null) lngs.push(s.lng);
-          dists.push(s.distance_m);
-          hrs.push(s.heartrate);
-          elevs.push(s.altitude);
+    function extractStreamData(run) {
+      let speedData = null, altData = null, hrData = null, latlngData = null;
+      if (run.streams && Array.isArray(run.streams)) {
+        run.streams.forEach(s => {
+          if (s.type === "speed" && s.data) speedData = s.data;
+          if (s.type === "altitude" && s.data) altData = s.data;
+          if (s.type === "heartrate" && s.data) hrData = s.data;
+          if (s.type === "latlng" && s.data) latlngData = s.data;
+        });
+      }
+
+      let latlngs = [];
+      if (Array.isArray(latlngData)) {
+        latlngs = latlngData;
+      } else if (latlngData && Array.isArray(latlngData.values)) {
+        latlngs = latlngData.values;
+      }
+
+      let samples = [];
+      if (speedData && Array.isArray(speedData.values)) {
+        const dt = speedData.dtSec || 10;
+        let cumDist = 0;
+        let cumTime = 0;
+        const speeds = speedData.values;
+        const alts = altData && Array.isArray(altData.values) ? altData.values : [];
+        const hrs = hrData && Array.isArray(hrData.values) ? hrData.values : [];
+
+        for (let i = 0; i < speeds.length; i++) {
+          const spd = speeds[i] || 0;
+          cumDist += spd * dt;
+          cumTime += dt;
+
+          let lat = null, lng = null;
+          if (latlngs.length > 0) {
+            const idx = Math.min(latlngs.length - 1, Math.floor((i / speeds.length) * latlngs.length));
+            lat = latlngs[idx][0];
+            lng = latlngs[idx][1];
+          }
+
+          let alt = null;
+          if (alts.length > 0) {
+            const idx = Math.min(alts.length - 1, Math.floor((i / speeds.length) * alts.length));
+            alt = alts[idx];
+          }
+
+          let hr = null;
+          if (hrs.length > 0) {
+            const idx = Math.min(hrs.length - 1, Math.floor((i / speeds.length) * hrs.length));
+            hr = hrs[idx];
+          }
+
+          samples.push({
+            distM: cumDist,
+            timeS: cumTime,
+            lat,
+            lng,
+            altitude: alt,
+            heartrate: hr,
+            speed: spd
+          });
         }
-      });
-      
-      if (lats.length > 0 && lats.length === lngs.length) {
+      }
+
+      return { samples, latlngs };
+    }
+
+    function renderMapAndChart(run) {
+      const { samples, latlngs } = extractStreamData(run);
+      if (samples.length === 0 && latlngs.length === 0) return;
+
+      let highlightMarker = null;
+
+      if (latlngs.length > 0) {
         const mapSection = document.getElementById("run-map-section");
         mapSection.hidden = false;
-        
+
         setTimeout(() => {
           if (!window.L) return;
+          const mapContainer = document.getElementById("run-map-container");
+          if (!mapContainer) return;
+          mapContainer.innerHTML = "";
+
           const map = window.L.map('run-map-container', { scrollWheelZoom: false }).setView([20, 0], 2);
           window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
               attribution: '&copy; OpenStreetMap &copy; CARTO',
               maxZoom: 20
           }).addTo(map);
-          
+
           const bounds = window.L.latLngBounds();
-          const latlngs = [];
-          for (let i = 0; i < lats.length; i++) {
-             const ll = [lats[i], lngs[i]];
-             latlngs.push(ll);
+          const cleanLL = [];
+          for (let i = 0; i < latlngs.length; i++) {
+             const ll = latlngs[i];
+             cleanLL.push(ll);
              bounds.extend(ll);
           }
-          
-          window.L.polyline(latlngs, {
+
+          window.L.polyline(cleanLL, {
              color: PALETTE.solar,
              weight: 3.5,
              opacity: 0.85
           }).addTo(map);
 
-          // Add Start Green Pin & Finish Solar Pin
           const startPin = window.L.divIcon({
             className: 'pin-start',
             html: '<div style="width:10px;height:10px;background:#4a6b3a;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>',
@@ -696,9 +751,9 @@ const description = "View this run on Runstamp.";
             iconAnchor: [5, 5]
           });
 
-          window.L.marker(latlngs[0], { icon: startPin }).addTo(map);
-          window.L.marker(latlngs[latlngs.length - 1], { icon: finishPin }).addTo(map);
-          
+          window.L.marker(cleanLL[0], { icon: startPin }).addTo(map);
+          window.L.marker(cleanLL[cleanLL.length - 1], { icon: finishPin }).addTo(map);
+
           map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
 
           const markerIcon = window.L.divIcon({
@@ -707,22 +762,30 @@ const description = "View this run on Runstamp.";
             iconSize: [14, 14],
             iconAnchor: [7, 7]
           });
-          highlightMarker = window.L.marker(latlngs[0], { icon: markerIcon }).addTo(map);
+          highlightMarker = window.L.marker(cleanLL[0], { icon: markerIcon }).addTo(map);
         }, 50);
       }
-      
-      if (elevs.some(e => e != null) || hrs.some(h => h != null)) {
+
+      if (samples.length > 0) {
         const cSection = document.getElementById("run-chart-section");
         cSection.hidden = false;
         const svg = document.getElementById("run-chart-svg");
         const yaxis = document.getElementById("run-chart-yaxis");
-        
+        yaxis.innerHTML = "";
+
+        const dists = samples.map(s => s.distM);
+        const elevs = samples.map(s => s.altitude);
+        const hrs = samples.map(s => s.heartrate);
+
         const maxDist = Math.max(...dists);
-        const minElev = Math.min(...elevs.filter(e => e != null));
-        const maxElev = Math.max(...elevs.filter(e => e != null));
-        const minHr = Math.min(...hrs.filter(h => h != null));
-        const maxHr = Math.max(...hrs.filter(h => h != null));
-        
+        const validElevs = elevs.filter(e => e != null);
+        const minElev = validElevs.length ? Math.min(...validElevs) : 0;
+        const maxElev = validElevs.length ? Math.max(...validElevs) : 0;
+
+        const validHrs = hrs.filter(h => h != null);
+        const minHr = validHrs.length ? Math.min(...validHrs) : 0;
+        const maxHr = validHrs.length ? Math.max(...validHrs) : 0;
+
         const W = 600, H = 160;
         let html = `
           <defs>
@@ -736,14 +799,14 @@ const description = "View this run on Runstamp.";
             </linearGradient>
           </defs>
         `;
-        
+
         const getX = (d) => maxDist > 0 ? (d / maxDist) * W : 0;
-        
-        if (elevs.some(e => e != null) && maxElev > minElev) {
+
+        if (validElevs.length > 0 && maxElev > minElev) {
           const range = maxElev - minElev;
           const getY = (e) => H - ((e - minElev) / range) * H;
           const pts = [];
-          for(let i=0; i<dists.length; i++) {
+          for(let i=0; i<samples.length; i++) {
             if (elevs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(elevs[i]).toFixed(1)}`);
           }
           if (pts.length > 0) {
@@ -753,12 +816,12 @@ const description = "View this run on Runstamp.";
             yaxis.innerHTML += `<div>Max Elev: ${Math.round(maxElev)}m</div>`;
           }
         }
-        
-        if (hrs.some(h => h != null) && maxHr > minHr) {
+
+        if (validHrs.length > 0 && maxHr > minHr) {
           const range = maxHr - minHr;
           const getY = (h) => H - ((h - minHr) / range) * H;
           const pts = [];
-          for(let i=0; i<dists.length; i++) {
+          for(let i=0; i<samples.length; i++) {
             if (hrs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(hrs[i]).toFixed(1)}`);
           }
           if (pts.length > 0) {
@@ -768,7 +831,7 @@ const description = "View this run on Runstamp.";
             yaxis.innerHTML += `<div>Max HR: ${Math.round(maxHr)}</div>`;
           }
         }
-        
+
         svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
         svg.innerHTML = html;
 
@@ -778,7 +841,7 @@ const description = "View this run on Runstamp.";
           const clientX = e.touches ? e.touches[0].clientX : e.clientX;
           const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
           const targetDist = relX * maxDist;
-          
+
           let closestIdx = 0;
           let minDistDiff = Infinity;
           for (let i = 0; i < dists.length; i++) {
@@ -788,19 +851,20 @@ const description = "View this run on Runstamp.";
               closestIdx = i;
             }
           }
-          
-          if (highlightMarker && lats[closestIdx] != null && lngs[closestIdx] != null) {
-            highlightMarker.setLatLng([lats[closestIdx], lngs[closestIdx]]);
+
+          if (highlightMarker && samples[closestIdx] && samples[closestIdx].lat != null && samples[closestIdx].lng != null) {
+            highlightMarker.setLatLng([samples[closestIdx].lat, samples[closestIdx].lng]);
           }
-          
-          if (scrubLabel) {
-            const km = (dists[closestIdx] / 1000).toFixed(2);
-            const ele = elevs[closestIdx] != null ? `${Math.round(elevs[closestIdx])}m` : "";
-            const hr = hrs[closestIdx] != null ? `${Math.round(hrs[closestIdx])}bpm` : "";
+
+          if (scrubLabel && samples[closestIdx]) {
+            const s = samples[closestIdx];
+            const km = (s.distM / 1000).toFixed(2);
+            const ele = s.altitude != null ? `${Math.round(s.altitude)}m` : "";
+            const hr = s.heartrate != null ? `${Math.round(s.heartrate)}bpm` : "";
             scrubLabel.textContent = `${km} km ${ele ? "· " + ele : ""} ${hr ? "· " + hr : ""}`;
           }
         };
-        
+
         svg.addEventListener("mousemove", onScrub);
         svg.addEventListener("touchmove", onScrub);
       }
@@ -811,40 +875,55 @@ const description = "View this run on Runstamp.";
       const list = document.getElementById("run-splits-list");
       const count = document.getElementById("run-splits-count");
       if (!section || !list) return;
-      
+
+      const { samples } = extractStreamData(run);
       let splits = [];
-      if (run.streams && run.streams.length > 0) {
+
+      if (samples.length > 0) {
         let currentKm = 1;
-        let lastIdx = 0;
-        for (let i = 0; i < run.streams.length; i++) {
-          const s = run.streams[i];
-          if (s.distance_m >= currentKm * 1000 || i === run.streams.length - 1) {
-            const startS = run.streams[lastIdx];
-            const distDelta = (s.distance_m - (startS.distance_m || 0)) / 1000;
-            const timeDelta = (s.time_s || s.time || i) - (startS.time_s || startS.time || lastIdx);
-            const elevDelta = (s.altitude || 0) - (startS.altitude || 0);
-            const paceS = distDelta > 0 ? timeDelta / distDelta : 0;
-            if (distDelta > 0.1) {
+        let startSample = { distM: 0, timeS: 0, altitude: samples[0].altitude, heartrate: samples[0].heartrate };
+
+        for (let i = 0; i < samples.length; i++) {
+          const s = samples[i];
+          const targetM = currentKm * 1000;
+
+          if (s.distM >= targetM || i === samples.length - 1) {
+            const distDelta = (s.distM - startSample.distM) / 1000;
+            const timeDelta = s.timeS - startSample.timeS;
+            const elevDelta = (s.altitude != null && startSample.altitude != null) ? (s.altitude - startSample.altitude) : 0;
+            const paceS = distDelta > 0.05 ? timeDelta / distDelta : 0;
+
+            if (distDelta > 0.05) {
+              let sumHr = 0, countHr = 0;
+              for (let j = 0; j <= i; j++) {
+                if (samples[j].distM >= startSample.distM && samples[j].distM <= s.distM && samples[j].heartrate != null) {
+                  sumHr += samples[j].heartrate;
+                  countHr++;
+                }
+              }
+              const avgHrSegment = countHr > 0 ? sumHr / countHr : s.heartrate;
+
               splits.push({
                 split: currentKm,
                 distanceKm: distDelta,
                 paceSPerKm: paceS,
                 elevM: elevDelta,
-                hr: s.heartrate
+                hr: avgHrSegment
               });
             }
-            lastIdx = i;
+
+            startSample = s;
             currentKm++;
           }
         }
       }
-      
+
       if (splits.length === 0 && run.distanceM > 0) {
         const totalKm = run.distanceM / 1000;
         const avgPace = run.avgPaceSPerKm;
         const numSplits = Math.ceil(totalKm);
         for (let i = 1; i <= numSplits; i++) {
-          const dist = i === numSplits ? (totalKm % 1 || 1) : 1;
+          const dist = (i === numSplits) ? ((totalKm % 1) || 1) : 1;
           splits.push({
             split: i,
             distanceKm: dist,
@@ -856,37 +935,40 @@ const description = "View this run on Runstamp.";
       }
 
       if (splits.length === 0) return;
-      
+
       count.textContent = `${splits.length} splits`;
       const paces = splits.map(s => s.paceSPerKm).filter(p => p > 0);
       const minPace = Math.min(...paces);
       const maxPace = Math.max(...paces);
-      
+      const paceRange = maxPace - minPace;
+
       list.innerHTML = `
-        <div class="split-header-row" style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--ink3); padding:4px 8px; border-bottom:1px solid var(--line);">
+        <div class="split-header-row" style="display:grid; grid-template-columns: 36px 1fr 60px 50px; font-family:var(--font-mono); font-size:11px; color:var(--ink3); padding:6px 10px; border-bottom:1px solid var(--line); font-weight:600;">
           <span>KM</span>
           <span>PACE</span>
-          <span>ELEV</span>
-          <span>HR</span>
+          <span style="text-align:right;">ELEV</span>
+          <span style="text-align:right;">HR</span>
         </div>
         ${splits.map(s => {
           const paceStr = s.paceSPerKm > 0 ? formatPace(s.paceSPerKm) : "--:--";
           const elevStr = s.elevM > 0 ? `+${Math.round(s.elevM)}m` : s.elevM < 0 ? `${Math.round(s.elevM)}m` : "0m";
           const hrStr = s.hr ? `${Math.round(s.hr)}` : "--";
-          const isFastest = s.paceSPerKm === minPace && paces.length > 1;
+          const isFastest = (paceRange > 5) && (s.paceSPerKm === minPace);
           const barFill = isFastest ? PALETTE.solar : PALETTE.ink;
+          const barPercent = paceRange > 0 ? Math.min(100, Math.max(20, ((maxPace - s.paceSPerKm + (paceRange * 0.2)) / maxPace) * 100)) : 50;
+
           return `
-          <div class="split-row ${isFastest ? 'split-row--fastest' : ''}" style="display:flex; align-items:center; justify-content:space-between; padding:8px; font-size:12px; border-bottom:1px solid var(--line);">
-            <span style="font-family:var(--font-mono); font-weight:600; width:30px;">${s.split}</span>
-            <div style="flex:1; display:flex; align-items:center; gap:8px; margin:0 12px;">
-              <span style="font-family:var(--font-mono); font-weight:600; width:52px;">${paceStr}</span>
-              ${isFastest ? '<span style="font-family:var(--font-mono); font-size:9px; background:var(--solar); color:#fff; padding:1px 5px; border-radius:3px; font-weight:700;">FASTEST</span>' : ''}
+          <div class="split-row ${isFastest ? 'split-row--fastest' : ''}" style="display:grid; grid-template-columns: 36px 1fr 60px 50px; align-items:center; padding:8px 10px; font-size:12px; border-bottom:1px solid var(--line);">
+            <span style="font-family:var(--font-mono); font-weight:600;">${s.split}</span>
+            <div style="display:flex; align-items:center; gap:8px; padding-right:8px; overflow:hidden;">
+              <span style="font-family:var(--font-mono); font-weight:600; min-width:44px;">${paceStr}</span>
+              ${isFastest ? '<span style="font-family:var(--font-mono); font-size:9px; background:var(--solar); color:#fff; padding:1px 5px; border-radius:3px; font-weight:700; flex-shrink:0;">FASTEST</span>' : ''}
               <div style="flex:1; height:5px; background:var(--ink3); border-radius:3px; overflow:hidden;">
-                <div style="height:100%; width:${maxPace > 0 ? Math.min(100, Math.max(15, (s.paceSPerKm / maxPace) * 100)) : 50}%; background:${barFill};"></div>
+                <div style="height:100%; width:${barPercent}%; background:${barFill}; transition:width 0.3s ease;"></div>
               </div>
             </div>
-            <span style="font-family:var(--font-mono); color:var(--ink2); width:45px; text-align:right;">${elevStr}</span>
-            <span style="font-family:var(--font-mono); color:var(--ink2); width:35px; text-align:right;">${hrStr}</span>
+            <span style="font-family:var(--font-mono); color:var(--ink2); text-align:right;">${elevStr}</span>
+            <span style="font-family:var(--font-mono); color:var(--ink2); text-align:right;">${hrStr}</span>
           </div>`;
         }).join("")}
       `;
