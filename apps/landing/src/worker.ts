@@ -34,7 +34,13 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
 
-    // /u/<handle>/og.png — dynamic OG card.
+    // /u/<handle>/r/<run_id>/og.png — dynamic run OG card.
+    const runOgMatch = url.pathname.match(/^\/u\/([^/]+)\/r\/([^/]+)\/og\.png$/);
+    if (runOgMatch) {
+      return serveRunOgImage(runOgMatch[1], runOgMatch[2], ctx);
+    }
+
+    // /u/<handle>/og.png — dynamic profile OG card.
     const ogMatch = url.pathname.match(/^\/u\/([^/]+)\/og\.png$/);
     if (ogMatch) {
       return serveOgImage(ogMatch[1], ctx);
@@ -68,7 +74,8 @@ export default {
         if (run) {
           const km = (run.distanceM / 1000).toFixed(1);
           meta.title = `${run.title || "Run"} — ${km}km by @${handle} · Runstamp`;
-          meta.description = `View ${run.title || "Run"} on Runstamp. ${km}km run.`;
+          meta.description = `View ${run.title || "Run"} on Runstamp. ${km}km run${run.city ? " in " + run.city : ""}.`;
+          meta.ogImage = `${SITE_BASE}/u/${encodeURIComponent(handle)}/r/${encodeURIComponent(runId)}/og.png`;
         }
 
         const rewriter = new HTMLRewriter()
@@ -298,6 +305,14 @@ interface PublicActivityDetail {
   sport: string;
   title: string;
   distanceM: number;
+  elapsedSec?: number;
+  elevationM?: number;
+  avgHr?: number;
+  maxHr?: number;
+  avgPaceSPerKm?: number;
+  startedAt?: string;
+  city?: string;
+  country?: string;
 }
 
 async function fetchActivity(handle: string, id: string): Promise<PublicActivityDetail | null> {
@@ -450,5 +465,96 @@ function esc(s: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function serveRunOgImage(rawHandle: string, runId: string, ctx: ExecutionContext): Promise<Response> {
+  const handle = sanitizeHandle(rawHandle);
+  if (!handle || !runId) {
+    return new Response("bad parameters", { status: 400 });
+  }
+
+  const cacheKey = new Request(`${SITE_BASE}/u/${handle}/r/${runId}/og.png?v=${CACHE_VERSION}`);
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const run = await fetchActivity(handle, runId);
+    const html = runOgCardHtml(handle, run);
+
+    const png = new ImageResponse(html, { width: 1200, height: 630, format: "png" });
+    const buf = await png.arrayBuffer();
+
+    const response = new Response(buf, {
+      status: 200,
+      headers: {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+      },
+    });
+
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    return response;
+  } catch (err) {
+    return new Response("og render failed", { status: 500 });
+  }
+}
+
+function runOgCardHtml(handle: string, run: PublicActivityDetail | null): string {
+  const title = run?.title || "Run";
+  const km = run ? (run.distanceM / 1000).toFixed(1) : "—";
+  const pace = run && run.avgPaceSPerKm && run.avgPaceSPerKm > 0 ? formatPaceStr(run.avgPaceSPerKm) : "—:—";
+  const time = run && run.elapsedSec ? formatTimeStr(run.elapsedSec) : "—";
+  const elev = run && run.elevationM && run.elevationM > 0 ? `${Math.round(run.elevationM)}m` : null;
+  const hr = run && run.avgHr && run.avgHr > 0 ? `${Math.round(run.avgHr)}bpm` : null;
+  const city = run?.city ? run.city.toUpperCase() : "RUN LOG";
+  const country = run?.country ? run.country.toUpperCase() : "PASSPORT";
+  const dateStr = run && run.startedAt ? new Date(run.startedAt).toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' }) : "";
+
+  return `
+<div style="display:flex; flex-direction:column; width:1200px; height:630px; background:${PAPER};">
+  <!-- Ink hero panel — postcard header. -->
+  <div style="display:flex; width:1200px; height:320px; background:${INK}; padding:40px 72px; align-items:center; justify-content:space-between;">
+    <div style="display:flex; flex-direction:column; max-width:760px;">
+      <div style="display:flex; font-family:monospace; font-size:18px; color:${SOLAR}; letter-spacing:6px;">@${esc(handle)} · ${esc(dateStr.toUpperCase())}</div>
+      <div style="display:flex; margin-top:14px;">
+        <span style="font-size:78px; line-height:1; color:${PAPER}; letter-spacing:-2px; font-weight:400;">${esc(title)}</span>
+      </div>
+      <div style="display:flex; margin-top:18px; font-family:monospace; font-size:22px; color:rgba(243,237,226,0.68);">${esc(run?.city ? `${run.city}, ${run.country || ""}` : "RUNSTAMP PASSPORT")}</div>
+    </div>
+    ${postmarkSvg({ city, country })}
+  </div>
+
+  <!-- Big Run Stats Grid -->
+  <div style="display:flex; width:1200px; flex:1; padding:24px 72px; justify-content:space-between; align-items:center; background:${PAPER};">
+    ${statBlock("DISTANCE", km, " km")}
+    ${statBlock("AVG PACE", pace, " /km")}
+    ${statBlock("TIME", time, "")}
+    ${elev ? statBlock("ELEV GAIN", elev, "") : hr ? statBlock("AVG HR", hr, "") : statBlock("SPORT", "RUN", "")}
+  </div>
+
+  <!-- Postal Address Footer -->
+  <div style="display:flex; width:1200px; padding:0 72px 20px 72px; justify-content:space-between; align-items:center;">
+    <div style="display:flex; font-family:monospace; font-size:16px; color:${INK3}; letter-spacing:3px;">RUNSTAMP.GILLA.FUN / U / ${esc(handle.toUpperCase())}</div>
+    <div style="display:flex; font-family:monospace; font-size:16px; color:${SOLAR}; letter-spacing:3px;">VIEW RUN DETAILS →</div>
+  </div>
+
+  <!-- Cancellation rule along the bottom. -->
+  <div style="display:flex; width:1200px; height:8px; background:${SOLAR}; opacity:0.85;"></div>
+</div>`;
+}
+
+function formatPaceStr(s: number): string {
+  const mins = Math.floor(s / 60);
+  const secs = Math.floor(s % 60).toString().padStart(2, "0");
+  return `${mins}:${secs}`;
+}
+
+function formatTimeStr(s: number): string {
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  return `${mins}m`;
 }
