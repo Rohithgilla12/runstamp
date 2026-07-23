@@ -52,7 +52,25 @@ const description = "View this run on Runstamp.";
     <article class="profile-card" id="profile-card" hidden>
       <header class="hero">
         <div class="hero-grain" aria-hidden="true"></div>
-        <div class="hero-content" style="padding-top: 4rem;">
+        <svg class="hero-postmark" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <path id="run-rim-top" d="M 100 18 a 82 82 0 1 1 -0.1 0 z" />
+            <path id="run-rim-bot" d="M 100 182 a 82 82 0 1 0 -0.1 0 z" />
+          </defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="#e85d2f" stroke-width="2" stroke-dasharray="3 3" opacity="0.85" />
+          <circle cx="100" cy="100" r="80" fill="none" stroke="#e85d2f" stroke-width="1.4" opacity="0.65" />
+          <line x1="22" y1="96" x2="178" y2="96" stroke="#e85d2f" stroke-width="1.2" opacity="0.55" />
+          <line x1="22" y1="104" x2="178" y2="104" stroke="#e85d2f" stroke-width="1.2" opacity="0.55" />
+          <text font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="4" fill="#e85d2f" opacity="0.85">
+            <textPath href="#run-rim-top" startOffset="50%" text-anchor="middle">RUNSTAMP</textPath>
+          </text>
+          <text font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="3" fill="#e85d2f" opacity="0.75">
+            <textPath href="#run-rim-bot" startOffset="50%" text-anchor="middle">PASSPORT</textPath>
+          </text>
+          <text x="100" y="86" text-anchor="middle" font-family="Instrument Serif, serif" font-style="italic" font-size="20" fill="#f3ede2" id="postmark-city">—</text>
+          <text x="100" y="124" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="2.5" fill="rgba(243,237,226,0.55)" id="postmark-country">RUN LOG</text>
+        </svg>
+        <div class="hero-content">
           <p class="eyebrow hero-eyebrow" id="run-date">—</p>
           <h1 class="hero-name" id="run-title">—</h1>
           <p class="hero-tagline" id="run-city-country"></p>
@@ -67,7 +85,7 @@ const description = "View this run on Runstamp.";
 
       <section class="profile-section profile-section--tight">
         <header class="section-header">
-          <p class="eyebrow">STATS</p>
+          <p class="eyebrow">KEY METRICS</p>
         </header>
         <div class="tally" id="run-stats" aria-label="Run stats">
           <!-- Populated by script. -->
@@ -76,21 +94,21 @@ const description = "View this run on Runstamp.";
 
       <section class="profile-section" id="run-map-section" hidden>
         <header class="section-header">
-          <p class="eyebrow">ROUTE</p>
+          <p class="eyebrow">GPS ROUTE</p>
           <p class="section-count" id="run-map-count">Route</p>
         </header>
-        <div class="map-container" id="run-map-container" style="height: 300px; border-radius: 8px; border: 1px solid var(--ink2);"></div>
+        <div class="map-container" id="run-map-container" style="height: 340px; border-radius: 8px; border: 1px solid var(--line);"></div>
       </section>
       
       <section class="profile-section" id="run-chart-section" hidden>
         <header class="section-header">
-          <p class="eyebrow">ELEVATION & HR</p>
-          <p class="section-count" id="run-chart-scrub-label" style="text-transform:none; font-family:var(--font-mono);">Hover chart to scrub route</p>
+          <p class="eyebrow">ELEVATION & HEART RATE</p>
+          <p class="section-count" id="run-chart-scrub-label" style="text-transform:none; font-family:var(--font-mono); color:var(--solar);">Hover chart to scrub route</p>
         </header>
         <div class="chart">
           <div class="chart-grid">
             <div class="chart-yaxis" id="run-chart-yaxis" style="font-size:10px;"></div>
-            <div class="chart-plot" style="--chart-h: 150px">
+            <div class="chart-plot" style="--chart-h: 160px">
               <svg class="chart-svg" id="run-chart-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
             </div>
           </div>
@@ -99,14 +117,22 @@ const description = "View this run on Runstamp.";
             <span>End</span>
           </div>
         </div>
-        <div style="display:flex; gap:16px; justify-content:center; margin-top:8px; font-size:11px; color:var(--ink2);">
-           <div style="display:flex; align-items:center; gap:4px;">
-              <span style="display:block; width:12px; height:2px; background:var(--ink3);"></span> Elevation
+        <div style="display:flex; gap:20px; justify-content:center; margin-top:10px; font-size:11px; color:var(--ink2);">
+           <div style="display:flex; align-items:center; gap:6px;">
+              <span style="display:block; width:14px; height:3px; background:var(--ink3); border-radius:2px;"></span> Elevation
            </div>
-           <div style="display:flex; align-items:center; gap:4px;">
-              <span style="display:block; width:12px; height:2px; background:var(--solar);"></span> Heart Rate
+           <div style="display:flex; align-items:center; gap:6px;">
+              <span style="display:block; width:14px; height:3px; background:var(--solar); border-radius:2px;"></span> Heart Rate
            </div>
         </div>
+      </section>
+
+      <!-- Running Dynamics Section -->
+      <section class="profile-section profile-section--tight" id="run-dynamics-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">RUNNING DYNAMICS</p>
+        </header>
+        <div class="tally" id="run-dynamics-grid"></div>
       </section>
 
       <!-- Kilometer Splits Section -->
@@ -200,20 +226,68 @@ const description = "View this run on Runstamp.";
     function renderStats(run) {
       const c = document.getElementById("run-stats");
       if (!c) return;
-      const km = (run.distanceM / 1000).toFixed(1);
+      const km = (run.distanceM / 1000).toFixed(2);
       const pace = run.avgPaceSPerKm > 0 ? formatPace(run.avgPaceSPerKm) : "--:--";
       const time = formatTime(run.elapsedSec);
       let cells = [
-        tallyCell("DISTANCE", km, "KILOMETRES"),
-        tallyCell("AVG PACE", pace, "/KM"),
-        tallyCell("TIME", time, ""),
+        tallyCell("DISTANCE", km, "km"),
+        tallyCell("AVG PACE", pace, "/km"),
+        tallyCell("MOVING TIME", time, ""),
       ];
       if (run.elevationM > 0) {
-        cells.push(tallyCell("ELEV GAIN", Math.round(run.elevationM).toString(), "METRES"));
-      } else if (run.avgHr > 0) {
-        cells.push(tallyCell("AVG HR", Math.round(run.avgHr).toString(), "BPM"));
+        cells.push(tallyCell("ELEV GAIN", Math.round(run.elevationM).toString(), "m"));
+      }
+      if (run.avgHr > 0) {
+        cells.push(tallyCell("AVG HR", Math.round(run.avgHr).toString(), "bpm"));
+      }
+      if (run.maxHr > 0) {
+        cells.push(tallyCell("MAX HR", Math.round(run.maxHr).toString(), "bpm"));
       }
       c.innerHTML = cells.join("");
+    }
+
+    function renderDynamics(run) {
+      const section = document.getElementById("run-dynamics-section");
+      const grid = document.getElementById("run-dynamics-grid");
+      if (!section || !grid || !run.streams) return;
+
+      let cadence = null, power = null, osc = null, gct = null, stride = null;
+      run.streams.forEach(s => {
+        if (s.type === "cadence" && s.data && s.data.values) {
+          const vals = s.data.values.filter(v => v > 0);
+          if (vals.length) cadence = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        }
+        if (s.type === "power" && s.data && s.data.values) {
+          const vals = s.data.values.filter(v => v > 0);
+          if (vals.length) power = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        }
+        if (s.type === "vertical_oscillation" && s.data && s.data.values) {
+          const vals = s.data.values.filter(v => v > 0);
+          if (vals.length) osc = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+        }
+        if (s.type === "ground_contact_time" && s.data && s.data.values) {
+          const vals = s.data.values.filter(v => v > 0);
+          if (vals.length) gct = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        }
+        if (s.type === "stride_length" && s.data && s.data.values) {
+          const vals = s.data.values.filter(v => v > 0);
+          if (vals.length) stride = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+        }
+      });
+
+      const cells = [];
+      if (cadence) cells.push(tallyCell("AVG CADENCE", cadence.toString(), "spm"));
+      if (power) cells.push(tallyCell("AVG POWER", power.toString(), "W"));
+      if (stride) cells.push(tallyCell("STRIDE LENGTH", stride.toString(), "m"));
+      if (gct) cells.push(tallyCell("GROUND CONTACT", gct.toString(), "ms"));
+      if (osc) cells.push(tallyCell("VERT OSCILLATION", osc.toString(), "cm"));
+
+      if (cells.length === 0) {
+        section.hidden = true;
+        return;
+      }
+      grid.innerHTML = cells.join("");
+      section.hidden = false;
     }
 
     function renderMapAndChart(run) {
@@ -224,7 +298,6 @@ const description = "View this run on Runstamp.";
       let dists = [];
       let hrs = [];
       let elevs = [];
-      let currentMap = null;
       let highlightMarker = null;
       
       run.streams.forEach(s => {
@@ -244,9 +317,8 @@ const description = "View this run on Runstamp.";
         setTimeout(() => {
           if (!window.L) return;
           const map = window.L.map('run-map-container', { scrollWheelZoom: false }).setView([20, 0], 2);
-          currentMap = map;
           window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-              attribution: '&copy; OpenStreetMap',
+              attribution: '&copy; OpenStreetMap &copy; CARTO',
               maxZoom: 20
           }).addTo(map);
           
@@ -260,17 +332,34 @@ const description = "View this run on Runstamp.";
           
           window.L.polyline(latlngs, {
              color: PALETTE.solar,
-             weight: 3,
-             opacity: 0.8
+             weight: 3.5,
+             opacity: 0.85
           }).addTo(map);
+
+          // Add Start Green Pin & Finish Solar Pin
+          const startPin = window.L.divIcon({
+            className: 'pin-start',
+            html: '<div style="width:10px;height:10px;background:#4a6b3a;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [10, 10],
+            iconAnchor: [5, 5]
+          });
+          const finishPin = window.L.divIcon({
+            className: 'pin-finish',
+            html: '<div style="width:10px;height:10px;background:#e85d2f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [10, 10],
+            iconAnchor: [5, 5]
+          });
+
+          window.L.marker(latlngs[0], { icon: startPin }).addTo(map);
+          window.L.marker(latlngs[latlngs.length - 1], { icon: finishPin }).addTo(map);
           
-          map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14 });
+          map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
 
           const markerIcon = window.L.divIcon({
             className: 'scrubber-marker',
-            html: '<div style="width:12px;height:12px;background:#e85d2f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(232,93,47,0.8);"></div>',
-            iconSize: [12, 12],
-            iconAnchor: [6, 6]
+            html: '<div style="width:14px;height:14px;background:#e85d2f;border:2.5px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(232,93,47,0.9);"></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
           });
           highlightMarker = window.L.marker(latlngs[0], { icon: markerIcon }).addTo(map);
         }, 50);
@@ -288,8 +377,19 @@ const description = "View this run on Runstamp.";
         const minHr = Math.min(...hrs.filter(h => h != null));
         const maxHr = Math.max(...hrs.filter(h => h != null));
         
-        const W = 600, H = 150;
-        let html = "";
+        const W = 600, H = 160;
+        let html = `
+          <defs>
+            <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1c1b18" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#1c1b18" stop-opacity="0.01"/>
+            </linearGradient>
+            <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#e85d2f" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#e85d2f" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+        `;
         
         const getX = (d) => maxDist > 0 ? (d / maxDist) * W : 0;
         
@@ -301,7 +401,9 @@ const description = "View this run on Runstamp.";
             if (elevs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(elevs[i]).toFixed(1)}`);
           }
           if (pts.length > 0) {
-            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.ink3}" stroke-width="1.5" stroke-linejoin="round"/>`;
+            const areaPts = `0,${H} ${pts.join(" ")} ${W},${H}`;
+            html += `<polygon points="${areaPts}" fill="url(#elevGrad)"/>`;
+            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.ink3}" stroke-width="1.8" stroke-linejoin="round"/>`;
             yaxis.innerHTML += `<div>Max Elev: ${Math.round(maxElev)}m</div>`;
           }
         }
@@ -314,7 +416,9 @@ const description = "View this run on Runstamp.";
             if (hrs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(hrs[i]).toFixed(1)}`);
           }
           if (pts.length > 0) {
-            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.solar}" stroke-width="1.5" stroke-linejoin="round"/>`;
+            const areaPts = `0,${H} ${pts.join(" ")} ${W},${H}`;
+            html += `<polygon points="${areaPts}" fill="url(#hrGrad)"/>`;
+            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.solar}" stroke-width="2" stroke-linejoin="round"/>`;
             yaxis.innerHTML += `<div>Max HR: ${Math.round(maxHr)}</div>`;
           }
         }
@@ -426,11 +530,12 @@ const description = "View this run on Runstamp.";
           const isFastest = s.paceSPerKm === minPace && paces.length > 1;
           const barFill = isFastest ? PALETTE.solar : PALETTE.ink;
           return `
-          <div class="split-row" style="display:flex; align-items:center; justify-content:space-between; padding:8px; font-size:12px; border-bottom:1px solid var(--line);">
+          <div class="split-row ${isFastest ? 'split-row--fastest' : ''}" style="display:flex; align-items:center; justify-content:space-between; padding:8px; font-size:12px; border-bottom:1px solid var(--line);">
             <span style="font-family:var(--font-mono); font-weight:600; width:30px;">${s.split}</span>
             <div style="flex:1; display:flex; align-items:center; gap:8px; margin:0 12px;">
-              <span style="font-family:var(--font-mono); font-weight:600; width:50px;">${paceStr}</span>
-              <div style="flex:1; height:4px; background:var(--ink3); border-radius:2px; overflow:hidden;">
+              <span style="font-family:var(--font-mono); font-weight:600; width:52px;">${paceStr}</span>
+              ${isFastest ? '<span style="font-family:var(--font-mono); font-size:9px; background:var(--solar); color:#fff; padding:1px 5px; border-radius:3px; font-weight:700;">FASTEST</span>' : ''}
+              <div style="flex:1; height:5px; background:var(--ink3); border-radius:3px; overflow:hidden;">
                 <div style="height:100%; width:${maxPace > 0 ? Math.min(100, Math.max(15, (s.paceSPerKm / maxPace) * 100)) : 50}%; background:${barFill};"></div>
               </div>
             </div>
@@ -623,8 +728,11 @@ const description = "View this run on Runstamp.";
         if (run.city) loc.push(run.city);
         if (run.country) loc.push(run.country);
         setText("run-city-country", loc.join(", "));
+        setText("postmark-city", run.city ? run.city.toUpperCase() : "RUN LOG");
+        setText("postmark-country", run.country ? run.country.toUpperCase() : "PASSPORT");
 
         renderStats(run);
+        renderDynamics(run);
         renderMapAndChart(run);
         renderSplits(run);
         setupShare(title, run);
