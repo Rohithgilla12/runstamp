@@ -46,7 +46,49 @@ export default {
     // return the redirect with an empty body. /u/ resolves to the directory
     // index without that round-trip. window.location on the client still
     // carries the original /u/<handle> path so the page script can read it.
-    if (url.pathname.startsWith("/u/") && url.pathname !== "/u/") {
+    if (url.pathname.startsWith("/u/") && url.pathname !== "/u/" && url.pathname !== "/u/r/") {
+      const runMatch = url.pathname.match(/^\/u\/([^/]+)\/r\/([^/]+)\/?$/);
+      if (runMatch) {
+        const rawHandle = runMatch[1];
+        const handle = sanitizeHandle(rawHandle) ?? rawHandle;
+        const runId = runMatch[2];
+
+        const rewritten = new URL(req.url);
+        rewritten.pathname = "/u/r/";
+        const [proxied, profile, run] = await Promise.all([
+          env.ASSETS.fetch(new Request(rewritten, req)),
+          fetchProfile(handle),
+          fetchActivity(handle, runId)
+        ]);
+
+        const headers = new Headers(proxied.headers);
+        headers.delete("location");
+
+        const meta = buildMeta(handle, profile);
+        if (run) {
+          const km = (run.distanceM / 1000).toFixed(1);
+          meta.title = `${run.title || "Run"} — ${km}km by @${handle} · Runstamp`;
+          meta.description = `View ${run.title || "Run"} on Runstamp. ${km}km run.`;
+        }
+
+        const rewriter = new HTMLRewriter()
+          .on("title", new TextSetter(meta.title))
+          .on('meta[name="description"]', new MetaContentSetter(meta.description))
+          .on('meta[property="og:title"]', new MetaContentSetter(meta.title))
+          .on('meta[property="og:description"]', new MetaContentSetter(meta.description))
+          .on('meta[property="og:url"]', new MetaContentSetter(meta.canonical))
+          .on('meta[property="og:image"]', new MetaContentSetter(meta.ogImage))
+          .on('meta[name="twitter:title"]', new MetaContentSetter(meta.title))
+          .on('meta[name="twitter:description"]', new MetaContentSetter(meta.description))
+          .on('meta[name="twitter:image"]', new MetaContentSetter(meta.ogImage))
+          .on('meta[name="twitter:card"]', new MetaContentSetter("summary_large_image"))
+          .on('meta[property="og:image:width"]', new MetaContentSetter("1200"))
+          .on('meta[property="og:image:height"]', new MetaContentSetter("630"))
+          .on('link[rel="canonical"]', new HrefSetter(meta.canonical));
+
+        return rewriter.transform(new Response(proxied.body, { status: 200, headers }));
+      }
+
       const rawHandle = url.pathname.slice(3).replace(/\/$/, "");
       const handle = sanitizeHandle(rawHandle) ?? rawHandle;
 
@@ -249,6 +291,25 @@ async function fetchProfileResult(handle: string): Promise<ProfileFetch> {
 async function fetchProfile(handle: string): Promise<PublicProfile | null> {
   const res = await fetchProfileResult(handle);
   return res.kind === "ok" ? res.profile : null;
+}
+
+interface PublicActivityDetail {
+  id: string;
+  sport: string;
+  title: string;
+  distanceM: number;
+}
+
+async function fetchActivity(handle: string, id: string): Promise<PublicActivityDetail | null> {
+  try {
+    const r = await fetch(`${API_BASE}/v1/profiles/${encodeURIComponent(handle)}/activities/${encodeURIComponent(id)}`, {
+      cf: { cacheTtl: 60, cacheEverything: true },
+    });
+    if (!r.ok) return null;
+    return (await r.json()) as PublicActivityDetail;
+  } catch (err) {
+    return null;
+  }
 }
 
 // ogCardHtml builds the OG card markup that Satori renders. Flexbox-only

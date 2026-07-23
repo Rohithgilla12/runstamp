@@ -1,0 +1,654 @@
+---
+// runstamp.app/u/<handle>/r/<run_id> — public run detail page.
+
+import Base from "../../layouts/Base.astro";
+
+const title = "Run · Runstamp";
+const description = "View this run on Runstamp.";
+---
+
+<Base title={title} description={description} canonicalPath="/u/r/">
+  <main class="profile-root">
+    <div class="profile-topbar">
+      <a class="profile-back" id="profile-back-link" href="/">← Profile</a>
+      <div style="display:flex; gap:8px;">
+        <button class="profile-share" id="profile-card-btn" type="button" hidden aria-label="Export Share Card" onclick="openExportModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>Card</span>
+        </button>
+        <button class="profile-share" id="profile-share" type="button" hidden aria-label="Share this run">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12" />
+            <path d="M8 7l4-4 4 4" />
+            <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" />
+          </svg>
+          <span class="profile-share-label" id="profile-share-label">Share</span>
+        </button>
+      </div>
+    </div>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <div data-state="loading" id="profile">
+      <p class="profile-loading">Loading run…</p>
+    </div>
+
+    <!-- 404 state. Hidden until the fetch decides. -->
+    <div class="profile-missing" id="profile-missing" hidden>
+      <p class="eyebrow">404 · NOT FOUND</p>
+      <h1>This run isn't available.</h1>
+      <p class="profile-missing-body">
+        Either the run doesn't exist, or its owner hasn't made the profile public.
+      </p>
+      <a class="profile-cta" href="/">Open Runstamp</a>
+    </div>
+
+    <!-- Populated state. Hidden until fetch lands. -->
+    <article class="profile-card" id="profile-card" hidden>
+      <header class="hero">
+        <div class="hero-grain" aria-hidden="true"></div>
+        <div class="hero-content" style="padding-top: 4rem;">
+          <p class="eyebrow hero-eyebrow" id="run-date">—</p>
+          <h1 class="hero-name" id="run-title">—</h1>
+          <p class="hero-tagline" id="run-city-country"></p>
+        </div>
+        <!-- Cancellation marks across the bottom of the postcard. -->
+        <svg class="hero-cancel" viewBox="0 0 600 24" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="8" x2="600" y2="8" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+          <line x1="0" y1="12" x2="600" y2="12" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+          <line x1="0" y1="16" x2="600" y2="16" stroke="#e85d2f" stroke-width="0.8" opacity="0.45" />
+        </svg>
+      </header>
+
+      <section class="profile-section profile-section--tight">
+        <header class="section-header">
+          <p class="eyebrow">STATS</p>
+        </header>
+        <div class="tally" id="run-stats" aria-label="Run stats">
+          <!-- Populated by script. -->
+        </div>
+      </section>
+
+      <section class="profile-section" id="run-map-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">ROUTE</p>
+          <p class="section-count" id="run-map-count">Route</p>
+        </header>
+        <div class="map-container" id="run-map-container" style="height: 300px; border-radius: 8px; border: 1px solid var(--ink2);"></div>
+      </section>
+      
+      <section class="profile-section" id="run-chart-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">ELEVATION & HR</p>
+          <p class="section-count" id="run-chart-scrub-label" style="text-transform:none; font-family:var(--font-mono);">Hover chart to scrub route</p>
+        </header>
+        <div class="chart">
+          <div class="chart-grid">
+            <div class="chart-yaxis" id="run-chart-yaxis" style="font-size:10px;"></div>
+            <div class="chart-plot" style="--chart-h: 150px">
+              <svg class="chart-svg" id="run-chart-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+            </div>
+          </div>
+          <div class="chart-foot chart-foot--ends">
+            <span>Start</span>
+            <span>End</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:16px; justify-content:center; margin-top:8px; font-size:11px; color:var(--ink2);">
+           <div style="display:flex; align-items:center; gap:4px;">
+              <span style="display:block; width:12px; height:2px; background:var(--ink3);"></span> Elevation
+           </div>
+           <div style="display:flex; align-items:center; gap:4px;">
+              <span style="display:block; width:12px; height:2px; background:var(--solar);"></span> Heart Rate
+           </div>
+        </div>
+      </section>
+
+      <!-- Kilometer Splits Section -->
+      <section class="profile-section" id="run-splits-section" hidden>
+        <header class="section-header">
+          <p class="eyebrow">KM SPLITS</p>
+          <p class="section-count" id="run-splits-count"></p>
+        </header>
+        <div class="splits-table" id="run-splits-list">
+          <!-- Populated by script -->
+        </div>
+      </section>
+
+      <!-- Export Card Modal -->
+      <div id="export-card-modal" class="modal-backdrop" hidden onclick="if(event.target===this)closeExportModal()">
+        <div class="modal-card modal-card--wide">
+          <button type="button" class="modal-close" onclick="closeExportModal()" aria-label="Close modal">×</button>
+          <h2 class="modal-title" style="font-size: 1.4rem; margin-bottom: 0.25rem;">Postmark Share Card</h2>
+          <p class="modal-desc" style="margin-bottom: 1rem;">9:16 high-res artifact ready for Instagram Stories or camera roll.</p>
+          <div class="canvas-container" style="display:flex; justify-content:center; margin-bottom: 1rem;">
+            <canvas id="share-card-canvas" width="720" height="1280" style="width: 100%; max-width: 270px; border-radius: 8px; border: 1px solid var(--ink2); box-shadow: 0 10px 25px rgba(0,0,0,0.15);"></canvas>
+          </div>
+          <div class="modal-actions" style="display:flex; gap:8px;">
+            <button type="button" class="profile-cta modal-btn" id="download-card-btn" style="flex:1;">Download PNG</button>
+            <button type="button" class="profile-cta modal-btn" style="background:var(--paper-2); color:var(--ink); border:1px solid var(--line);" onclick="closeExportModal()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <script>
+    const API_BASE = "https://api.runstamp.app";
+    const PALETTE = {
+      solar: "#e85d2f",
+      ink: "#1c1b18",
+      ink2: "color-mix(in srgb, #1c1b18 40%, transparent)",
+      ink3: "color-mix(in srgb, #1c1b18 15%, transparent)",
+      paper: "#f3ede2",
+      line: "color-mix(in srgb, #1c1b18 10%, transparent)",
+      moss: "#4a6b3a"
+    };
+
+    function pathInfo() {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      if (parts.length >= 4 && parts[0] === "u" && parts[2] === "r") {
+        return { handle: parts[1], runId: parts[3] };
+      }
+      return null;
+    }
+
+    function show(id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = false;
+    }
+    function hide(id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+    }
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+    function escapeAttr(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function formatTime(s) {
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
+      if (hrs > 0) return `${hrs}h ${mins}m`;
+      return `${mins}m`;
+    }
+    
+    function formatPace(s) {
+      const mins = Math.floor(s / 60);
+      const secs = Math.floor(s % 60).toString().padStart(2, "0");
+      return `${mins}:${secs}`;
+    }
+
+    function tallyCell(label, value, unit) {
+      return `
+<div class="tally-cell">
+  <p class="tally-label">${escapeAttr(label)}</p>
+  <p class="tally-value">${escapeAttr(value)}</p>
+  ${unit ? `<p class="tally-unit">${escapeAttr(unit)}</p>` : ""}
+</div>`;
+    }
+
+    function renderStats(run) {
+      const c = document.getElementById("run-stats");
+      if (!c) return;
+      const km = (run.distanceM / 1000).toFixed(1);
+      const pace = run.avgPaceSPerKm > 0 ? formatPace(run.avgPaceSPerKm) : "--:--";
+      const time = formatTime(run.elapsedSec);
+      let cells = [
+        tallyCell("DISTANCE", km, "KILOMETRES"),
+        tallyCell("AVG PACE", pace, "/KM"),
+        tallyCell("TIME", time, ""),
+      ];
+      if (run.elevationM > 0) {
+        cells.push(tallyCell("ELEV GAIN", Math.round(run.elevationM).toString(), "METRES"));
+      } else if (run.avgHr > 0) {
+        cells.push(tallyCell("AVG HR", Math.round(run.avgHr).toString(), "BPM"));
+      }
+      c.innerHTML = cells.join("");
+    }
+
+    function renderMapAndChart(run) {
+      if (!run.streams || run.streams.length === 0) return;
+      
+      let lats = [];
+      let lngs = [];
+      let dists = [];
+      let hrs = [];
+      let elevs = [];
+      let currentMap = null;
+      let highlightMarker = null;
+      
+      run.streams.forEach(s => {
+        if (s.distance_m != null) {
+          if (s.lat != null) lats.push(s.lat);
+          if (s.lng != null) lngs.push(s.lng);
+          dists.push(s.distance_m);
+          hrs.push(s.heartrate);
+          elevs.push(s.altitude);
+        }
+      });
+      
+      if (lats.length > 0 && lats.length === lngs.length) {
+        const mapSection = document.getElementById("run-map-section");
+        mapSection.hidden = false;
+        
+        setTimeout(() => {
+          if (!window.L) return;
+          const map = window.L.map('run-map-container', { scrollWheelZoom: false }).setView([20, 0], 2);
+          currentMap = map;
+          window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+              attribution: '&copy; OpenStreetMap',
+              maxZoom: 20
+          }).addTo(map);
+          
+          const bounds = window.L.latLngBounds();
+          const latlngs = [];
+          for (let i = 0; i < lats.length; i++) {
+             const ll = [lats[i], lngs[i]];
+             latlngs.push(ll);
+             bounds.extend(ll);
+          }
+          
+          window.L.polyline(latlngs, {
+             color: PALETTE.solar,
+             weight: 3,
+             opacity: 0.8
+          }).addTo(map);
+          
+          map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14 });
+
+          const markerIcon = window.L.divIcon({
+            className: 'scrubber-marker',
+            html: '<div style="width:12px;height:12px;background:#e85d2f;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(232,93,47,0.8);"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6]
+          });
+          highlightMarker = window.L.marker(latlngs[0], { icon: markerIcon }).addTo(map);
+        }, 50);
+      }
+      
+      if (elevs.some(e => e != null) || hrs.some(h => h != null)) {
+        const cSection = document.getElementById("run-chart-section");
+        cSection.hidden = false;
+        const svg = document.getElementById("run-chart-svg");
+        const yaxis = document.getElementById("run-chart-yaxis");
+        
+        const maxDist = Math.max(...dists);
+        const minElev = Math.min(...elevs.filter(e => e != null));
+        const maxElev = Math.max(...elevs.filter(e => e != null));
+        const minHr = Math.min(...hrs.filter(h => h != null));
+        const maxHr = Math.max(...hrs.filter(h => h != null));
+        
+        const W = 600, H = 150;
+        let html = "";
+        
+        const getX = (d) => maxDist > 0 ? (d / maxDist) * W : 0;
+        
+        if (elevs.some(e => e != null) && maxElev > minElev) {
+          const range = maxElev - minElev;
+          const getY = (e) => H - ((e - minElev) / range) * H;
+          const pts = [];
+          for(let i=0; i<dists.length; i++) {
+            if (elevs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(elevs[i]).toFixed(1)}`);
+          }
+          if (pts.length > 0) {
+            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.ink3}" stroke-width="1.5" stroke-linejoin="round"/>`;
+            yaxis.innerHTML += `<div>Max Elev: ${Math.round(maxElev)}m</div>`;
+          }
+        }
+        
+        if (hrs.some(h => h != null) && maxHr > minHr) {
+          const range = maxHr - minHr;
+          const getY = (h) => H - ((h - minHr) / range) * H;
+          const pts = [];
+          for(let i=0; i<dists.length; i++) {
+            if (hrs[i] != null) pts.push(`${getX(dists[i]).toFixed(1)},${getY(hrs[i]).toFixed(1)}`);
+          }
+          if (pts.length > 0) {
+            html += `<polyline points="${pts.join(" ")}" fill="none" stroke="${PALETTE.solar}" stroke-width="1.5" stroke-linejoin="round"/>`;
+            yaxis.innerHTML += `<div>Max HR: ${Math.round(maxHr)}</div>`;
+          }
+        }
+        
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        svg.innerHTML = html;
+
+        const scrubLabel = document.getElementById("run-chart-scrub-label");
+        const onScrub = (e) => {
+          const rect = svg.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+          const targetDist = relX * maxDist;
+          
+          let closestIdx = 0;
+          let minDistDiff = Infinity;
+          for (let i = 0; i < dists.length; i++) {
+            const diff = Math.abs(dists[i] - targetDist);
+            if (diff < minDistDiff) {
+              minDistDiff = diff;
+              closestIdx = i;
+            }
+          }
+          
+          if (highlightMarker && lats[closestIdx] != null && lngs[closestIdx] != null) {
+            highlightMarker.setLatLng([lats[closestIdx], lngs[closestIdx]]);
+          }
+          
+          if (scrubLabel) {
+            const km = (dists[closestIdx] / 1000).toFixed(2);
+            const ele = elevs[closestIdx] != null ? `${Math.round(elevs[closestIdx])}m` : "";
+            const hr = hrs[closestIdx] != null ? `${Math.round(hrs[closestIdx])}bpm` : "";
+            scrubLabel.textContent = `${km} km ${ele ? "· " + ele : ""} ${hr ? "· " + hr : ""}`;
+          }
+        };
+        
+        svg.addEventListener("mousemove", onScrub);
+        svg.addEventListener("touchmove", onScrub);
+      }
+    }
+
+    function renderSplits(run) {
+      const section = document.getElementById("run-splits-section");
+      const list = document.getElementById("run-splits-list");
+      const count = document.getElementById("run-splits-count");
+      if (!section || !list) return;
+      
+      let splits = [];
+      if (run.streams && run.streams.length > 0) {
+        let currentKm = 1;
+        let lastIdx = 0;
+        for (let i = 0; i < run.streams.length; i++) {
+          const s = run.streams[i];
+          if (s.distance_m >= currentKm * 1000 || i === run.streams.length - 1) {
+            const startS = run.streams[lastIdx];
+            const distDelta = (s.distance_m - (startS.distance_m || 0)) / 1000;
+            const timeDelta = (s.time_s || s.time || i) - (startS.time_s || startS.time || lastIdx);
+            const elevDelta = (s.altitude || 0) - (startS.altitude || 0);
+            const paceS = distDelta > 0 ? timeDelta / distDelta : 0;
+            if (distDelta > 0.1) {
+              splits.push({
+                split: currentKm,
+                distanceKm: distDelta,
+                paceSPerKm: paceS,
+                elevM: elevDelta,
+                hr: s.heartrate
+              });
+            }
+            lastIdx = i;
+            currentKm++;
+          }
+        }
+      }
+      
+      if (splits.length === 0 && run.distanceM > 0) {
+        const totalKm = run.distanceM / 1000;
+        const avgPace = run.avgPaceSPerKm;
+        const numSplits = Math.ceil(totalKm);
+        for (let i = 1; i <= numSplits; i++) {
+          const dist = i === numSplits ? (totalKm % 1 || 1) : 1;
+          splits.push({
+            split: i,
+            distanceKm: dist,
+            paceSPerKm: avgPace,
+            elevM: 0,
+            hr: run.avgHr
+          });
+        }
+      }
+
+      if (splits.length === 0) return;
+      
+      count.textContent = `${splits.length} splits`;
+      const paces = splits.map(s => s.paceSPerKm).filter(p => p > 0);
+      const minPace = Math.min(...paces);
+      const maxPace = Math.max(...paces);
+      
+      list.innerHTML = `
+        <div class="split-header-row" style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--ink3); padding:4px 8px; border-bottom:1px solid var(--line);">
+          <span>KM</span>
+          <span>PACE</span>
+          <span>ELEV</span>
+          <span>HR</span>
+        </div>
+        ${splits.map(s => {
+          const paceStr = s.paceSPerKm > 0 ? formatPace(s.paceSPerKm) : "--:--";
+          const elevStr = s.elevM > 0 ? `+${Math.round(s.elevM)}m` : s.elevM < 0 ? `${Math.round(s.elevM)}m` : "0m";
+          const hrStr = s.hr ? `${Math.round(s.hr)}` : "--";
+          const isFastest = s.paceSPerKm === minPace && paces.length > 1;
+          const barFill = isFastest ? PALETTE.solar : PALETTE.ink;
+          return `
+          <div class="split-row" style="display:flex; align-items:center; justify-content:space-between; padding:8px; font-size:12px; border-bottom:1px solid var(--line);">
+            <span style="font-family:var(--font-mono); font-weight:600; width:30px;">${s.split}</span>
+            <div style="flex:1; display:flex; align-items:center; gap:8px; margin:0 12px;">
+              <span style="font-family:var(--font-mono); font-weight:600; width:50px;">${paceStr}</span>
+              <div style="flex:1; height:4px; background:var(--ink3); border-radius:2px; overflow:hidden;">
+                <div style="height:100%; width:${maxPace > 0 ? Math.min(100, Math.max(15, (s.paceSPerKm / maxPace) * 100)) : 50}%; background:${barFill};"></div>
+              </div>
+            </div>
+            <span style="font-family:var(--font-mono); color:var(--ink2); width:45px; text-align:right;">${elevStr}</span>
+            <span style="font-family:var(--font-mono); color:var(--ink2); width:35px; text-align:right;">${hrStr}</span>
+          </div>`;
+        }).join("")}
+      `;
+      section.hidden = false;
+    }
+
+    let currentRunData = null;
+
+    function openExportModal() {
+      const modal = document.getElementById("export-card-modal");
+      if (!modal || !currentRunData) return;
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+      renderShareCardCanvas(currentRunData);
+    }
+
+    function closeExportModal() {
+      const modal = document.getElementById("export-card-modal");
+      if (modal) modal.hidden = true;
+      document.body.style.overflow = "";
+    }
+    (window as any).openExportModal = openExportModal;
+    (window as any).closeExportModal = closeExportModal;
+
+    function renderShareCardCanvas(run) {
+      const canvas = document.getElementById("share-card-canvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      
+      const W = 720;
+      const H = 1280;
+      canvas.width = W;
+      canvas.height = H;
+      
+      ctx.fillStyle = "#f3ede2";
+      ctx.fillRect(0, 0, W, H);
+      
+      ctx.strokeStyle = "#1c1b18";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(20, 20, W - 40, H - 40);
+      
+      ctx.fillStyle = "#e85d2f";
+      ctx.fillRect(20, 20, W - 40, 160);
+      
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "italic 44px 'Instrument Serif', Georgia, serif";
+      ctx.fillText(run.title || "RUNSTAMP", 45, 95);
+      
+      ctx.font = "500 20px 'JetBrains Mono', monospace";
+      const dateStr = new Date(run.startedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
+      ctx.fillText(dateStr, 45, 135);
+      
+      if (run.streams && run.streams.length > 0) {
+        let lats = [], lngs = [];
+        run.streams.forEach(s => {
+          if (s.lat != null && s.lng != null) { lats.push(s.lat); lngs.push(s.lng); }
+        });
+        if (lats.length > 0) {
+          const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+          const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+          const pad = 120;
+          const boxW = W - pad * 2;
+          const boxH = 500;
+          const boxY = 280;
+          
+          const scale = Math.min(boxW / (maxLng - minLng || 1), boxH / (maxLat - minLat || 1));
+          const cx = (minLng + maxLng) / 2;
+          const cy = (minLat + maxLat) / 2;
+          
+          ctx.beginPath();
+          ctx.strokeStyle = "#e85d2f";
+          ctx.lineWidth = 6;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          for (let i = 0; i < lats.length; i++) {
+            const x = W / 2 + (lngs[i] - cx) * scale;
+            const y = boxY + boxH / 2 - (lats[i] - cy) * scale;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+      
+      const km = (run.distanceM / 1000).toFixed(1);
+      const pace = run.avgPaceSPerKm > 0 ? formatPace(run.avgPaceSPerKm) : "--:--";
+      const time = formatTime(run.elapsedSec);
+      
+      ctx.fillStyle = "#1c1b18";
+      ctx.font = "italic 110px 'Instrument Serif', Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${km} km`, W / 2, 900);
+      
+      ctx.font = "500 24px 'JetBrains Mono', monospace";
+      ctx.fillStyle = "rgba(28, 27, 24, 0.6)";
+      ctx.fillText(`${pace} /km  ·  ${time}`, W / 2, 960);
+      
+      if (run.city) {
+        ctx.font = "600 22px 'JetBrains Mono', monospace";
+        ctx.fillStyle = "#e85d2f";
+        ctx.fillText(run.city.toUpperCase(), W / 2, 1020);
+      }
+      
+      ctx.strokeStyle = "#e85d2f";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(W - 120, H - 140, 65, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.font = "600 12px 'JetBrains Mono', monospace";
+      ctx.fillStyle = "#e85d2f";
+      ctx.textAlign = "center";
+      ctx.fillText("RUNSTAMP", W - 120, H - 150);
+      ctx.fillText("PASSPORT", W - 120, H - 130);
+      
+      const dlBtn = document.getElementById("download-card-btn");
+      if (dlBtn) {
+        dlBtn.onclick = () => {
+          const a = document.createElement("a");
+          a.download = `runstamp-${(run.title || "run").toLowerCase().replace(/\s+/g, "-")}.png`;
+          a.href = canvas.toDataURL("image/png");
+          a.click();
+        };
+      }
+    }
+
+    function setupShare(runTitle, run) {
+      const btn = document.getElementById("profile-share");
+      const label = document.getElementById("profile-share-label");
+      if (!btn) return;
+      const url = window.location.origin + window.location.pathname;
+      const km = (run.distanceM / 1000).toFixed(1);
+      const shareData = { title: `${runTitle} on Runstamp`, text: `View this ${km}km run on Runstamp`, url };
+      let resetTimer = 0;
+      btn.addEventListener("click", async () => {
+        if (navigator.share) {
+          try { await navigator.share(shareData); return; } catch (e) { /* fallback */ }
+        }
+        try {
+          await navigator.clipboard.writeText(url);
+          label.textContent = "Copied link";
+          clearTimeout(resetTimer);
+          resetTimer = setTimeout(() => { label.textContent = "Share"; }, 2000);
+        } catch (e) {
+          console.error("Copy failed", e);
+        }
+      });
+      btn.hidden = false;
+    }
+
+    async function load() {
+      const info = pathInfo();
+      if (!info) {
+        hide("profile");
+        show("profile-missing");
+        return;
+      }
+
+      document.getElementById("profile-back-link").href = `/u/${info.handle}`;
+
+      const host = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:8080"
+        : API_BASE;
+      
+      try {
+        const res = await fetch(`${host}/v1/profiles/${encodeURIComponent(info.handle)}/activities/${encodeURIComponent(info.runId)}`);
+        if (!res.ok) {
+          hide("profile");
+          show("profile-missing");
+          return;
+        }
+
+        const run = await res.json();
+        currentRunData = run;
+        
+        const title = run.title || "Run";
+        document.title = `${title} · @${info.handle} · Runstamp`;
+        
+        const dateStr = new Date(run.startedAt).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' });
+        setText("run-date", dateStr);
+        setText("run-title", title);
+        
+        let loc = [];
+        if (run.city) loc.push(run.city);
+        if (run.country) loc.push(run.country);
+        setText("run-city-country", loc.join(", "));
+
+        renderStats(run);
+        renderMapAndChart(run);
+        renderSplits(run);
+        setupShare(title, run);
+
+        const cardBtn = document.getElementById("profile-card-btn");
+        if (cardBtn) cardBtn.hidden = false;
+
+        hide("profile");
+        show("profile-card");
+        
+        const els = document.querySelectorAll(".profile-section:not([hidden])");
+        els.forEach(e => e.classList.add("reveal", "is-in"));
+
+      } catch (err) {
+        console.error("Load failed", err);
+        hide("profile");
+        show("profile-missing");
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", load);
+    } else {
+      load();
+    }
+  </script>
+</Base>

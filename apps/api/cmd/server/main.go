@@ -302,12 +302,14 @@ func main() {
 
 		// Public profiles — no auth. The profile_public flag is the gate.
 		profilesHandler := &handlers.ProfilesHandler{
-			Pool:   pool,
-			Users:  usersRepo,
-			Stamps: stampsRepo,
-			Log:    log,
+			Pool:       pool,
+			Users:      usersRepo,
+			Stamps:     stampsRepo,
+			Activities: activitiesService,
+			Log:        log,
 		}
 		r.Get("/profiles/{handle}", profilesHandler.Get)
+		r.Get("/profiles/{handle}/activities/{id}", profilesHandler.GetActivity)
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireFirebaseAuth(verifier, log))

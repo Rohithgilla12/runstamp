@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Rohithgilla12/runstamp/apps/api/internal/activities"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/stamps"
 	"github.com/Rohithgilla12/runstamp/apps/api/internal/users"
 	"github.com/go-chi/chi/v5"
@@ -23,10 +24,11 @@ import (
 // true are visible; anything else returns 404 so we never leak the
 // existence of a private profile through a status code difference.
 type ProfilesHandler struct {
-	Pool   *pgxpool.Pool
-	Users  *users.Repo
-	Stamps *stamps.Repository
-	Log    *slog.Logger
+	Pool       *pgxpool.Pool
+	Users      *users.Repo
+	Stamps     *stamps.Repository
+	Activities *activities.Service
+	Log        *slog.Logger
 }
 
 type publicProfileResponse struct {
@@ -73,6 +75,7 @@ type yearlyHRBucket struct {
 }
 
 type publicActivity struct {
+	ID         string  `json:"id"`
 	Title      string  `json:"title"`
 	DistanceKm float64 `json:"distanceKm"`
 	Pace       int     `json:"pace"`
@@ -80,6 +83,7 @@ type publicActivity struct {
 }
 
 type longestRun struct {
+	ID         string  `json:"id"`
 	Title      string  `json:"title"`
 	DistanceKm float64 `json:"distanceKm"`
 	City       string  `json:"city,omitempty"`
@@ -143,6 +147,7 @@ type personalBests struct {
 }
 
 type personalBest struct {
+	ID          string  `json:"id,omitempty"`
 	TimeSeconds int     `json:"timeSeconds"`
 	DistanceKm  float64 `json:"distanceKm"`
 	Date        string  `json:"date"`
@@ -169,6 +174,7 @@ type highlights struct {
 }
 
 type highlightRun struct {
+	ID         string  `json:"id"`
 	DistanceKm float64 `json:"distanceKm,omitempty"`
 	ElevationM float64 `json:"elevationM,omitempty"`
 	Date       string  `json:"date"`
@@ -176,8 +182,9 @@ type highlightRun struct {
 }
 
 type highlightPace struct {
+	ID               string  `json:"id"`
 	PaceSecondsPerKm int     `json:"paceSecondsPerKm"`
-	DistanceKm       float64 `json:"distanceKm"`
+	DistanceKm       float64 `json:"distanceKm,omitempty"`
 	Date             string  `json:"date"`
 	City             string  `json:"city,omitempty"`
 }
@@ -513,6 +520,7 @@ func loadPersonalBests(ctx context.Context, pool *pgxpool.Pool, userID string, y
 // in the band. Matches the "best full run · ±5% of distance" card copy.
 func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM int, year int) (*personalBest, error) {
 	var (
+		id      string
 		seconds int
 		actualM float64
 		started time.Time
@@ -520,6 +528,7 @@ func loadOnePB(ctx context.Context, pool *pgxpool.Pool, userID string, distanceM
 	)
 	err := pool.QueryRow(ctx, `
 SELECT
+	id,
 	CASE WHEN moving_seconds > 0 THEN moving_seconds ELSE elapsed_seconds END AS t,
 	distance_m, started_at, location_city
 FROM activities
@@ -527,7 +536,7 @@ WHERE user_id = $1 AND dupe_of IS NULL`+yearClause(year)+`
   AND distance_m BETWEEN $2 * 0.95 AND $2 * 1.05
   AND (moving_seconds > 0 OR elapsed_seconds > 0)
 ORDER BY t ASC
-LIMIT 1`, userID, distanceM).Scan(&seconds, &actualM, &started, &city)
+LIMIT 1`, userID, distanceM).Scan(&id, &seconds, &actualM, &started, &city)
 	if err != nil {
 		if isNoRows(err) {
 			return nil, nil
@@ -535,6 +544,7 @@ LIMIT 1`, userID, distanceM).Scan(&seconds, &actualM, &started, &city)
 		return nil, err
 	}
 	pb := &personalBest{
+		ID:          id,
 		TimeSeconds: seconds,
 		DistanceKm:  actualM / 1000.0,
 		Date:        started.UTC().Format("2006-01-02"),
@@ -674,19 +684,21 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year
 	// Longest run.
 	{
 		var (
+			id      string
 			dm      float64
 			started time.Time
 			city    *string
 		)
 		err := pool.QueryRow(ctx, `
-			SELECT distance_m, started_at, location_city
+			SELECT id, distance_m, started_at, location_city
 			FROM activities
 			WHERE user_id = $1 AND dupe_of IS NULL`+yearClause(year)+`
 			ORDER BY distance_m DESC
 			LIMIT 1
-		`, userID).Scan(&dm, &started, &city)
+		`, userID).Scan(&id, &dm, &started, &city)
 		if err == nil {
 			r := &highlightRun{
+				ID:         id,
 				DistanceKm: dm / 1000.0,
 				Date:       started.UTC().Format("2006-01-02"),
 			}
@@ -702,13 +714,14 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year
 	// Fastest pace — only runs >= 4 km qualify, so a 500m all-out doesn't win.
 	{
 		var (
+			id      string
 			pace    float64
 			dm      float64
 			started time.Time
 			city    *string
 		)
 		err := pool.QueryRow(ctx, `
-			SELECT
+			SELECT id,
 				CASE WHEN moving_seconds > 0 THEN moving_seconds::float / (distance_m / 1000.0)
 				     ELSE elapsed_seconds::float / (distance_m / 1000.0) END AS pace_s_per_km,
 				distance_m, started_at, location_city
@@ -718,9 +731,10 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year
 			  AND elapsed_seconds > 0
 			ORDER BY pace_s_per_km ASC
 			LIMIT 1
-		`, userID).Scan(&pace, &dm, &started, &city)
+		`, userID).Scan(&id, &pace, &dm, &started, &city)
 		if err == nil {
 			p := &highlightPace{
+				ID:               id,
 				PaceSecondsPerKm: int(pace + 0.5),
 				DistanceKm:       dm / 1000.0,
 				Date:             started.UTC().Format("2006-01-02"),
@@ -766,21 +780,23 @@ func loadHighlights(ctx context.Context, pool *pgxpool.Pool, userID string, year
 	// Highest climb in a single run.
 	{
 		var (
+			id      string
 			elev    float64
 			started time.Time
 			city    *string
 		)
 		err := pool.QueryRow(ctx, `
-			SELECT elevation_gain_m, started_at, location_city
+			SELECT id, elevation_gain_m, started_at, location_city
 			FROM activities
 			WHERE user_id = $1 AND dupe_of IS NULL`+yearClause(year)+`
 			  AND elevation_gain_m IS NOT NULL
 			  AND elevation_gain_m > 0
 			ORDER BY elevation_gain_m DESC
 			LIMIT 1
-		`, userID).Scan(&elev, &started, &city)
+		`, userID).Scan(&id, &elev, &started, &city)
 		if err == nil {
 			r := &highlightRun{
+				ID:         id,
 				ElevationM: elev,
 				Date:       started.UTC().Format("2006-01-02"),
 			}
@@ -921,6 +937,7 @@ func loadYearlyHR(ctx context.Context, pool *pgxpool.Pool, userID string, year i
 func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]publicActivity, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
+			id,
 			COALESCE(title, 'Run'),
 			distance_m / 1000.0 AS distance_km,
 			COALESCE(avg_pace_s_per_km, 0) AS pace,
@@ -940,7 +957,7 @@ func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string
 		var a publicActivity
 		var started time.Time
 		var pace float64
-		if err := rows.Scan(&a.Title, &a.DistanceKm, &pace, &started); err != nil {
+		if err := rows.Scan(&a.ID, &a.Title, &a.DistanceKm, &pace, &started); err != nil {
 			return nil, err
 		}
 		a.Pace = int(pace)
@@ -953,7 +970,7 @@ func loadRecentActivities(ctx context.Context, pool *pgxpool.Pool, userID string
 // loadLongestRuns fetches the top 5 longest runs.
 func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string, year int) ([]longestRun, error) {
 	q := `
-		SELECT distance_m, avg_pace_s_per_km, started_at, title, location_city
+		SELECT id, distance_m, avg_pace_s_per_km, started_at, title, location_city
 		FROM activities
 		WHERE user_id = $1 AND dupe_of IS NULL` + yearClause(year) + ` AND distance_m > 0
 		ORDER BY distance_m DESC
@@ -972,7 +989,7 @@ func loadLongestRuns(ctx context.Context, pool *pgxpool.Pool, userID string, yea
 		var pace *float64
 		var title, city *string
 		var started time.Time
-		if err := rows.Scan(&dist, &pace, &started, &title, &city); err != nil {
+		if err := rows.Scan(&r.ID, &dist, &pace, &started, &title, &city); err != nil {
 			continue
 		}
 		r.DistanceKm = dist / 1000.0
@@ -1112,4 +1129,90 @@ func loadYoYProgress(ctx context.Context, pool *pgxpool.Pool, userID string) (ma
 		}
 	}
 	return out, nil
+}
+
+type publicActivityDetail struct {
+	ID             string              `json:"id"`
+	Sport          string              `json:"sport"`
+	StartedAt      string              `json:"startedAt"`
+	Title          string              `json:"title"`
+	City           string              `json:"city,omitempty"`
+	Country        string              `json:"country,omitempty"`
+	DistanceM      float64             `json:"distanceM"`
+	ElapsedSec     int                 `json:"elapsedSec"`
+	ElevationM     *float64            `json:"elevationM,omitempty"`
+	AvgHR          *int                `json:"avgHr,omitempty"`
+	MaxHR          *int                `json:"maxHr,omitempty"`
+	AvgPaceSPerKm  *float64            `json:"avgPaceSPerKm,omitempty"`
+	StartLat       *float64            `json:"startLat,omitempty"`
+	StartLon       *float64            `json:"startLon,omitempty"`
+	Streams        []activities.Stream `json:"streams,omitempty"`
+}
+
+func (h *ProfilesHandler) GetActivity(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "public, max-age=60, s-maxage=300")
+	handle := chi.URLParam(r, "handle")
+	if handle == "" {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	user, err := h.Users.FindPublicByHandle(r.Context(), handle)
+	if err != nil {
+		h.Log.Error("profiles get_activity: lookup", "err", err, "handle", handle)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
+		return
+	}
+	if user == nil {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+
+	activityID := chi.URLParam(r, "id")
+	if activityID == "" {
+		writeError(w, http.StatusBadRequest, "missing activity id")
+		return
+	}
+
+	a, err := h.Activities.Repo().FindByID(r.Context(), user.ID, activityID)
+	if err != nil {
+		h.Log.Error("profiles get_activity: find", "err", err, "activityID", activityID)
+		writeError(w, http.StatusNotFound, "activity not found")
+		return
+	}
+
+	streams, err := h.Activities.Repo().ListStreams(r.Context(), activityID)
+	if err != nil {
+		h.Log.Error("profiles get_activity: streams", "err", err, "activityID", activityID)
+		// We can still return activity without streams if this fails
+	}
+
+	title := "Run"
+	if a.Title != nil {
+		title = *a.Title
+	}
+
+	out := publicActivityDetail{
+		ID:            a.ID,
+		Sport:         a.Sport,
+		StartedAt:     a.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		Title:         title,
+		DistanceM:     a.DistanceM,
+		ElapsedSec:    a.ElapsedSeconds,
+		ElevationM:    a.ElevationGainM,
+		AvgHR:         a.AvgHR,
+		MaxHR:         a.MaxHR,
+		AvgPaceSPerKm: a.AvgPaceSPerKm,
+		StartLat:      a.StartLat,
+		StartLon:      a.StartLon,
+		Streams:       streams,
+	}
+	if a.LocationCity != nil {
+		out.City = *a.LocationCity
+	}
+	if a.LocationCountry != nil {
+		out.Country = *a.LocationCountry
+	}
+
+	writeJSON(w, http.StatusOK, out)
 }
