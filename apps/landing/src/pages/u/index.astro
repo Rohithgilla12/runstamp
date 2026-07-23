@@ -1607,10 +1607,10 @@ const description = "A public stamp album on Runstamp — every city, every PB, 
       if (modal) modal.hidden = true;
       document.body.style.overflow = "";
     }
-    (window as any).closeStampModal = closeStampModal;
+    window.closeStampModal = closeStampModal;
 
     function getStampDescription(id) {
-      const DESCS: Record<string, string> = {
+      const DESCS = {
         first_5k: "Earned by completing your first 5K run.",
         first_10k: "Earned by completing your first 10K run.",
         first_half: "Earned by finishing your first Half Marathon (21.1 km).",

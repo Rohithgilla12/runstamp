@@ -457,8 +457,8 @@ const description = "View this run on Runstamp.";
       if (modal) modal.hidden = true;
       document.body.style.overflow = "";
     }
-    (window as any).openExportModal = openExportModal;
-    (window as any).closeExportModal = closeExportModal;
+    window.openExportModal = openExportModal;
+    window.closeExportModal = closeExportModal;
 
     function renderShareCardCanvas(run) {
       const canvas = document.getElementById("share-card-canvas");
