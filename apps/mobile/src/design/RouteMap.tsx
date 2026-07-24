@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { Point } from '../data/models';
 import { simplifyPath } from '../analytics/simplifyPath';
+import { paceToColor } from '../editor/layers';
 import { useColors, useTheme } from './theme';
 import { MapTilesLayer } from './MapTilesLayer';
 import { useAppState } from '../state/AppState';
@@ -44,6 +45,14 @@ interface Props {
    * where the final frame is what matters.
    */
   animate?: boolean;
+  /** Draw the CARTO basemap tiles behind the route. Defaults to true when
+   *  rawLatLng is present. Set false to draw the route over a photo. */
+  showTiles?: boolean;
+  /** Route line style. 'signature' = casing+glow core; 'pace-gradient' =
+   *  per-segment moss→solar by pace; 'plain' = single stroke. */
+  treatment?: import('../editor/layers').RouteTreatment;
+  /** Per-sample pace for 'pace-gradient'. */
+  pace?: number[] | null;
 }
 
 // Two paths in this component:
@@ -81,6 +90,9 @@ export function RouteMap({
   accent,
   routeStrokeWidth = 3,
   animate = true,
+  showTiles,
+  treatment = 'signature',
+  pace,
 }: Props) {
   const c = useColors();
   const { dark } = useTheme();
@@ -92,13 +104,23 @@ export function RouteMap({
 
   const pts = points ?? [];
   const useTiles = rawLatLng != null && rawLatLng.length > 1;
+  const tilesOn = showTiles ?? (rawLatLng != null);
   // No tiles and no usable polyline = a routeless run (treadmill/indoor/manual).
   // Render an honest "no route" mark, never a fabricated curve.
   const isEmpty = !useTiles && pts.length < 2;
 
-  const { pathD, sx, sy, ex, ey, bbox, pathLen } = useMemo(() => {
+  const { pathD, sx, sy, ex, ey, bbox, pathLen, canvasPts } = useMemo(() => {
     if (isEmpty) {
-      return { pathD: '', sx: 0, sy: 0, ex: 0, ey: 0, bbox: null as BBox | null, pathLen: 0 };
+      return {
+        pathD: '',
+        sx: 0,
+        sy: 0,
+        ex: 0,
+        ey: 0,
+        bbox: null as BBox | null,
+        pathLen: 0,
+        canvasPts: [] as { x: number; y: number }[],
+      };
     }
     if (useTiles && rawLatLng) {
       let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
@@ -134,6 +156,7 @@ export function RouteMap({
         sx: first.x, sy: first.y, ex: last.x, ey: last.y,
         bbox: bb,
         pathLen: len,
+        canvasPts,
       };
     }
 
@@ -175,8 +198,38 @@ export function RouteMap({
       sx: first.x, sy: first.y, ex: last.x, ey: last.y,
       bbox: null as BBox | null,
       pathLen: len,
+      canvasPts,
     };
   }, [isEmpty, useTiles, rawLatLng, pts, width, height]);
+
+  const paceSegments = useMemo(() => {
+    if (isEmpty || treatment !== 'pace-gradient') return [] as { d: string; color: string }[];
+    const n = canvasPts.length;
+    if (n < 2) return [];
+    const hasPace = pace != null && pace.length >= 2;
+    let min = 0;
+    let max = 0;
+    if (hasPace) {
+      min = Math.min(...pace);
+      max = Math.max(...pace);
+    }
+    const segments: { d: string; color: string }[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = canvasPts[i];
+      const p1 = canvasPts[i + 1];
+      let color = a;
+      if (hasPace) {
+        const idx = Math.min(pace.length - 1, Math.round((i / (n - 1)) * (pace.length - 1)));
+        const norm = (pace[idx] - min) / (max - min || 1);
+        color = paceToColor(norm);
+      }
+      segments.push({
+        d: `M${p0.x.toFixed(1)} ${p0.y.toFixed(1)} L${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`,
+        color,
+      });
+    }
+    return segments;
+  }, [isEmpty, treatment, canvasPts, pace, a]);
 
   // Honor the system Reduce Motion toggle — flipping it in Settings should
   // affect routes currently on screen.
@@ -231,9 +284,13 @@ export function RouteMap({
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       {/* Backdrop fill always paints first — even when tiles are loading,
-          users see paper, not a transparent rectangle. */}
-      <Rect x={0} y={0} width={width} height={height} fill={s.bg} />
-      {useTiles && bbox && (
+          users see paper, not a transparent rectangle. Skipped entirely in
+          tiles-off mode so the route draws over whatever sits beneath it
+          (e.g. a photo) in the compositor. */}
+      {tilesOn && useTiles && (
+        <Rect x={0} y={0} width={width} height={height} fill={s.bg} />
+      )}
+      {tilesOn && useTiles && bbox && (
         <MapTilesLayer
           bbox={bbox}
           width={width}
@@ -256,20 +313,22 @@ export function RouteMap({
           Indoor · no route
         </SvgText>
       )}
-      {!isEmpty && (
+      {!isEmpty && treatment !== 'pace-gradient' && (
         <>
-          {/* Soft halo under the route so the polyline pops against any backdrop. */}
-          <AnimatedPath
-            d={pathD}
-            fill="none"
-            stroke={a}
-            strokeWidth={routeStrokeWidth * 2.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={0.18}
-            strokeDasharray={`${pathLen} ${pathLen}`}
-            animatedProps={lineAnimatedProps}
-          />
+          {treatment === 'signature' && (
+            // Soft paper halo under the route so the polyline pops against any backdrop.
+            <AnimatedPath
+              d={pathD}
+              fill="none"
+              stroke={'#f3ede2'}
+              strokeWidth={routeStrokeWidth * 2.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.3}
+              strokeDasharray={`${pathLen} ${pathLen}`}
+              animatedProps={lineAnimatedProps}
+            />
+          )}
           <AnimatedPath
             d={pathD}
             fill="none"
@@ -285,6 +344,17 @@ export function RouteMap({
           <AnimatedCircle cx={ex} cy={ey} r={5} fill={a} animatedProps={endDotAnimatedProps} />
         </>
       )}
+      {!isEmpty && treatment === 'pace-gradient' && paceSegments.map((seg, i) => (
+        <Path
+          key={i}
+          d={seg.d}
+          fill="none"
+          stroke={seg.color}
+          strokeWidth={routeStrokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
       {!flat && (
         <G transform={`translate(${width - 26},20)`}>
           <SvgText x={0} y={0} fontSize={9} fill={compassFill} textAnchor="middle">
@@ -295,7 +365,7 @@ export function RouteMap({
       )}
       {/* Attribution — required by CartoCDN's terms. Tiny, bottom-left. Only
           shown when tiles are actually rendered (not on the bare path). */}
-      {useTiles && (
+      {tilesOn && useTiles && (
         <SvgText
           x={6}
           y={height - 5}
