@@ -2,28 +2,29 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import { Image, InteractionManager, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { Canvas } from '../canvas/Canvas';
-import type { Activity, Background, Layout, LiveStreams, StickerInstance } from './types';
+import type { LayerStack } from '../layers';
+import type { Activity, Layout, LiveStreams, StickerInstance } from './types';
 
 const W = 44;
 const H = 62;
 
 const cache = new Map<string, string>();
 
-function cacheKey(runId: string, layoutId: string) {
-  return `${runId}::${layoutId}`;
+function cacheKey(runId: string, layoutId: string, photo: string) {
+  return `${runId}::${layoutId}::${photo}`;
 }
 
 interface Props {
   run: Activity;
   layout: Layout;
-  background: Background;
+  layers: LayerStack;
   photoUri: string | null;
   live: LiveStreams;
 }
 
-export const LayoutThumbnail = memo(function LayoutThumbnail({ run, layout, background, photoUri, live }: Props) {
+export const LayoutThumbnail = memo(function LayoutThumbnail({ run, layout, layers, photoUri, live }: Props) {
   const ref = useRef<View>(null);
-  const key = cacheKey(run.id, layout.id);
+  const key = cacheKey(run.id, layout.id, photoUri ? '1' : '0');
   const [uri, setUri] = useState<string | null>(cache.get(key) ?? null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export const LayoutThumbnail = memo(function LayoutThumbnail({ run, layout, back
         layout={layout}
         width={W}
         height={H}
-        background={background}
+        layers={layers}
         photoUri={photoUri}
         stickers={seed}
         live={live}

@@ -71,13 +71,12 @@ export function frameSpecToLayers(frame: FrameSpec | undefined): LayerStack {
       scrim: { mode: 'none', strength: 0 },
     };
   }
-  const hasScrim = frame.scrim !== 'transparent';
   return {
     base: 'ink',
     photo: { enabled: false, opacity: 1, duotone: false, placement: 'full' },
     map: { enabled: true, opacity: frame.mapOpacity, style: frame.mapStyle },
     route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 1 },
-    scrim: { mode: hasScrim ? 'bottom' : 'none', strength: 0.4 },
+    scrim: { mode: 'none', strength: 0 },
   };
 }
 

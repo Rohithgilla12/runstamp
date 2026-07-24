@@ -25,7 +25,6 @@ export type StickerKey =
   | 'map' | 'date' | 'title' | 'place';
 
 export type Surface = '9:16' | '1:1' | '4:5';
-export type Background = 'map' | 'photo' | 'solid';
 
 export interface ScaffoldingProps {
   width: number;

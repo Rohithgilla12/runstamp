@@ -49,9 +49,9 @@ describe('frameSpecToLayers', () => {
     expect(s.scrim.mode).toBe('none');
   });
 
-  it('a transparent-scrim frame yields scrim none; a real scrim yields bottom', () => {
+  it('existing templates carry no layer scrim (their frame overlay handles it)', () => {
+    expect(frameSpecToLayers(FRAMES.postmark).scrim.mode).toBe('none');
     expect(frameSpecToLayers(FRAMES.passport).scrim.mode).toBe('none');
-    expect(frameSpecToLayers(FRAMES.postmark).scrim.mode).toBe('bottom');
   });
 });
 

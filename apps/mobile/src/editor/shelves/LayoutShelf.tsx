@@ -4,18 +4,18 @@ import { useColors } from '../../design/theme';
 import { TText } from '../../design/typography';
 import { LAYOUTS } from '../layouts/registry';
 import { LayoutThumbnail } from '../layouts/LayoutThumbnail';
-import type { Activity, Background, LayoutId, LiveStreams } from '../layouts/types';
+import { LAYER_PRESETS } from '../layers';
+import type { Activity, LayoutId, LiveStreams } from '../layouts/types';
 
 interface Props {
   run: Activity;
   live: LiveStreams;
-  background: Background;
   photoUri: string | null;
   activeId: LayoutId;
   onSelect: (id: LayoutId) => void;
 }
 
-export const LayoutShelf = memo(function LayoutShelf({ run, live, background, photoUri, activeId, onSelect }: Props) {
+export const LayoutShelf = memo(function LayoutShelf({ run, live, photoUri, activeId, onSelect }: Props) {
   const c = useColors();
   const activeName = LAYOUTS.find((l) => l.id === activeId)?.name ?? '';
   return (
@@ -35,7 +35,7 @@ export const LayoutShelf = memo(function LayoutShelf({ run, live, background, ph
                 borderWidth: 1.5,
                 borderColor: active ? c.accent : 'transparent',
               }}>
-                <LayoutThumbnail run={run} layout={l} background={background} photoUri={photoUri} live={live} />
+                <LayoutThumbnail run={run} layout={l} layers={LAYER_PRESETS[l.id]} photoUri={photoUri} live={live} />
               </View>
               <TText style={{ fontSize: 9, color: active ? c.ink : c.ink3, textAlign: 'center', marginTop: 2 }}>{l.name}</TText>
             </Pressable>

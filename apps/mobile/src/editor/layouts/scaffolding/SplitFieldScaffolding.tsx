@@ -6,7 +6,7 @@ import { SPLIT_TOP_FRACTION } from '../../layers';
 import { RunstampMark } from '../../../design/RunstampMark';
 
 const PAPER = '#f3ede2';
-const INK = '#0e110d';
+const INK = '#14110d';
 
 // Split field: perforated seam at the photo/map boundary (top 52%). Photo and
 // map/route bands are composited by the Canvas layer engine in a later task.

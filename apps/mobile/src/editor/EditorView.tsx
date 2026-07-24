@@ -16,7 +16,8 @@ import { Canvas } from './canvas/Canvas';
 import { StatsShelf } from './shelves/StatsShelf';
 import { LayoutShelf } from './shelves/LayoutShelf';
 import { LAYOUTS, layoutById } from './layouts/registry';
-import type { Background, LayoutId, LiveStreams, StickerInstance, StickerKey, Surface } from './layouts/types';
+import { LAYER_PRESETS, type LayerStack } from './layers';
+import type { LayoutId, LiveStreams, StickerInstance, StickerKey, Surface } from './layouts/types';
 import { captureCanvas } from './share/capture';
 import { ShareSheet } from './share/ShareSheet';
 import type { RootStackProps } from '../nav/types';
@@ -43,9 +44,9 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
   }, [streams, realRoute, splits, rawLatLng]);
 
   const [surface, setSurface] = useState<Surface>(defaultSurface);
-  const [bg, setBg] = useState<Background>('map');
+  const [layers, setLayers] = useState<LayerStack>(() => LAYER_PRESETS.signature);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [layoutId, setLayoutId] = useState<LayoutId>('none');
+  const [layoutId, setLayoutId] = useState<LayoutId>('signature');
   const [stickers, setStickers] = useState<StickerInstance[]>([
     { id: 's-distance', key: 'distance', x: 0.5, y: 0.18, scale: 1 },
     { id: 's-pace',     key: 'pace',     x: 0.2, y: 0.78, scale: 1 },
@@ -83,6 +84,7 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
 
   const onPickLayout = useCallback((nextId: LayoutId) => {
     setLayoutId(nextId);
+    setLayers(LAYER_PRESETS[nextId]);
     // Seed the layout's default stickers only onto an empty canvas — read
     // current stickers via the updater so this stays a stable callback.
     setStickers((cur) => {
@@ -109,7 +111,7 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
     });
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
-      setBg('photo');
+      setLayers((l) => ({ ...l, photo: { ...l.photo, enabled: true } }));
     }
   }, []);
 
@@ -118,7 +120,7 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
     setSelected(null);
     setExporting(true);
     try {
-      const uri = await captureCanvas({ canvasRef, background: bg, live, canvasW, canvasH, tileStyle });
+      const uri = await captureCanvas({ canvasRef, layers, live, canvasW, canvasH, tileStyle });
       let size: number | null = null;
       try {
         const info = await FileSystem.getInfoAsync(uri);
@@ -132,7 +134,7 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
     } finally {
       setExporting(false);
     }
-  }, [exporting, bg, live, canvasW, canvasH, tileStyle]);
+  }, [exporting, layers, live, canvasW, canvasH, tileStyle]);
 
   if (!run) {
     return (
@@ -168,18 +170,25 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
             </Pressable>
           ))}
           <View style={{ flex: 1 }} />
-          {(['map', 'photo', 'solid'] as const).map((b) => (
-            <Pressable key={b} onPress={() => {
-              if (b === 'photo' && !photoUri) { pickPhoto(); return; }
-              setBg(b);
-            }} style={{
-              paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8,
-              backgroundColor: bg === b ? c.paper3 : 'transparent',
-              borderWidth: 1, borderColor: c.line,
-            }}>
-              <TText style={{ fontSize: 10.5, color: c.ink2 }}>{b}</TText>
-            </Pressable>
-          ))}
+          {([
+            { key: 'photo' as const, label: 'Photo' },
+            { key: 'map' as const, label: 'Map' },
+            { key: 'route' as const, label: 'Route' },
+          ]).map(({ key, label }) => {
+            const on = layers[key].enabled;
+            return (
+              <Pressable key={key} onPress={() => {
+                if (key === 'photo' && !on && !photoUri) { pickPhoto(); return; }
+                setLayers((l) => ({ ...l, [key]: { ...l[key], enabled: !l[key].enabled } }));
+              }} style={{
+                paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8,
+                backgroundColor: on ? c.paper3 : 'transparent',
+                borderWidth: 1, borderColor: on ? c.ink : c.line,
+              }}>
+                <TText style={{ fontSize: 10.5, color: on ? c.ink : c.ink3 }}>{label}</TText>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={{ paddingHorizontal: CANVAS_PADDING, paddingTop: 14, alignItems: 'center' }}>
@@ -189,7 +198,7 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
             layout={layout}
             width={canvasW}
             height={canvasH}
-            background={bg}
+            layers={layers}
             photoUri={photoUri}
             stickers={stickers}
             live={live}
@@ -207,7 +216,6 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
         <LayoutShelf
           run={run}
           live={live}
-          background={bg}
           photoUri={photoUri}
           activeId={layoutId}
           onSelect={onPickLayout}

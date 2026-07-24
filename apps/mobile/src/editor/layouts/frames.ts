@@ -15,7 +15,7 @@ const SCRIM_SOFT = 'rgba(14,13,11,0.32)';
 
 export const FRAMES: Partial<Record<LayoutId, FrameSpec>> = {
   // Signature: full-bleed photo with a signature route drawn over an ink field.
-  signature:         { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 1, scrim: SCRIM_SOFT },
+  signature:         { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 1, scrim: 'transparent' },
   // Passport window: inset photo "window" on paper, faint map behind.
   'passport-window': { backdrop: PAPER, inset: 14, radius: 3, mapStyle: 'light', mapOpacity: 1, scrim: 'transparent' },
   // Split field: photo band over a map/route band, seam at the boundary.
