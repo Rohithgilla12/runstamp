@@ -94,8 +94,28 @@ const risoSeed: StickerSeed[] = [
   { key: 'date',     x: 0.5, y: 0.82 },
 ];
 
+const signatureSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.30, y: 0.66 },
+  { key: 'distance', x: 0.30, y: 0.76, scale: 1.3 },
+  { key: 'pace',     x: 0.22, y: 0.88 },
+  { key: 'time',     x: 0.5,  y: 0.88 },
+];
+
+const passportWindowSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.30, y: 0.80 },
+  { key: 'distance', x: 0.30, y: 0.88, scale: 1.2 },
+];
+
+const splitFieldSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.28, y: 0.40 },
+  { key: 'distance', x: 0.28, y: 0.46, scale: 1.2 },
+];
+
 export const LAYOUT_META: LayoutMeta[] = [
   { id: 'none',      name: 'None' },
+  { id: 'signature',       name: 'Signature',       seed: signatureSeed },
+  { id: 'passport-window', name: 'Passport window', seed: passportWindowSeed },
+  { id: 'split-field',     name: 'Split field',     seed: splitFieldSeed },
   { id: 'postage',   name: 'Postage',    seed: postageSeed },
   { id: 'postmark',  name: 'Postmark',   seed: postmarkSeed },
   { id: 'boarding',  name: 'Boarding',   seed: boardingSeed },

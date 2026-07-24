@@ -14,7 +14,10 @@ export type LayoutId =
   | 'datestamp'
   | 'halftone'
   | 'cyanotype'
-  | 'riso';
+  | 'riso'
+  | 'signature'
+  | 'passport-window'
+  | 'split-field';
 
 export type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'

@@ -79,8 +79,29 @@ const risoTheme: StickerTheme = {
   eyebrow: { color: SOLAR },
 };
 
+const signatureTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoSemi', letterSpacing: -0.5 },
+  eyebrow: { color: 'rgba(243,237,226,0.7)', letterSpacing: 1.4 },
+};
+
+const passportWindowTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', letterSpacing: -0.5 },
+  eyebrow: { color: SOLAR, letterSpacing: 1.4 },
+};
+
+const splitFieldTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoSemi', letterSpacing: -0.5 },
+  eyebrow: { color: 'rgba(243,237,226,0.7)', letterSpacing: 1.4 },
+};
+
 export const THEMES: Record<LayoutId, StickerTheme> = {
   none: noneTheme,
+  signature: signatureTheme,
+  'passport-window': passportWindowTheme,
+  'split-field': splitFieldTheme,
   postage: postageTheme,
   postmark: postmarkTheme,
   boarding: boardingTheme,

@@ -14,6 +14,12 @@ const PRUSSIAN = '#0d2b45';
 const SCRIM_SOFT = 'rgba(14,13,11,0.32)';
 
 export const FRAMES: Partial<Record<LayoutId, FrameSpec>> = {
+  // Signature: full-bleed photo with a signature route drawn over an ink field.
+  signature:         { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 1, scrim: SCRIM_SOFT },
+  // Passport window: inset photo "window" on paper, faint map behind.
+  'passport-window': { backdrop: PAPER, inset: 14, radius: 3, mapStyle: 'light', mapOpacity: 1, scrim: 'transparent' },
+  // Split field: photo band over a map/route band, seam at the boundary.
+  'split-field':     { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 1, scrim: 'transparent' },
   // Stamp body: dark map fills the inset, paper perforations bite the edge.
   postage:   { backdrop: PAPER,      inset: 14, radius: 2,  mapStyle: 'dark',  mapOpacity: 1,    scrim: SCRIM_SOFT },
   // Postmark cancellation: faint dark map under a big ring + cream serif stats.

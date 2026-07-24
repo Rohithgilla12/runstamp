@@ -83,6 +83,9 @@ export function frameSpecToLayers(frame: FrameSpec | undefined): LayerStack {
 
 export const LAYER_PRESETS: Record<LayoutId, LayerStack> = {
   none: frameSpecToLayers(undefined),
+  signature: signaturePreset(),
+  'passport-window': passportWindowPreset(),
+  'split-field': splitFieldPreset(),
   postage: frameSpecToLayers(FRAMES.postage),
   postmark: frameSpecToLayers(FRAMES.postmark),
   boarding: frameSpecToLayers(FRAMES.boarding),

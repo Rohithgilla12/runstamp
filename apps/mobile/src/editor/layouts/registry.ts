@@ -3,6 +3,9 @@ import { THEMES } from './themes';
 import { FRAMES } from './frames';
 import { LAYOUT_META } from './registry.data';
 import { NoneScaffolding } from './scaffolding/NoneScaffolding';
+import { SignatureScaffolding } from './scaffolding/SignatureScaffolding';
+import { PassportWindowScaffolding } from './scaffolding/PassportWindowScaffolding';
+import { SplitFieldScaffolding } from './scaffolding/SplitFieldScaffolding';
 import { PostageScaffolding } from './scaffolding/PostageScaffolding';
 import { PostmarkScaffolding } from './scaffolding/PostmarkScaffolding';
 import { BoardingScaffolding } from './scaffolding/BoardingScaffolding';
@@ -18,6 +21,9 @@ import { RisoScaffolding } from './scaffolding/RisoScaffolding';
 
 const SCAFFOLDING_BY_ID: Record<LayoutId, Layout['Scaffolding']> = {
   none: NoneScaffolding,
+  signature: SignatureScaffolding,
+  'passport-window': PassportWindowScaffolding,
+  'split-field': SplitFieldScaffolding,
   postage: PostageScaffolding,
   postmark: PostmarkScaffolding,
   boarding: BoardingScaffolding,
