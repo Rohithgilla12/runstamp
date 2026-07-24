@@ -287,7 +287,7 @@ export function RouteMap({
           users see paper, not a transparent rectangle. Skipped entirely in
           tiles-off mode so the route draws over whatever sits beneath it
           (e.g. a photo) in the compositor. */}
-      {tilesOn && useTiles && (
+      {showTiles !== false && (
         <Rect x={0} y={0} width={width} height={height} fill={s.bg} />
       )}
       {tilesOn && useTiles && bbox && (
