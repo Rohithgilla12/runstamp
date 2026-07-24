@@ -1,6 +1,6 @@
 import React, { forwardRef, memo, useMemo } from 'react';
 import { Image, Pressable, View } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '../../design/theme';
 import { useAppState } from '../../state/AppState';
@@ -11,7 +11,7 @@ import { RouteMap } from '../../design/RouteMap';
 import { MapTilesLayer } from '../../design/MapTilesLayer';
 import { DraggableSticker } from './DraggableSticker';
 import { SPLIT_TOP_FRACTION, type LayerStack, type PhotoPlacement } from '../layers';
-import type { BBox } from '../../services/mapTiles';
+import { TILE_ATTRIBUTION, type BBox } from '../../services/mapTiles';
 import type { Activity, Layout, LiveStreams, StickerInstance } from '../layouts/types';
 
 interface Props {
@@ -93,6 +93,9 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
             <Svg width={mr.width} height={mr.height} viewBox={`0 0 ${mr.width} ${mr.height}`}>
               <Rect x={0} y={0} width={mr.width} height={mr.height} fill={layers.map.style === 'dark' ? '#1d1a16' : '#e8e1d1'} />
               <MapTilesLayer bbox={bbox} width={mr.width} height={mr.height} opacity={layers.map.style === 'dark' ? 0.5 : 1} style={tileStyle} />
+              <SvgText x={6} y={mr.height - 5} fontSize={7} fill={layers.map.style === 'dark' ? '#8a8170' : '#75695a'} opacity={0.7} fontFamily="System">
+                {TILE_ATTRIBUTION}
+              </SvgText>
             </Svg>
           </View>
         )}
