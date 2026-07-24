@@ -94,15 +94,21 @@ const description = "View this run on Runstamp.";
 
       <section class="profile-section" id="run-map-section" hidden>
         <header class="section-header">
-          <p class="eyebrow">GPS ROUTE</p>
+          <p class="eyebrow">GPS ROUTE & HEATMAP</p>
           <p class="section-count" id="run-map-count">VOYAGER MAP</p>
         </header>
         <div class="map-wrapper">
           <div class="map-controls-bar">
+            <button type="button" class="map-control-btn" id="map-mode-btn" onclick="toggleMapMode()">HEATMAP: OFF</button>
             <button type="button" class="map-control-btn" id="map-style-btn" onclick="toggleMapStyle()">DARK MAP</button>
             <button type="button" class="map-control-btn" id="map-recenter-btn" onclick="recenterMap()">RECENTER 🎯</button>
           </div>
           <div class="map-container" id="run-map-container"></div>
+          <div class="map-legend-bar" id="map-legend-bar" hidden>
+            <span class="legend-label" id="map-legend-left">SLOW</span>
+            <div class="legend-gradient" id="map-legend-gradient"></div>
+            <span class="legend-label" id="map-legend-right">FAST ⚡</span>
+          </div>
         </div>
       </section>
       
@@ -524,6 +530,34 @@ const description = "View this run on Runstamp.";
       background: var(--ink);
       color: var(--paper);
     }
+    .map-legend-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(243, 237, 226, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      padding: 4px 12px;
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--ink);
+    }
+    .legend-gradient {
+      width: 100px;
+      height: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+    }
+    .legend-label {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
 
     /* Modal */
     .modal-backdrop {
@@ -795,6 +829,10 @@ const description = "View this run on Runstamp.";
       { name: "LIGHT MAP",   url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }
     ];
     let tileLayerInstance = null;
+    let currentMapMode = 0;
+    let routePolylineGroup = null;
+    let savedSamples = [];
+    let savedCleanLL = [];
 
     function toggleMapStyle() {
       if (!mapInstance || !window.L) return;
@@ -810,8 +848,125 @@ const description = "View this run on Runstamp.";
     function recenterMap() {
       if (mapInstance && mapBounds) mapInstance.fitBounds(mapBounds, { padding: [28, 28], maxZoom: 16 });
     }
+    function toggleMapMode() {
+      if (!mapInstance || !window.L || savedCleanLL.length === 0) return;
+      
+      const hasHr = savedSamples.some(s => s.heartrate != null);
+      if (hasHr) {
+        currentMapMode = (currentMapMode + 1) % 3;
+      } else {
+        currentMapMode = (currentMapMode + 1) % 2;
+      }
+
+      const modeBtn = document.getElementById("map-mode-btn");
+      const legendBar = document.getElementById("map-legend-bar");
+      const legendLeft = document.getElementById("map-legend-left");
+      const legendRight = document.getElementById("map-legend-right");
+      const legendGrad = document.getElementById("map-legend-gradient");
+
+      if (currentMapMode === 0) {
+        if (modeBtn) modeBtn.textContent = "HEATMAP: OFF";
+        if (legendBar) legendBar.hidden = true;
+      } else if (currentMapMode === 1) {
+        if (modeBtn) modeBtn.textContent = "HEATMAP: PACE ⚡";
+        if (legendBar) legendBar.hidden = false;
+        if (legendLeft) legendLeft.textContent = "SLOW";
+        if (legendRight) legendRight.textContent = "FAST ⚡";
+        if (legendGrad) legendGrad.style.background = "linear-gradient(to right, #4a7bb0, #4a6b3a, #d49d2a, #e85d2f)";
+      } else if (currentMapMode === 2) {
+        if (modeBtn) modeBtn.textContent = "HEATMAP: HR ZONES 🫀";
+        if (legendBar) legendBar.hidden = false;
+        if (legendLeft) legendLeft.textContent = "Z1 EASY";
+        if (legendRight) legendRight.textContent = "Z5 MAX 🫀";
+        if (legendGrad) legendGrad.style.background = "linear-gradient(to right, #4a7bb0, #4a6b3a, #d49d2a, #e85d2f, #c22d2d)";
+      }
+
+      renderMapRoutePolyline(mapInstance, savedCleanLL, savedSamples, currentMapMode);
+    }
     window.toggleMapStyle = toggleMapStyle;
     window.recenterMap = recenterMap;
+    window.toggleMapMode = toggleMapMode;
+
+    function renderMapRoutePolyline(map, cleanLL, samples, mode) {
+      if (!window.L) return;
+      if (routePolylineGroup) {
+        map.removeLayer(routePolylineGroup);
+      }
+      routePolylineGroup = window.L.layerGroup().addTo(map);
+
+      // Outer dark casing line for high contrast
+      window.L.polyline(cleanLL, {
+         color: '#1c1b18',
+         weight: 6.5,
+         opacity: 0.35,
+         lineCap: 'round',
+         lineJoin: 'round'
+      }).addTo(routePolylineGroup);
+
+      if (mode === 0 || samples.length < 2) {
+        // Standard solid Solar route line
+        window.L.polyline(cleanLL, {
+           color: PALETTE.solar,
+           weight: 3.5,
+           opacity: 0.95,
+           lineCap: 'round',
+           lineJoin: 'round'
+        }).addTo(routePolylineGroup);
+        return;
+      }
+
+      if (mode === 1) {
+        // Pace Heatmap Mode
+        const speeds = samples.map(s => s.speed || 0).filter(sp => sp > 0);
+        const minSpd = Math.min(...speeds) || 1;
+        const maxSpd = Math.max(...speeds) || 5;
+        const spdRange = Math.max(0.1, maxSpd - minSpd);
+
+        for (let i = 0; i < samples.length - 1; i++) {
+          const s1 = samples[i];
+          const s2 = samples[i + 1];
+          if (s1.lat == null || s1.lng == null || s2.lat == null || s2.lng == null) continue;
+
+          const spd = s1.speed || minSpd;
+          const ratio = Math.max(0, Math.min(1, (spd - minSpd) / spdRange));
+          
+          let color = "#4a7bb0"; // Slow blue
+          if (ratio > 0.75) color = "#e85d2f"; // Fast solar
+          else if (ratio > 0.5) color = "#d49d2a"; // Mid-fast gold
+          else if (ratio > 0.25) color = "#4a6b3a"; // Aerobic green
+
+          window.L.polyline([[s1.lat, s1.lng], [s2.lat, s2.lng]], {
+            color: color,
+            weight: 4.5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(routePolylineGroup);
+        }
+      } else if (mode === 2) {
+        // HR Zones Mode
+        for (let i = 0; i < samples.length - 1; i++) {
+          const s1 = samples[i];
+          const s2 = samples[i + 1];
+          if (s1.lat == null || s1.lng == null || s2.lat == null || s2.lng == null) continue;
+
+          const hr = s1.heartrate || 130;
+          let color = "#4a7bb0"; // Z1 (<120)
+          if (hr >= 170) color = "#c22d2d";      // Z5 Max (>170)
+          else if (hr >= 156) color = "#e85d2f"; // Z4 Threshold (156-170)
+          else if (hr >= 141) color = "#d49d2a"; // Z3 Tempo (141-155)
+          else if (hr >= 120) color = "#4a6b3a"; // Z2 Aerobic (120-140)
+
+          window.L.polyline([[s1.lat, s1.lng], [s2.lat, s2.lng]], {
+            color: color,
+            weight: 4.5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(routePolylineGroup);
+        }
+      }
+    }
 
     function renderMapAndChart(run) {
       const { samples, latlngs } = extractStreamData(run);
@@ -845,24 +1000,10 @@ const description = "View this run on Runstamp.";
              bounds.extend(ll);
           }
           mapBounds = bounds;
+          savedCleanLL = cleanLL;
+          savedSamples = samples;
 
-          // Outer dark casing line for high contrast
-          window.L.polyline(cleanLL, {
-             color: '#1c1b18',
-             weight: 6.5,
-             opacity: 0.35,
-             lineCap: 'round',
-             lineJoin: 'round'
-          }).addTo(map);
-
-          // Inner solar route line
-          window.L.polyline(cleanLL, {
-             color: PALETTE.solar,
-             weight: 3.5,
-             opacity: 0.95,
-             lineCap: 'round',
-             lineJoin: 'round'
-          }).addTo(map);
+          renderMapRoutePolyline(map, cleanLL, samples, currentMapMode);
 
           // Add Start & Finish Badges
           const startPin = window.L.divIcon({
