@@ -151,6 +151,46 @@ const airmailSeed: StickerSeed[] = [
   { key: 'time',     x: 0.54, y: 0.87 },
 ];
 
+const journalSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.75, y: 0.575 },
+  { key: 'distance', x: 0.34, y: 0.655, scale: 1.2 },
+  { key: 'pace',     x: 0.28, y: 0.77 },
+  { key: 'time',     x: 0.56, y: 0.77 },
+  { key: 'place',    x: 0.32, y: 0.89 },
+];
+
+const exhibitSeed: StickerSeed[] = [
+  { key: 'title',    x: 0.50, y: 0.70 },
+  { key: 'distance', x: 0.30, y: 0.795, scale: 1.1 },
+  { key: 'pace',     x: 0.58, y: 0.795 },
+  { key: 'time',     x: 0.79, y: 0.795 },
+  { key: 'date',     x: 0.50, y: 0.885 },
+];
+
+const bibSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.28, y: 0.665 },
+  { key: 'date',     x: 0.72, y: 0.665 },
+  { key: 'distance', x: 0.50, y: 0.765, scale: 1.6 },
+  { key: 'pace',     x: 0.25, y: 0.895 },
+  { key: 'time',     x: 0.50, y: 0.895 },
+  { key: 'hr',       x: 0.75, y: 0.895 },
+];
+
+const tagSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.34, y: 0.745 },
+  { key: 'distance', x: 0.36, y: 0.825, scale: 1.15 },
+  { key: 'pace',     x: 0.28, y: 0.905 },
+  { key: 'time',     x: 0.54, y: 0.905 },
+];
+
+const posterSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.50, y: 0.08 },
+  { key: 'place',    x: 0.50, y: 0.60 },
+  { key: 'distance', x: 0.50, y: 0.75, scale: 2.0 },
+  { key: 'pace',     x: 0.34, y: 0.90 },
+  { key: 'time',     x: 0.66, y: 0.90 },
+];
+
 export const LAYOUT_META: LayoutMeta[] = [
   { id: 'none',      name: 'None' },
   { id: 'signature',       name: 'Signature',       seed: signatureSeed },
@@ -161,6 +201,11 @@ export const LAYOUT_META: LayoutMeta[] = [
   { id: 'ticket',    name: 'Ticket',     seed: ticketSeed },
   { id: 'film',      name: 'Film',       seed: filmSeed },
   { id: 'airmail',   name: 'Airmail',    seed: airmailSeed },
+  { id: 'poster',    name: 'Poster',     seed: posterSeed },
+  { id: 'bib',       name: 'Bib',        seed: bibSeed },
+  { id: 'tag',       name: 'Tag',        seed: tagSeed },
+  { id: 'journal',   name: 'Journal',    seed: journalSeed },
+  { id: 'exhibit',   name: 'Exhibit',    seed: exhibitSeed },
   { id: 'postage',   name: 'Postage',    seed: postageSeed },
   { id: 'postmark',  name: 'Postmark',   seed: postmarkSeed },
   { id: 'boarding',  name: 'Boarding',   seed: boardingSeed },

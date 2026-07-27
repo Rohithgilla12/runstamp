@@ -11,6 +11,11 @@ import { PostcardScaffolding } from './scaffolding/PostcardScaffolding';
 import { TicketScaffolding } from './scaffolding/TicketScaffolding';
 import { FilmScaffolding } from './scaffolding/FilmScaffolding';
 import { AirmailScaffolding } from './scaffolding/AirmailScaffolding';
+import { JournalScaffolding } from './scaffolding/JournalScaffolding';
+import { ExhibitScaffolding } from './scaffolding/ExhibitScaffolding';
+import { BibScaffolding } from './scaffolding/BibScaffolding';
+import { TagScaffolding } from './scaffolding/TagScaffolding';
+import { PosterScaffolding } from './scaffolding/PosterScaffolding';
 import { PostageScaffolding } from './scaffolding/PostageScaffolding';
 import { PostmarkScaffolding } from './scaffolding/PostmarkScaffolding';
 import { BoardingScaffolding } from './scaffolding/BoardingScaffolding';
@@ -34,6 +39,11 @@ const SCAFFOLDING_BY_ID: Record<LayoutId, Layout['Scaffolding']> = {
   ticket: TicketScaffolding,
   film: FilmScaffolding,
   airmail: AirmailScaffolding,
+  journal: JournalScaffolding,
+  exhibit: ExhibitScaffolding,
+  bib: BibScaffolding,
+  tag: TagScaffolding,
+  poster: PosterScaffolding,
   postage: PostageScaffolding,
   postmark: PostmarkScaffolding,
   boarding: BoardingScaffolding,

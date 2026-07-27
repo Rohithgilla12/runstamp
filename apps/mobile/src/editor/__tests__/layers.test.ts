@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   signaturePreset, passportWindowPreset, splitFieldPreset,
   polaroidPreset, postcardPreset, ticketPreset, filmPreset, airmailPreset,
+  journalPreset, exhibitPreset, bibPreset, tagPreset, posterPreset,
   frameSpecToLayers, paceToColor, LAYER_PRESETS,
   SPLIT_TOP_FRACTION, TICKET_TOP_FRACTION,
   scrimStepToLayer, layerToScrimStep, isLayerStackDirty,
@@ -73,6 +74,34 @@ describe('presets', () => {
     expect(s.route.enabled).toBe(true);
     expect(s.route.treatment).toBe('signature');
     expect(s.scrim.mode).toBe('bottom');
+  });
+
+  it('journal = photo region-top over a ruled paper page', () => {
+    const s = journalPreset();
+    expect(s.base).toBe('paper');
+    expect(s.photo.placement).toBe('region-top');
+    expect(s.map.enabled).toBe(false);
+  });
+
+  it('exhibit and poster = full photo with a bottom scrim for the caption', () => {
+    for (const s of [exhibitPreset(), posterPreset()]) {
+      expect(s.photo.placement).toBe('full');
+      expect(s.map.enabled).toBe(false);
+      expect(s.scrim.mode).toBe('bottom');
+    }
+  });
+
+  it('bib = full photo, panel supplies contrast so no scrim', () => {
+    const s = bibPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('tag = full photo with the route drawn over it, no scrim', () => {
+    const s = tagPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.scrim.mode).toBe('none');
   });
 });
 

@@ -22,7 +22,12 @@ export type LayoutId =
   | 'postcard'
   | 'ticket'
   | 'film'
-  | 'airmail';
+  | 'airmail'
+  | 'journal'
+  | 'exhibit'
+  | 'bib'
+  | 'tag'
+  | 'poster';
 
 export type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'

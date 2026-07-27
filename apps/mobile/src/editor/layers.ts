@@ -104,6 +104,56 @@ export function airmailPreset(): LayerStack {
   };
 }
 
+export function journalPreset(): LayerStack {
+  return {
+    base: 'paper',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'region-top' },
+    map: { enabled: false, opacity: 1, style: 'light' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 0.85 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function exhibitPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 1 },
+    scrim: { mode: 'bottom', strength: 0.55 },
+  };
+}
+
+export function bibPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 1 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function tagPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 0.9 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function posterPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 1 },
+    scrim: { mode: 'bottom', strength: 0.85 },
+  };
+}
+
 // Existing templates + 'none' derive their layer stack from FrameSpec so they
 // render as before: map leads, route on, no photo. A frame whose scrim is
 // 'transparent' (paper-forward layouts) maps to scrim 'none'.
@@ -136,6 +186,11 @@ export const LAYER_PRESETS: Record<LayoutId, LayerStack> = {
   ticket: ticketPreset(),
   film: filmPreset(),
   airmail: airmailPreset(),
+  journal: journalPreset(),
+  exhibit: exhibitPreset(),
+  bib: bibPreset(),
+  tag: tagPreset(),
+  poster: posterPreset(),
   postage: frameSpecToLayers(FRAMES.postage),
   postmark: frameSpecToLayers(FRAMES.postmark),
   boarding: frameSpecToLayers(FRAMES.boarding),
