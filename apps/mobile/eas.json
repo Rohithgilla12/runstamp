@@ -9,7 +9,8 @@
       "node": "24.14.0",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://runstamp-api.gilla.fun"
+        "EXPO_PUBLIC_API_BASE_URL": "https://runstamp-api.gilla.fun",
+        "EXPO_PUBLIC_NEW_EDITOR": "1"
       },
       "ios": {
         "resourceClass": "m-medium"
