@@ -15,8 +15,12 @@ import { Icon } from '../design/Icon';
 import { Canvas } from './canvas/Canvas';
 import { StatsShelf } from './shelves/StatsShelf';
 import { LayoutShelf } from './shelves/LayoutShelf';
+import { LayerShelf } from './shelves/LayerShelf';
 import { LAYOUTS, layoutById } from './layouts/registry';
-import { LAYER_PRESETS, type LayerStack } from './layers';
+import {
+  LAYER_PRESETS, isLayerStackDirty, scrimStepToLayer,
+  type BaseFill, type LayerStack, type RouteTreatment, type ScrimStep,
+} from './layers';
 import type { LayoutId, LiveStreams, StickerInstance, StickerKey, Surface } from './layouts/types';
 import { captureCanvas } from './share/capture';
 import { ShareSheet } from './share/ShareSheet';
@@ -100,6 +104,22 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
       }));
     });
   }, []);
+
+  const setBase = useCallback((base: BaseFill) =>
+    setLayers((l) => ({ ...l, base })), []);
+  const setTreatment = useCallback((treatment: RouteTreatment) =>
+    setLayers((l) => ({ ...l, route: { ...l.route, treatment } })), []);
+  const setMapStyle = useCallback((style: 'light' | 'dark') =>
+    setLayers((l) => ({ ...l, map: { ...l.map, style } })), []);
+  const setScrimStep = useCallback((step: ScrimStep) =>
+    setLayers((l) => ({ ...l, scrim: scrimStepToLayer(step, l.scrim.mode) })), []);
+  const resetLayers = useCallback(() => setLayers(LAYER_PRESETS[layoutId]), [layoutId]);
+
+  const layersDirty = useMemo(
+    () => isLayerStackDirty(layers, LAYER_PRESETS[layoutId]),
+    [layers, layoutId],
+  );
+  const hasPace = live.pace != null && live.pace.length > 1;
 
   const pickPhoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -219,6 +239,17 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
           photoUri={photoUri}
           activeId={layoutId}
           onSelect={onPickLayout}
+        />
+
+        <LayerShelf
+          layers={layers}
+          hasPace={hasPace}
+          dirty={layersDirty}
+          onBase={setBase}
+          onTreatment={setTreatment}
+          onScrimStep={setScrimStep}
+          onMapStyle={setMapStyle}
+          onReset={resetLayers}
         />
 
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 14 }}>

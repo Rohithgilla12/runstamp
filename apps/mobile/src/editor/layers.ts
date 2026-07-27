@@ -1,7 +1,7 @@
 import type { FrameSpec, LayoutId } from './layouts/types';
 import { FRAMES } from './layouts/frames';
 
-export type BaseFill = 'paper' | 'ink' | 'solar' | 'accent';
+export type BaseFill = 'paper' | 'ink' | 'solar';
 export type RouteTreatment = 'signature' | 'pace-gradient' | 'plain';
 export type ScrimMode = 'bottom' | 'top' | 'full' | 'none';
 export type PhotoPlacement = 'full' | 'inset' | 'region-top';
@@ -48,16 +48,6 @@ export function splitFieldPreset(): LayerStack {
   };
 }
 
-export function duotonePreset(): LayerStack {
-  return {
-    base: 'ink',
-    photo: { enabled: true, opacity: 1, duotone: true, placement: 'full' },
-    map: { enabled: false, opacity: 1, style: 'dark' },
-    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 1 },
-    scrim: { mode: 'full', strength: 0.35 },
-  };
-}
-
 // Existing templates + 'none' derive their layer stack from FrameSpec so they
 // render as before: map leads, route on, no photo. A frame whose scrim is
 // 'transparent' (paper-forward layouts) maps to scrim 'none'.
@@ -98,6 +88,43 @@ export const LAYER_PRESETS: Record<LayoutId, LayerStack> = {
   cyanotype: frameSpecToLayers(FRAMES.cyanotype),
   riso: frameSpecToLayers(FRAMES.riso),
 };
+
+export type ScrimStep = 'none' | 'soft' | 'medium' | 'strong';
+
+const STEP_STRENGTH: Record<Exclude<ScrimStep, 'none'>, number> = {
+  soft: 0.4,
+  medium: 0.7,
+  strong: 0.9,
+};
+
+// scrim.mode carries direction (top/bottom/full), which belongs to the layout
+// preset. The shelf only moves strength, so an on-step keeps the preset's
+// direction and a preset with no scrim gets the common bottom fade.
+export function scrimStepToLayer(step: ScrimStep, currentMode: ScrimMode): LayerStack['scrim'] {
+  if (step === 'none') return { mode: 'none', strength: 0 };
+  return {
+    mode: currentMode === 'none' ? 'bottom' : currentMode,
+    strength: STEP_STRENGTH[step],
+  };
+}
+
+export function layerToScrimStep(scrim: LayerStack['scrim']): ScrimStep {
+  if (scrim.mode === 'none' || scrim.strength <= 0) return 'none';
+  if (scrim.strength < 0.55) return 'soft';
+  if (scrim.strength < 0.8) return 'medium';
+  return 'strong';
+}
+
+// Only the four fields the shelf can edit. Scrim compares by step so a preset
+// strength that lands mid-bucket doesn't read as a user edit.
+export function isLayerStackDirty(current: LayerStack, preset: LayerStack): boolean {
+  return (
+    current.base !== preset.base ||
+    current.route.treatment !== preset.route.treatment ||
+    current.map.style !== preset.map.style ||
+    layerToScrimStep(current.scrim) !== layerToScrimStep(preset.scrim)
+  );
+}
 
 const MOSS = { r: 0x4a, g: 0x6b, b: 0x3a };
 const SOLAR = { r: 0xe8, g: 0x5d, b: 0x2f };

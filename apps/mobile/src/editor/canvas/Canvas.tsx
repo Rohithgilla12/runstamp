@@ -175,7 +175,6 @@ function baseColor(base: LayerStack['base'], c: { paper: string; ink: string; ac
   switch (base) {
     case 'paper': return c.paper;
     case 'solar': return c.accent;
-    case 'accent': return c.accent;
     case 'ink':
     default: return c.ink;
   }

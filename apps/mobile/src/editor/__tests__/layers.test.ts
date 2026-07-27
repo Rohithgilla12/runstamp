@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   signaturePreset, passportWindowPreset, splitFieldPreset,
   frameSpecToLayers, paceToColor, LAYER_PRESETS, SPLIT_TOP_FRACTION,
+  scrimStepToLayer, layerToScrimStep, isLayerStackDirty,
+  type ScrimStep, type ScrimMode,
 } from '../layers';
 import { FRAMES } from '../layouts/frames';
 import { LAYOUT_META } from '../layouts/registry.data';
@@ -58,6 +60,104 @@ describe('frameSpecToLayers', () => {
 describe('LAYER_PRESETS', () => {
   it('has an entry for every current layout id', () => {
     for (const m of LAYOUT_META) expect(LAYER_PRESETS[m.id]).toBeTruthy();
+  });
+});
+
+describe('scrim steps', () => {
+  const DIRECTIONS: ScrimMode[] = ['top', 'bottom', 'full'];
+  const STEPS: ScrimStep[] = ['none', 'soft', 'medium', 'strong'];
+
+  it('round-trips every step across every direction', () => {
+    for (const dir of DIRECTIONS) {
+      for (const step of STEPS) {
+        expect(layerToScrimStep(scrimStepToLayer(step, dir))).toBe(step);
+      }
+    }
+  });
+
+  it('preserves the preset direction for the three on-steps', () => {
+    for (const dir of DIRECTIONS) {
+      for (const step of ['soft', 'medium', 'strong'] as const) {
+        expect(scrimStepToLayer(step, dir).mode).toBe(dir);
+      }
+    }
+  });
+
+  it('none zeroes the strength and turns the mode off', () => {
+    for (const dir of DIRECTIONS) {
+      expect(scrimStepToLayer('none', dir)).toEqual({ mode: 'none', strength: 0 });
+    }
+  });
+
+  it('an on-step applied to a none preset falls back to bottom', () => {
+    for (const step of ['soft', 'medium', 'strong'] as const) {
+      expect(scrimStepToLayer(step, 'none').mode).toBe('bottom');
+    }
+  });
+
+  it('strength increases monotonically across the on-steps', () => {
+    const soft = scrimStepToLayer('soft', 'bottom').strength;
+    const medium = scrimStepToLayer('medium', 'bottom').strength;
+    const strong = scrimStepToLayer('strong', 'bottom').strength;
+    expect(soft).toBeGreaterThan(0);
+    expect(medium).toBeGreaterThan(soft);
+    expect(strong).toBeGreaterThan(medium);
+  });
+
+  it('reads mode none as the none step whatever the leftover strength', () => {
+    expect(layerToScrimStep({ mode: 'none', strength: 0.9 })).toBe('none');
+  });
+
+  it('reads a zero strength as the none step whatever the mode', () => {
+    expect(layerToScrimStep({ mode: 'bottom', strength: 0 })).toBe('none');
+  });
+
+  it('buckets arbitrary preset strengths', () => {
+    expect(layerToScrimStep({ mode: 'bottom', strength: 0.35 })).toBe('soft');
+    expect(layerToScrimStep({ mode: 'bottom', strength: 0.7 })).toBe('medium');
+    expect(layerToScrimStep({ mode: 'bottom', strength: 0.85 })).toBe('strong');
+  });
+});
+
+describe('isLayerStackDirty', () => {
+  it('is false for every preset compared against itself', () => {
+    for (const m of LAYOUT_META) {
+      const preset = LAYER_PRESETS[m.id];
+      expect(isLayerStackDirty(preset, preset)).toBe(false);
+    }
+  });
+
+  it('is false for a structurally equal copy', () => {
+    const preset = signaturePreset();
+    expect(isLayerStackDirty(signaturePreset(), preset)).toBe(false);
+  });
+
+  it('flags each of the four user-editable fields', () => {
+    const preset = signaturePreset();
+    expect(isLayerStackDirty({ ...preset, base: 'paper' }, preset)).toBe(true);
+    expect(isLayerStackDirty(
+      { ...preset, route: { ...preset.route, treatment: 'plain' } }, preset)).toBe(true);
+    expect(isLayerStackDirty(
+      { ...preset, scrim: { mode: 'none', strength: 0 } }, preset)).toBe(true);
+    expect(isLayerStackDirty(
+      { ...preset, map: { ...preset.map, style: 'light' } }, preset)).toBe(true);
+  });
+
+  it('ignores fields the shelf cannot edit', () => {
+    const preset = signaturePreset();
+    expect(isLayerStackDirty(
+      { ...preset, route: { ...preset.route, strokeScale: 2 } }, preset)).toBe(false);
+    expect(isLayerStackDirty(
+      { ...preset, photo: { ...preset.photo, placement: 'inset' } }, preset)).toBe(false);
+    expect(isLayerStackDirty(
+      { ...preset, map: { ...preset.map, opacity: 0.3 } }, preset)).toBe(false);
+  });
+
+  it('treats a scrim strength change within the same step as clean', () => {
+    const preset = signaturePreset();
+    const sameStep = { ...preset, scrim: { ...preset.scrim, strength: 0.88 } };
+    expect(layerToScrimStep(sameStep.scrim)).toBe(layerToScrimStep(preset.scrim));
+    expect(isLayerStackDirty(sameStep, preset)).toBe(false);
   });
 });
 
