@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   signaturePreset, passportWindowPreset, splitFieldPreset,
-  frameSpecToLayers, paceToColor, LAYER_PRESETS, SPLIT_TOP_FRACTION,
+  polaroidPreset, postcardPreset, ticketPreset, filmPreset, airmailPreset,
+  frameSpecToLayers, paceToColor, LAYER_PRESETS,
+  SPLIT_TOP_FRACTION, TICKET_TOP_FRACTION,
   scrimStepToLayer, layerToScrimStep, isLayerStackDirty,
   type ScrimStep, type ScrimMode,
 } from '../layers';
@@ -32,6 +34,45 @@ describe('presets', () => {
     expect(s.map.enabled).toBe(true);
     expect(SPLIT_TOP_FRACTION).toBeGreaterThan(0);
     expect(SPLIT_TOP_FRACTION).toBeLessThan(1);
+  });
+
+  it('polaroid = photo polaroid print / map off / route off / no scrim', () => {
+    const s = polaroidPreset();
+    expect(s.photo.enabled).toBe(true);
+    expect(s.photo.placement).toBe('polaroid');
+    expect(s.map.enabled).toBe(false);
+    expect(s.route.enabled).toBe(false);
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('postcard = photo region-top over a paper back', () => {
+    const s = postcardPreset();
+    expect(s.base).toBe('paper');
+    expect(s.photo.placement).toBe('region-top');
+    expect(s.map.enabled).toBe(false);
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('ticket = tall photo band above the paper stub', () => {
+    const s = ticketPreset();
+    expect(s.photo.placement).toBe('ticket-top');
+    expect(TICKET_TOP_FRACTION).toBeGreaterThan(SPLIT_TOP_FRACTION);
+    expect(TICKET_TOP_FRACTION).toBeLessThan(1);
+  });
+
+  it('film = full photo / bottom scrim for the stat block', () => {
+    const s = filmPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.map.enabled).toBe(false);
+    expect(s.scrim.mode).toBe('bottom');
+  });
+
+  it('airmail = full photo with the signature route drawn over it', () => {
+    const s = airmailPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.route.treatment).toBe('signature');
+    expect(s.scrim.mode).toBe('bottom');
   });
 });
 

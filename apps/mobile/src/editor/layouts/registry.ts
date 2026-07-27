@@ -6,6 +6,11 @@ import { NoneScaffolding } from './scaffolding/NoneScaffolding';
 import { SignatureScaffolding } from './scaffolding/SignatureScaffolding';
 import { PassportWindowScaffolding } from './scaffolding/PassportWindowScaffolding';
 import { SplitFieldScaffolding } from './scaffolding/SplitFieldScaffolding';
+import { PolaroidScaffolding } from './scaffolding/PolaroidScaffolding';
+import { PostcardScaffolding } from './scaffolding/PostcardScaffolding';
+import { TicketScaffolding } from './scaffolding/TicketScaffolding';
+import { FilmScaffolding } from './scaffolding/FilmScaffolding';
+import { AirmailScaffolding } from './scaffolding/AirmailScaffolding';
 import { PostageScaffolding } from './scaffolding/PostageScaffolding';
 import { PostmarkScaffolding } from './scaffolding/PostmarkScaffolding';
 import { BoardingScaffolding } from './scaffolding/BoardingScaffolding';
@@ -24,6 +29,11 @@ const SCAFFOLDING_BY_ID: Record<LayoutId, Layout['Scaffolding']> = {
   signature: SignatureScaffolding,
   'passport-window': PassportWindowScaffolding,
   'split-field': SplitFieldScaffolding,
+  polaroid: PolaroidScaffolding,
+  postcard: PostcardScaffolding,
+  ticket: TicketScaffolding,
+  film: FilmScaffolding,
+  airmail: AirmailScaffolding,
   postage: PostageScaffolding,
   postmark: PostmarkScaffolding,
   boarding: BoardingScaffolding,

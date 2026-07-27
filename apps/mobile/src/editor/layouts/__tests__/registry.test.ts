@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { LAYOUT_META } from '../registry.data';
 
 describe('LAYOUT_META', () => {
-  it('contains 16 layouts', () => {
-    expect(LAYOUT_META).toHaveLength(16);
+  it('contains 21 layouts', () => {
+    expect(LAYOUT_META).toHaveLength(21);
   });
 
   it('has unique ids', () => {

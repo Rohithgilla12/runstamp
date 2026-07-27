@@ -4,7 +4,7 @@ import { FRAMES } from './layouts/frames';
 export type BaseFill = 'paper' | 'ink' | 'solar';
 export type RouteTreatment = 'signature' | 'pace-gradient' | 'plain';
 export type ScrimMode = 'bottom' | 'top' | 'full' | 'none';
-export type PhotoPlacement = 'full' | 'inset' | 'region-top';
+export type PhotoPlacement = 'full' | 'inset' | 'region-top' | 'ticket-top' | 'polaroid';
 
 export interface LayerStack {
   base: BaseFill;
@@ -17,6 +17,12 @@ export interface LayerStack {
 // Photo occupies the top 52% of the canvas in the Split field layout; the
 // map+route band owns the rest. Shared by the scaffolding and the compositor.
 export const SPLIT_TOP_FRACTION = 0.52;
+
+// Ticket keeps a near-full photo above a slim paper stub for the stat row.
+export const TICKET_TOP_FRACTION = 0.78;
+
+// Postcard reuses the split band boundary: photo on top, paper "back" below.
+export const POSTCARD_TOP_FRACTION = SPLIT_TOP_FRACTION;
 
 export function signaturePreset(): LayerStack {
   return {
@@ -48,6 +54,56 @@ export function splitFieldPreset(): LayerStack {
   };
 }
 
+export function polaroidPreset(): LayerStack {
+  return {
+    base: 'paper',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'polaroid' },
+    map: { enabled: false, opacity: 1, style: 'light' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 1 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function postcardPreset(): LayerStack {
+  return {
+    base: 'paper',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'region-top' },
+    map: { enabled: false, opacity: 1, style: 'light' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 0.85 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function ticketPreset(): LayerStack {
+  return {
+    base: 'paper',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'ticket-top' },
+    map: { enabled: false, opacity: 1, style: 'light' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 0.85 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function filmPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 1 },
+    scrim: { mode: 'bottom', strength: 0.7 },
+  };
+}
+
+export function airmailPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 0.9 },
+    scrim: { mode: 'bottom', strength: 0.6 },
+  };
+}
+
 // Existing templates + 'none' derive their layer stack from FrameSpec so they
 // render as before: map leads, route on, no photo. A frame whose scrim is
 // 'transparent' (paper-forward layouts) maps to scrim 'none'.
@@ -75,6 +131,11 @@ export const LAYER_PRESETS: Record<LayoutId, LayerStack> = {
   signature: signaturePreset(),
   'passport-window': passportWindowPreset(),
   'split-field': splitFieldPreset(),
+  polaroid: polaroidPreset(),
+  postcard: postcardPreset(),
+  ticket: ticketPreset(),
+  film: filmPreset(),
+  airmail: airmailPreset(),
   postage: frameSpecToLayers(FRAMES.postage),
   postmark: frameSpecToLayers(FRAMES.postmark),
   boarding: frameSpecToLayers(FRAMES.boarding),

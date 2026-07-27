@@ -10,7 +10,7 @@ import { TText } from '../../design/typography';
 import { RouteMap } from '../../design/RouteMap';
 import { MapTilesLayer } from '../../design/MapTilesLayer';
 import { DraggableSticker } from './DraggableSticker';
-import { SPLIT_TOP_FRACTION, type LayerStack, type PhotoPlacement } from '../layers';
+import { SPLIT_TOP_FRACTION, TICKET_TOP_FRACTION, type LayerStack, type PhotoPlacement } from '../layers';
 import { TILE_ATTRIBUTION, type BBox } from '../../services/mapTiles';
 import type { Activity, Layout, LiveStreams, StickerInstance } from '../layouts/types';
 
@@ -64,6 +64,7 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
   const placement = layers.photo.placement;
   const pr = photoRegion(placement, bw, bh);
   const mr = mapRegion(placement, bw, bh);
+  const pol = polaroidRegion(bw, bh);
 
   return (
     <View ref={ref} collapsable={false} style={{ width, height, borderRadius: 18, overflow: 'hidden', backgroundColor: f ? f.backdrop : c.ink, position: 'relative' }}>
@@ -71,8 +72,8 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
         {/* base fill */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: baseColor(layers.base, c) }} />
 
-        {/* photo — full or region-top band (inset Polaroid renders on top, later) */}
-        {layers.photo.enabled && placement !== 'inset' && (
+        {/* photo — full or top band (inset/polaroid prints render on top, below) */}
+        {layers.photo.enabled && placement !== 'inset' && placement !== 'polaroid' && (
           photoUri ? (
             <Image source={{ uri: photoUri }} resizeMode="cover"
               style={{ position: 'absolute', top: pr.top, left: pr.left, width: pr.width, height: pr.height, opacity: layers.photo.opacity }} />
@@ -120,6 +121,22 @@ export const Canvas = memo(forwardRef<View, Props>(function Canvas(
             <RouteMap rawLatLng={live.rawLatLng} showTiles={false} treatment={layers.route.treatment} pace={live.pace}
               width={mr.width} height={mr.height} accent={c.accent} routeStrokeWidth={4 * layers.route.strokeScale} animate={!frozen} flat />
           </View>
+        )}
+
+        {/* big centred instant print — sits on the paper backdrop (Polaroid) */}
+        {layers.photo.enabled && placement === 'polaroid' && (
+          photoUri ? (
+            <View style={{ position: 'absolute', top: pol.top, left: pol.left, width: pol.width, transform: [{ rotate: '-1.6deg' }], backgroundColor: '#faf6ec', padding: pol.pad, paddingBottom: pol.pad * 4.6, borderRadius: 2, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 10 } }}>
+              <Image source={{ uri: photoUri }} resizeMode="cover" style={{ width: '100%', aspectRatio: 1, borderRadius: 1 }} />
+            </View>
+          ) : (!frozen && (
+            <Pressable onPress={onTapPickPhoto} style={{ position: 'absolute', top: pol.top, left: pol.left, width: pol.width, aspectRatio: 0.82, borderWidth: 1, borderColor: 'rgba(20,17,13,0.3)', borderStyle: 'dashed', borderRadius: 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,17,13,0.05)' }}>
+              <View style={{ alignItems: 'center', gap: 6 }}>
+                <Icon.cam size={26} color="rgba(20,17,13,0.45)" />
+                <TText variant="mono" style={{ fontSize: 11, color: 'rgba(20,17,13,0.45)' }}>TAP TO UPLOAD</TText>
+              </View>
+            </Pressable>
+          ))
         )}
 
         {/* inset Polaroid photo — sits on top of the map (Passport window) */}
@@ -180,15 +197,22 @@ function baseColor(base: LayerStack['base'], c: { paper: string; ink: string; ac
   }
 }
 
-// Photo region: 'full'/'inset' fill the frame; 'region-top' takes the top band.
+// Photo region: 'full'/'inset' fill the frame; the band placements take the top.
 function photoRegion(p: PhotoPlacement, w: number, h: number) {
   if (p === 'region-top') return { top: 0, left: 0, width: w, height: h * SPLIT_TOP_FRACTION };
+  if (p === 'ticket-top') return { top: 0, left: 0, width: w, height: h * TICKET_TOP_FRACTION };
   return { top: 0, left: 0, width: w, height: h };
 }
-// Map/route region: full frame, except 'region-top' pushes it to the bottom band.
+// Map/route region: full frame, except band placements push it below the photo.
 function mapRegion(p: PhotoPlacement, w: number, h: number) {
   if (p === 'region-top') return { top: h * SPLIT_TOP_FRACTION, left: 0, width: w, height: h * (1 - SPLIT_TOP_FRACTION) };
+  if (p === 'ticket-top') return { top: h * TICKET_TOP_FRACTION, left: 0, width: w, height: h * (1 - TICKET_TOP_FRACTION) };
   return { top: 0, left: 0, width: w, height: h };
+}
+// Centred instant print: width-led on tall surfaces, height-led on square ones.
+function polaroidRegion(w: number, h: number) {
+  const width = Math.min(w * 0.86, h * 0.62);
+  return { width, left: (w - width) / 2, top: h * 0.05, pad: Math.max(6, width * 0.035) };
 }
 function scrimLocations(mode: LayerStack['scrim']['mode']): [number, number] {
   if (mode === 'top') return [0, 0.34];
