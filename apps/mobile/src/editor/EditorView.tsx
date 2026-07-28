@@ -24,6 +24,7 @@ import {
 import type { LayoutId, LiveStreams, StickerInstance, StickerKey, Surface } from './layouts/types';
 import { captureCanvas } from './share/capture';
 import { ShareSheet } from './share/ShareSheet';
+import { RouteFilmLauncher } from '../components/RouteFilmLauncher';
 import type { RootStackProps } from '../nav/types';
 
 const CANVAS_PADDING = 16;
@@ -31,7 +32,7 @@ const CANVAS_PADDING = 16;
 export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { defaultSurface, tileStyle } = useAppState();
+  const { defaultSurface, tileStyle, units } = useAppState();
   const id = route.params?.id;
   const { activities, loading } = useActivities();
   const run = useMemo(
@@ -268,6 +269,16 @@ export function EditorView({ route, navigation }: RootStackProps<'Editor'>) {
             <Icon.download size={15} color={c.paper} />
             <TText style={{ fontSize: 14, color: c.paper, fontWeight: '500' }}>{exporting ? 'Capturing…' : 'Save & Share'}</TText>
           </Pressable>
+        </View>
+
+        <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+          <RouteFilmLauncher
+            run={run}
+            rawLatLng={live.rawLatLng}
+            units={units}
+            streamHr={live.hr}
+            streamPace={live.pace}
+          />
         </View>
       </ScrollView>
 
