@@ -111,11 +111,101 @@ const splitFieldSeed: StickerSeed[] = [
   { key: 'distance', x: 0.28, y: 0.46, scale: 1.2 },
 ];
 
+const polaroidSeed: StickerSeed[] = [
+  { key: 'title',    x: 0.50, y: 0.665 },
+  { key: 'distance', x: 0.26, y: 0.765, scale: 1.1 },
+  { key: 'pace',     x: 0.56, y: 0.765 },
+  { key: 'time',     x: 0.83, y: 0.765 },
+  { key: 'date',     x: 0.50, y: 0.875 },
+];
+
+const postcardSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.28, y: 0.60 },
+  { key: 'distance', x: 0.28, y: 0.695, scale: 1.25 },
+  { key: 'pace',     x: 0.22, y: 0.825 },
+  { key: 'time',     x: 0.48, y: 0.825 },
+  { key: 'date',     x: 0.80, y: 0.76 },
+];
+
+const ticketSeed: StickerSeed[] = [
+  { key: 'distance', x: 0.22, y: 0.845, scale: 1.15 },
+  { key: 'pace',     x: 0.55, y: 0.845 },
+  { key: 'time',     x: 0.80, y: 0.845 },
+  { key: 'place',    x: 0.26, y: 0.945 },
+  { key: 'date',     x: 0.74, y: 0.945 },
+];
+
+const filmSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.50, y: 0.10 },
+  { key: 'distance', x: 0.50, y: 0.70, scale: 1.35 },
+  { key: 'pace',     x: 0.34, y: 0.83 },
+  { key: 'time',     x: 0.66, y: 0.83 },
+  { key: 'date',     x: 0.50, y: 0.915 },
+];
+
+const airmailSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.74, y: 0.12 },
+  { key: 'place',    x: 0.32, y: 0.64 },
+  { key: 'distance', x: 0.33, y: 0.73, scale: 1.3 },
+  { key: 'pace',     x: 0.26, y: 0.87 },
+  { key: 'time',     x: 0.54, y: 0.87 },
+];
+
+const journalSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.75, y: 0.575 },
+  { key: 'distance', x: 0.34, y: 0.655, scale: 1.2 },
+  { key: 'pace',     x: 0.28, y: 0.77 },
+  { key: 'time',     x: 0.56, y: 0.77 },
+  { key: 'place',    x: 0.32, y: 0.89 },
+];
+
+const exhibitSeed: StickerSeed[] = [
+  { key: 'title',    x: 0.50, y: 0.70 },
+  { key: 'distance', x: 0.30, y: 0.795, scale: 1.1 },
+  { key: 'pace',     x: 0.58, y: 0.795 },
+  { key: 'time',     x: 0.79, y: 0.795 },
+  { key: 'date',     x: 0.50, y: 0.885 },
+];
+
+const bibSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.28, y: 0.665 },
+  { key: 'date',     x: 0.72, y: 0.665 },
+  { key: 'distance', x: 0.50, y: 0.765, scale: 1.6 },
+  { key: 'pace',     x: 0.25, y: 0.895 },
+  { key: 'time',     x: 0.50, y: 0.895 },
+  { key: 'hr',       x: 0.75, y: 0.895 },
+];
+
+const tagSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.34, y: 0.745 },
+  { key: 'distance', x: 0.36, y: 0.825, scale: 1.15 },
+  { key: 'pace',     x: 0.28, y: 0.905 },
+  { key: 'time',     x: 0.54, y: 0.905 },
+];
+
+const posterSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.50, y: 0.08 },
+  { key: 'place',    x: 0.50, y: 0.60 },
+  { key: 'distance', x: 0.50, y: 0.75, scale: 2.0 },
+  { key: 'pace',     x: 0.34, y: 0.90 },
+  { key: 'time',     x: 0.66, y: 0.90 },
+];
+
 export const LAYOUT_META: LayoutMeta[] = [
   { id: 'none',      name: 'None' },
   { id: 'signature',       name: 'Signature',       seed: signatureSeed },
   { id: 'passport-window', name: 'Passport window', seed: passportWindowSeed },
   { id: 'split-field',     name: 'Split field',     seed: splitFieldSeed },
+  { id: 'polaroid',  name: 'Polaroid',   seed: polaroidSeed },
+  { id: 'postcard',  name: 'Postcard',   seed: postcardSeed },
+  { id: 'ticket',    name: 'Ticket',     seed: ticketSeed },
+  { id: 'film',      name: 'Film',       seed: filmSeed },
+  { id: 'airmail',   name: 'Airmail',    seed: airmailSeed },
+  { id: 'poster',    name: 'Poster',     seed: posterSeed },
+  { id: 'bib',       name: 'Bib',        seed: bibSeed },
+  { id: 'tag',       name: 'Tag',        seed: tagSeed },
+  { id: 'journal',   name: 'Journal',    seed: journalSeed },
+  { id: 'exhibit',   name: 'Exhibit',    seed: exhibitSeed },
   { id: 'postage',   name: 'Postage',    seed: postageSeed },
   { id: 'postmark',  name: 'Postmark',   seed: postmarkSeed },
   { id: 'boarding',  name: 'Boarding',   seed: boardingSeed },

@@ -17,7 +17,17 @@ export type LayoutId =
   | 'riso'
   | 'signature'
   | 'passport-window'
-  | 'split-field';
+  | 'split-field'
+  | 'polaroid'
+  | 'postcard'
+  | 'ticket'
+  | 'film'
+  | 'airmail'
+  | 'journal'
+  | 'exhibit'
+  | 'bib'
+  | 'tag'
+  | 'poster';
 
 export type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'

@@ -75,6 +75,9 @@ function DraggableStickerImpl({
   const onBoxLayout = useCallback((e: LayoutChangeEvent) => setBoxH(e.nativeEvent.layout.height), []);
 
   const style = applyTheme(STICKER_DEFAULTS, theme);
+  // Secondary bits (unit labels, pin icon) follow the themed eyebrow colour so
+  // they stay legible on paper-forward layouts.
+  const muted = style.eyebrow.color ?? 'rgba(243,237,226,0.55)';
 
   const stickerId = sticker.id;
 
@@ -133,7 +136,7 @@ function DraggableStickerImpl({
           <Eyebrow style={{ color: style.eyebrow.color, fontSize: 9 }}>DISTANCE</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
             <TText variant="monoMedium" style={{ fontSize: 30, color: style.text.color, letterSpacing: -0.6 }}>{fmtDist(run.distance, units)}</TText>
-            <TText style={{ fontSize: 11, color: 'rgba(243,237,226,0.6)', marginLeft: 4 }}>{distUnit(units)}</TText>
+            <TText style={{ fontSize: 11, color: muted, marginLeft: 4 }}>{distUnit(units)}</TText>
           </View>
         </>
       );
@@ -163,7 +166,7 @@ function DraggableStickerImpl({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Icon.heart size={14} color={c.accent} />
             <TText variant="monoMedium" style={{ fontSize: 22, color: style.text.color }}>{run.avgHr}</TText>
-            <TText style={{ fontSize: 11, color: 'rgba(243,237,226,0.6)' }}>bpm</TText>
+            <TText style={{ fontSize: 11, color: muted }}>bpm</TText>
           </View>
         </>
       );
@@ -219,7 +222,7 @@ function DraggableStickerImpl({
     case 'place':
       body = (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Icon.pin size={12} color="rgba(243,237,226,0.7)" />
+          <Icon.pin size={12} color={muted} />
           <TText style={{ fontSize: 12, color: style.text.color }}>{run.city}</TText>
         </View>
       );
@@ -287,7 +290,7 @@ function DraggableStickerImpl({
                 </View>
               ))}
               {splits.length > 5 && (
-                <TText variant="mono" style={{ fontSize: 9, color: 'rgba(243,237,226,0.4)', marginTop: 2 }}>+{splits.length - 5} more</TText>
+                <TText variant="mono" style={{ fontSize: 9, color: muted, marginTop: 2 }}>+{splits.length - 5} more</TText>
               )}
             </View>
           ) : (

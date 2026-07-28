@@ -20,6 +20,26 @@ export const FRAMES: Partial<Record<LayoutId, FrameSpec>> = {
   'passport-window': { backdrop: PAPER, inset: 14, radius: 3, mapStyle: 'light', mapOpacity: 1, scrim: 'transparent' },
   // Split field: photo band over a map/route band, seam at the boundary.
   'split-field':     { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 1, scrim: 'transparent' },
+  // Polaroid: big instant print on paper, caption stats on the paper below.
+  polaroid:          { backdrop: PAPER, inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 0.3, scrim: 'transparent' },
+  // Postcard: photo front over a paper "back" — divider, stamp box, address rules.
+  postcard:          { backdrop: PAPER, inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 0.3, scrim: 'transparent' },
+  // Ticket: near-full photo, perforated tear line, paper stub with the stat row.
+  ticket:            { backdrop: PAPER, inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 0.3, scrim: 'transparent' },
+  // Film: full-bleed photo between 35mm sprocket rails on ink.
+  film:              { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Airmail: photo contained by an air-mail striped paper border.
+  airmail:           { backdrop: PAPER, inset: 18, radius: 2, mapStyle: 'dark',  mapOpacity: 1,   scrim: 'transparent' },
+  // Journal: taped photo over a ruled field-notes page.
+  journal:           { backdrop: PAPER, inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 0.3, scrim: 'transparent' },
+  // Exhibit: gallery print in a wide paper mat, serif caption over the photo foot.
+  exhibit:           { backdrop: PAPER, inset: 24, radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Bib: race bib panel pinned over the full-bleed photo.
+  bib:               { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Tag: luggage tag over the photo, route drawn like a flight path.
+  tag:               { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Poster: full-bleed photo, deep fade, one enormous number.
+  poster:            { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
   // Stamp body: dark map fills the inset, paper perforations bite the edge.
   postage:   { backdrop: PAPER,      inset: 14, radius: 2,  mapStyle: 'dark',  mapOpacity: 1,    scrim: SCRIM_SOFT },
   // Postmark cancellation: faint dark map under a big ring + cream serif stats.

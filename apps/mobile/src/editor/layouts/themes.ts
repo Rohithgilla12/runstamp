@@ -97,11 +97,81 @@ const splitFieldTheme: StickerTheme = {
   eyebrow: { color: 'rgba(243,237,226,0.7)', letterSpacing: 1.4 },
 };
 
+const polaroidTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'serifItalic', letterSpacing: -0.2 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.2 },
+};
+
+const postcardTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', letterSpacing: -0.3 },
+  eyebrow: { color: SOLAR, letterSpacing: 1.4 },
+};
+
+const ticketTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoMedium', textTransform: 'uppercase', letterSpacing: 0.5 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.6 },
+};
+
+const filmTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoMedium', letterSpacing: 0.5 },
+  eyebrow: { color: 'rgba(243,237,226,0.55)', letterSpacing: 1.4 },
+};
+
+const airmailTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoSemi', letterSpacing: -0.3 },
+  eyebrow: { color: 'rgba(243,237,226,0.7)', letterSpacing: 1.4 },
+};
+
+const journalTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoMedium', letterSpacing: -0.2 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.2 },
+};
+
+const exhibitTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'serifItalic', letterSpacing: -0.2 },
+  eyebrow: { color: 'rgba(243,237,226,0.65)', letterSpacing: 1.4 },
+};
+
+const bibTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', textTransform: 'uppercase', letterSpacing: 0.5 },
+  eyebrow: { color: SOLAR, letterSpacing: 1.6 },
+};
+
+const tagTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoMedium', textTransform: 'uppercase', letterSpacing: 0.5 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.4 },
+};
+
+const posterTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoSemi', letterSpacing: -0.5 },
+  eyebrow: { color: 'rgba(243,237,226,0.6)', letterSpacing: 1.6 },
+};
+
 export const THEMES: Record<LayoutId, StickerTheme> = {
   none: noneTheme,
   signature: signatureTheme,
   'passport-window': passportWindowTheme,
   'split-field': splitFieldTheme,
+  polaroid: polaroidTheme,
+  postcard: postcardTheme,
+  ticket: ticketTheme,
+  film: filmTheme,
+  airmail: airmailTheme,
+  journal: journalTheme,
+  exhibit: exhibitTheme,
+  bib: bibTheme,
+  tag: tagTheme,
+  poster: posterTheme,
   postage: postageTheme,
   postmark: postmarkTheme,
   boarding: boardingTheme,
