@@ -22,7 +22,7 @@ export const StatsShelf = memo(function StatsShelf({ run, live, stickers, onTogg
     <View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12 }}>
         <TText variant="mono" style={{ fontSize: 10, letterSpacing: 1.5, color: c.ink3 }}>STATS</TText>
-        <TText variant="mono" style={{ fontSize: 9, color: c.ink3, opacity: 0.6 }}>tap to add · drag to place</TText>
+        <TText variant="mono" style={{ fontSize: 9, color: c.ink3, opacity: 0.6 }}>tap to add · drag to place · corners to resize</TText>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 6, gap: 6 }}>
         {available.map((s) => {

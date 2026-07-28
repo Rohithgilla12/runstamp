@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { distUnit, fmtDist, fmtPace, fmtTime } from '../../lib/format';
 import { useAppState } from '../../state/AppState';
 import { useColors } from '../../design/theme';
@@ -12,6 +12,7 @@ import { StreamChart } from '../../design/charts';
 import { applyTheme, type ResolvedStickerStyle } from '../stickers/themedSticker';
 import type { StickerInstance, StickerTheme } from '../layouts/types';
 import type { Activity, Point, Split } from '../../data/models';
+import { scaleFromCornerDrag, type ResizeCorner } from './resizeMath';
 
 const STICKER_DEFAULTS: ResolvedStickerStyle = {
   container: {
@@ -25,6 +26,68 @@ const STICKER_DEFAULTS: ResolvedStickerStyle = {
   text: { color: '#f3ede2', fontFamily: 'monoMedium' },
   eyebrow: { color: 'rgba(243,237,226,0.55)' },
 };
+
+const HANDLE_HIT = 44;
+const HANDLE_VISUAL = 10;
+const RESIZE_CORNERS: ResizeCorner[] = ['nw', 'ne', 'sw', 'se'];
+
+function handleOffset(corner: ResizeCorner): { top?: number; bottom?: number; left?: number; right?: number } {
+  const inset = -(HANDLE_HIT / 2) + 2;
+  return {
+    ...(corner.startsWith('n') ? { top: inset } : { bottom: inset }),
+    ...(corner.endsWith('w') ? { left: inset } : { right: inset }),
+  };
+}
+
+function ResizeHandle({
+  corner,
+  gesture,
+  scale,
+  accent,
+  paper,
+}: {
+  corner: ResizeCorner;
+  gesture: ReturnType<typeof Gesture.Pan>;
+  scale: SharedValue<number>;
+  accent: string;
+  paper: string;
+}) {
+  // Counter-scale so the handle stays ~constant on screen as the sticker grows.
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 / Math.max(scale.value, 0.01) }],
+  }));
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View
+        accessibilityLabel={`Resize ${corner}`}
+        accessibilityRole="adjustable"
+        style={[
+          {
+            position: 'absolute',
+            width: HANDLE_HIT,
+            height: HANDLE_HIT,
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...handleOffset(corner),
+          },
+          style,
+        ]}
+      >
+        <View
+          style={{
+            width: HANDLE_VISUAL,
+            height: HANDLE_VISUAL,
+            borderRadius: 2,
+            backgroundColor: paper,
+            borderWidth: 1.5,
+            borderColor: accent,
+          }}
+        />
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 interface DraggableStickerProps {
   sticker: StickerInstance;
@@ -314,6 +377,33 @@ function DraggableStickerImpl({
     ],
   }), [width, boxH]);
 
+  // Corner-handle pans live in their own detectors so they win over body pan.
+  const resizeGestures = useMemo(() => {
+    const base = Math.max(width, boxH, 48);
+    return Object.fromEntries(
+      RESIZE_CORNERS.map((corner) => {
+        const gesture = Gesture.Pan()
+          .onStart(() => {
+            startScale.value = scale.value;
+            runOnJS(onSelect)(stickerId);
+          })
+          .onUpdate((e) => {
+            scale.value = scaleFromCornerDrag(
+              startScale.value,
+              e.translationX,
+              e.translationY,
+              corner,
+              base,
+            );
+          })
+          .onEnd(() => {
+            runOnJS(onScale)(stickerId, scale.value);
+          });
+        return [corner, gesture] as const;
+      }),
+    ) as Record<ResizeCorner, ReturnType<typeof Gesture.Pan>>;
+  }, [boxH, onScale, onSelect, scale, startScale, stickerId, width]);
+
   if (frozen) {
     return (
       <Animated.View
@@ -338,8 +428,9 @@ function DraggableStickerImpl({
   }
 
   return (
-    <GestureDetector gesture={composed}>
-      <Animated.View onLayout={onBoxLayout} style={[
+    <Animated.View
+      onLayout={onBoxLayout}
+      style={[
         {
           position: 'absolute',
           width,
@@ -349,26 +440,46 @@ function DraggableStickerImpl({
           borderWidth: style.container.borderWidth,
           borderColor: isSelected ? c.accent : style.container.borderColor,
         },
-        animatedStyle
-      ]}>
-        {body}
-        {isSelected && (
+        animatedStyle,
+      ]}
+    >
+      <GestureDetector gesture={composed}>
+        <View>{body}</View>
+      </GestureDetector>
+      {isSelected && (
+        <>
           <Pressable
             onPress={() => onRemove(stickerId)}
-            hitSlop={12}
+            accessibilityLabel="Remove sticker"
+            hitSlop={8}
             style={{
-              position: 'absolute', top: -10, right: -10,
-              width: 24, height: 24, borderRadius: 12,
+              position: 'absolute',
+              top: -28,
+              alignSelf: 'center',
+              width: 24,
+              height: 24,
+              borderRadius: 12,
               backgroundColor: c.accent,
-              alignItems: 'center', justifyContent: 'center',
+              alignItems: 'center',
+              justifyContent: 'center',
               boxShadow: '0px 1px 4px rgba(0,0,0,0.25)',
             }}
           >
             <TText variant="mono" style={{ fontSize: 13, lineHeight: 13, color: '#f3ede2', fontWeight: '700' }}>×</TText>
           </Pressable>
-        )}
-      </Animated.View>
-    </GestureDetector>
+          {RESIZE_CORNERS.map((corner) => (
+            <ResizeHandle
+              key={corner}
+              corner={corner}
+              gesture={resizeGestures[corner]}
+              scale={scale}
+              accent={c.accent}
+              paper={c.paper}
+            />
+          ))}
+        </>
+      )}
+    </Animated.View>
   );
 }
 
