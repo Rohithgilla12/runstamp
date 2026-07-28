@@ -30,7 +30,7 @@ export function RouteFilmLauncher({
   streamPace,
 }: {
   run: Activity;
-  rawLatLng: Array<readonly [number, number]> | null;
+  rawLatLng: ReadonlyArray<readonly [number, number]> | null;
   units: Units;
   /** Live per-point HR (bpm). Falls back to the run's stored stream / average. */
   streamHr?: number[] | null;
