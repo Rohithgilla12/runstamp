@@ -191,6 +191,46 @@ const posterSeed: StickerSeed[] = [
   { key: 'time',     x: 0.66, y: 0.90 },
 ];
 
+const silhouetteSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.50, y: 0.10 },
+  { key: 'distance', x: 0.50, y: 0.70, scale: 1.7 },
+  { key: 'pace',     x: 0.30, y: 0.86 },
+  { key: 'time',     x: 0.50, y: 0.86 },
+  { key: 'date',     x: 0.72, y: 0.86 },
+];
+
+const vellumSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.30, y: 0.64 },
+  { key: 'distance', x: 0.32, y: 0.74, scale: 1.35 },
+  { key: 'pace',     x: 0.26, y: 0.86 },
+  { key: 'time',     x: 0.52, y: 0.86 },
+  { key: 'date',     x: 0.78, y: 0.86 },
+];
+
+const medalSeed: StickerSeed[] = [
+  { key: 'distance', x: 0.50, y: 0.38, scale: 1.45 },
+  { key: 'place',    x: 0.50, y: 0.78 },
+  { key: 'pace',     x: 0.28, y: 0.88 },
+  { key: 'time',     x: 0.52, y: 0.88 },
+  { key: 'date',     x: 0.76, y: 0.88 },
+];
+
+const ribbonSeed: StickerSeed[] = [
+  { key: 'place',    x: 0.50, y: 0.655 },
+  { key: 'distance', x: 0.50, y: 0.715, scale: 1.35 },
+  { key: 'pace',     x: 0.28, y: 0.80 },
+  { key: 'time',     x: 0.52, y: 0.80 },
+  { key: 'date',     x: 0.76, y: 0.80 },
+];
+
+const almanacSeed: StickerSeed[] = [
+  { key: 'date',     x: 0.36, y: 0.60, scale: 1.2 },
+  { key: 'distance', x: 0.36, y: 0.70, scale: 1.25 },
+  { key: 'pace',     x: 0.30, y: 0.82 },
+  { key: 'time',     x: 0.58, y: 0.82 },
+  { key: 'place',    x: 0.36, y: 0.92 },
+];
+
 export const LAYOUT_META: LayoutMeta[] = [
   { id: 'none',      name: 'None' },
   { id: 'signature',       name: 'Signature',       seed: signatureSeed },
@@ -206,6 +246,11 @@ export const LAYOUT_META: LayoutMeta[] = [
   { id: 'tag',       name: 'Tag',        seed: tagSeed },
   { id: 'journal',   name: 'Journal',    seed: journalSeed },
   { id: 'exhibit',   name: 'Exhibit',    seed: exhibitSeed },
+  { id: 'silhouette', name: 'Silhouette', seed: silhouetteSeed },
+  { id: 'vellum',     name: 'Vellum',     seed: vellumSeed },
+  { id: 'medal',      name: 'Medal',      seed: medalSeed },
+  { id: 'ribbon',     name: 'Ribbon',     seed: ribbonSeed },
+  { id: 'almanac',    name: 'Almanac',    seed: almanacSeed },
   { id: 'postage',   name: 'Postage',    seed: postageSeed },
   { id: 'postmark',  name: 'Postmark',   seed: postmarkSeed },
   { id: 'boarding',  name: 'Boarding',   seed: boardingSeed },

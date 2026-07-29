@@ -3,6 +3,7 @@ import {
   signaturePreset, passportWindowPreset, splitFieldPreset,
   polaroidPreset, postcardPreset, ticketPreset, filmPreset, airmailPreset,
   journalPreset, exhibitPreset, bibPreset, tagPreset, posterPreset,
+  silhouettePreset, vellumPreset, medalPreset, ribbonPreset, almanacPreset,
   frameSpecToLayers, paceToColor, LAYER_PRESETS,
   SPLIT_TOP_FRACTION, TICKET_TOP_FRACTION,
   scrimStepToLayer, layerToScrimStep, isLayerStackDirty,
@@ -102,6 +103,43 @@ describe('presets', () => {
     expect(s.photo.placement).toBe('full');
     expect(s.route.enabled).toBe(true);
     expect(s.scrim.mode).toBe('none');
+  });
+
+  it('silhouette = full photo + signature route + deep bottom scrim', () => {
+    const s = silhouettePreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.route.treatment).toBe('signature');
+    expect(s.scrim.mode).toBe('bottom');
+    expect(s.scrim.strength).toBeGreaterThan(0.8);
+  });
+
+  it('vellum = full photo with route, panel supplies contrast so no scrim', () => {
+    const s = vellumPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('medal = full photo with route, caption band supplies contrast', () => {
+    const s = medalPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('ribbon = full photo with route, tape supplies contrast', () => {
+    const s = ribbonPreset();
+    expect(s.photo.placement).toBe('full');
+    expect(s.route.enabled).toBe(true);
+    expect(s.scrim.mode).toBe('none');
+  });
+
+  it('almanac = photo region-top over a ruled paper page', () => {
+    const s = almanacPreset();
+    expect(s.base).toBe('paper');
+    expect(s.photo.placement).toBe('region-top');
+    expect(s.map.enabled).toBe(false);
   });
 });
 

@@ -40,6 +40,16 @@ export const FRAMES: Partial<Record<LayoutId, FrameSpec>> = {
   tag:               { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
   // Poster: full-bleed photo, deep fade, one enormous number.
   poster:            { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Silhouette: full-bleed photo + signature route over a deep bottom fade.
+  silhouette:        { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Vellum: translucent cream panel carries the stats over the photo.
+  vellum:            { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Medal: race medal disc hung over the photo; route stays visible behind.
+  medal:             { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Ribbon: finish-line tape stretched across the photo.
+  ribbon:            { backdrop: INK,   inset: 0,  radius: 0, mapStyle: 'dark',  mapOpacity: 0.5, scrim: 'transparent' },
+  // Almanac: photo upper band, ruled ephemeris page below.
+  almanac:           { backdrop: PAPER, inset: 0,  radius: 0, mapStyle: 'light', mapOpacity: 0.3, scrim: 'transparent' },
   // Stamp body: dark map fills the inset, paper perforations bite the edge.
   postage:   { backdrop: PAPER,      inset: 14, radius: 2,  mapStyle: 'dark',  mapOpacity: 1,    scrim: SCRIM_SOFT },
   // Postmark cancellation: faint dark map under a big ring + cream serif stats.

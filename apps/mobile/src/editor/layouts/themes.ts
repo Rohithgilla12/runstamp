@@ -157,6 +157,36 @@ const posterTheme: StickerTheme = {
   eyebrow: { color: 'rgba(243,237,226,0.6)', letterSpacing: 1.6 },
 };
 
+const silhouetteTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: PAPER, fontFamily: 'monoSemi', letterSpacing: -0.5 },
+  eyebrow: { color: 'rgba(243,237,226,0.65)', letterSpacing: 1.6 },
+};
+
+const vellumTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', letterSpacing: -0.3 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.4 },
+};
+
+const medalTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', textTransform: 'uppercase', letterSpacing: 0.4 },
+  eyebrow: { color: SOLAR, letterSpacing: 1.6 },
+};
+
+const ribbonTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoSemi', letterSpacing: -0.3 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.4 },
+};
+
+const almanacTheme: StickerTheme = {
+  container: { backgroundColor: 'transparent', borderWidth: 0 },
+  text: { color: INK, fontFamily: 'monoMedium', letterSpacing: -0.2 },
+  eyebrow: { color: 'rgba(20,17,13,0.5)', letterSpacing: 1.2 },
+};
+
 export const THEMES: Record<LayoutId, StickerTheme> = {
   none: noneTheme,
   signature: signatureTheme,
@@ -172,6 +202,11 @@ export const THEMES: Record<LayoutId, StickerTheme> = {
   bib: bibTheme,
   tag: tagTheme,
   poster: posterTheme,
+  silhouette: silhouetteTheme,
+  vellum: vellumTheme,
+  medal: medalTheme,
+  ribbon: ribbonTheme,
+  almanac: almanacTheme,
   postage: postageTheme,
   postmark: postmarkTheme,
   boarding: boardingTheme,
