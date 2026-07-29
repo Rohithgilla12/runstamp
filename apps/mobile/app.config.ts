@@ -51,6 +51,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'fun.gilla.runstamp',
+    appleTeamId: '7D2V3RM56T',
     usesAppleSignIn: true,
     // GoogleService-Info.plist sits next to this config. The file is
     // committed to the repo per Google's own guidance (the API key inside
