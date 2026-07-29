@@ -32,7 +32,10 @@ struct WidgetSnapshot: Codable, Hashable {
     static let userDefaultsKey = "runstamp.snapshot.v1"
     static let appGroup = "group.fun.gilla.runstamp"
 
-    let updatedAt: Date
+    // Keep as String — JS `Date.toISOString()` includes fractional seconds
+    // (`.000Z`), and Foundation's `.iso8601` Date strategy rejects those, which
+    // used to make every real snapshot fall through to `.placeholder`.
+    let updatedAt: String
     let units: String
     let weekDistanceLabel: String
     let weekRuns: Int
@@ -44,7 +47,7 @@ struct WidgetSnapshot: Codable, Hashable {
     let lastStampName: String?
 
     static let placeholder = WidgetSnapshot(
-        updatedAt: Date(),
+        updatedAt: "2026-05-13T12:00:00.000Z",
         units: "km",
         weekDistanceLabel: "42.20",
         weekRuns: 4,
@@ -80,8 +83,6 @@ struct WidgetSnapshot: Codable, Hashable {
         else {
             return .placeholder
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode(WidgetSnapshot.self, from: data)) ?? .placeholder
+        return (try? JSONDecoder().decode(WidgetSnapshot.self, from: data)) ?? .placeholder
     }
 }

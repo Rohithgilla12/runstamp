@@ -81,6 +81,49 @@ describe('buildSnapshot', () => {
     expect(snapshot.latestRun?.distanceLabel).toBe('10.00');
     expect(snapshot.latestRun?.units).toBe('km');
     expect(snapshot.units).toBe('km');
+    // JS toISOString always emits fractional seconds — widget Swift side
+    // must keep updatedAt as String (not Date+iso8601) or decode fails.
+    expect(snapshot.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*\.\d{3}Z$/);
+  });
+
+  it('picks activities[0] as latest (API newest-first, date-only days)', () => {
+    // mapApiToActivity stores YYYY-MM-DD only. Same-day ties must follow list
+    // order — matching Home's `activities[0]` hero — not a max-date scan.
+    const snapshot = buildSnapshot({
+      activities: [
+        run({
+          id: 'evening',
+          date: '2026-05-13',
+          time: '18:40',
+          distance: 8,
+          seconds: 2400,
+          title: 'Evening run',
+        }),
+        run({
+          id: 'morning',
+          date: '2026-05-13',
+          time: '06:10',
+          distance: 5,
+          seconds: 1500,
+          title: 'Morning run',
+        }),
+        run({
+          id: 'older',
+          date: '2026-05-12',
+          time: '07:00',
+          distance: 10,
+          seconds: 3000,
+          title: 'Yesterday',
+        }),
+      ],
+      stampCount: 0,
+      lastStampName: null,
+      units: 'km',
+      reference: ref,
+    });
+    expect(snapshot.latestRun?.id).toBe('evening');
+    expect(snapshot.latestRun?.title).toBe('Evening run');
+    expect(snapshot.latestRun?.dateLabel).toBe('Wed · May 13');
   });
 
   it('converts distances when units are miles', () => {

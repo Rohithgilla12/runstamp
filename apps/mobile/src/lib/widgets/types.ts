@@ -28,7 +28,10 @@ export interface WidgetLatestRun {
 }
 
 export interface WidgetSnapshot {
-  updatedAt: string; // ISO-8601
+  // ISO-8601 from `Date.toISOString()` (includes fractional seconds). The
+  // Swift mirror keeps this as String — decoding as Date via `.iso8601`
+  // rejects `.000Z` and falls back to the placeholder "Evening loop" run.
+  updatedAt: string;
   units: WidgetUnits;
   weekDistanceLabel: string; // formatted distance in user units
   weekRuns: number;
