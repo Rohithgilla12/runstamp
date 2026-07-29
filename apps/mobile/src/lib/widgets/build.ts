@@ -58,18 +58,16 @@ export function buildWeekDots(
   });
 }
 
+// Activities arrive from the API newest-first (`ORDER BY started_at DESC`),
+// and Home uses `activities[0]` as the hero. Match that — `Activity.date` is
+// date-only (`YYYY-MM-DD`), so a max-date scan can't break same-day ties.
 function toLatestRun(
   activities: ReadonlyArray<Activity>,
   units: WidgetUnits,
 ): WidgetLatestRun | null {
   if (activities.length === 0) return null;
-  let latest = activities[0];
-  for (const a of activities) {
-    if (a.date > latest.date) latest = a;
-  }
-  const d = new Date(latest.date);
-  const dow = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const mon = d.toLocaleDateString('en-US', { month: 'short' });
+  const latest = activities[0];
+  const dateLabel = formatLatestDateLabel(latest.date);
   return {
     id: latest.id,
     title: latest.title || 'Run',
@@ -77,8 +75,27 @@ function toLatestRun(
     distanceLabel: fmtDist(latest.distance, units),
     units,
     paceLabel: fmtPace(latest.pace, units),
-    dateLabel: `${dow} · ${mon} ${d.getDate()}`,
+    dateLabel,
   };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOWS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Parse `YYYY-MM-DD` (and optional time suffix) as a local calendar day so
+// UTC midnight parsing doesn't shift the weekday label in western timezones.
+function formatLatestDateLabel(date: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+  if (m) {
+    const y = Number(m[1]);
+    const month = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    const local = new Date(y, month, day);
+    return `${DOWS[local.getDay()]} · ${MONTHS[month]} ${day}`;
+  }
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${DOWS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
 function signedDeltaLabel(kmDelta: number, units: WidgetUnits): string {
