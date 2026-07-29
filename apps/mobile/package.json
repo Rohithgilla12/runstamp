@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^4.0.6",
     "@bottom-tabs/react-navigation": "^1.2.0",
     "@expo-google-fonts/geist": "^0.4.2",
     "@expo-google-fonts/instrument-serif": "^0.4.1",
@@ -54,6 +55,7 @@
     "react-native-share": "^12.3.1",
     "react-native-svg": "15.12.1",
     "react-native-view-shot": "4.0.3",
+    "widget-bridge": "file:./modules/widget-bridge",
     "zod": "^4.4.3"
   },
   "devDependencies": {

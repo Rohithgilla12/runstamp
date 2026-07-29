@@ -66,7 +66,10 @@ const config: ExpoConfig = {
     entitlements: {
       'com.apple.developer.healthkit': true,
       'com.apple.developer.healthkit.access': [],
-      'com.apple.developer.healthkit.background-delivery': true
+      'com.apple.developer.healthkit.background-delivery': true,
+      // Shared with `targets/runstamp-widget` so Home Screen / Lock Screen /
+      // Apple Watch Smart Stack widgets can read the App Group snapshot.
+      'com.apple.security.application-groups': ['group.fun.gilla.runstamp']
     },
     infoPlist: {
       NSPhotoLibraryUsageDescription:
@@ -186,7 +189,11 @@ const config: ExpoConfig = {
     'react-native-bottom-tabs',
     // Adds <queries><package android:name="com.instagram.android" /></queries>
     // to AndroidManifest so the IG Stories share intent resolves on Android 11+.
-    './plugins/withInstagramQueries'
+    './plugins/withInstagramQueries',
+    // Registers the WidgetKit extension under `targets/runstamp-widget/`.
+    // Home Screen (Week / Latest) + Lock Screen / Apple Watch Smart Stack
+    // (accessory families) share one App Group snapshot via widget-bridge.
+    '@bacons/apple-targets'
   ],
   // ONLY public values. Firebase no longer lives here — the plist is the
   // source of truth. The web client id is public per Google's OAuth model.

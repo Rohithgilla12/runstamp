@@ -6,6 +6,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "widget-bridge": [
+        "./modules/widget-bridge/src/index.ts"
       ]
     }
   },
