@@ -46,6 +46,8 @@ import { useAccount } from '../state/useAccount';
 import { ProfileStamp } from '../editor/share/ProfileStamp';
 import { shouldShowProfileStamp } from '../editor/share/profileUrl';
 import { RouteFilmLauncher } from '../components/RouteFilmLauncher';
+import { extractPaletteFromPhoto, type ExtractedPalette } from '../lib/colorExtractor';
+import type { RouteTreatment } from '../editor/layers';
 
 type Surface = '9:16' | '1:1' | '4:5';
 type Background = 'map' | 'photo' | 'solid';
@@ -167,10 +169,14 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
   const { defaultSurface } = useAppState();
   const [surface, setSurface] = useState<Surface>(defaultSurface);
   const [bg, setBg] = useState<Background>('map');
+  const [routeTreatment, setRouteTreatment] = useState<RouteTreatment>('signature');
   const [template, setTemplate] = useState<Template>('stickers');
   const [tab, setTab] = useState<TabKey>('templates');
   const [selected, setSelected] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [autoPalette, setAutoPalette] = useState<ExtractedPalette | null>(null);
+  const [useAutoPalette, setUseAutoPalette] = useState(true);
+  const [extractingPalette, setExtractingPalette] = useState(false);
   const canvasRef = useRef<View>(null);
   const [exporting, setExporting] = useState(false);
   const [editField, setEditField] = useState<EditableTextField | null>(null);
@@ -181,6 +187,8 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
     { id: 's-pace',     key: 'pace',     x: 0.2, y: 0.78, scale: 1 },
     { id: 's-time',     key: 'time',     x: 0.8, y: 0.78, scale: 1 }
   ]);
+
+  const activeAccent = (useAutoPalette && autoPalette) ? autoPalette.vibrant : c.accent;
 
   const handleExport = async (mode: ExportMode) => {
     if (!run || !canvasRef.current || exporting) return;
@@ -235,8 +243,19 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
       allowsEditing: false
     });
     if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setPhotoUri(uri);
       setBg('photo');
+      setExtractingPalette(true);
+      try {
+        const palette = await extractPaletteFromPhoto(uri);
+        setAutoPalette(palette);
+        setUseAutoPalette(true);
+      } catch {
+        // Fallback gracefully on extraction error
+      } finally {
+        setExtractingPalette(false);
+      }
     }
   };
 
@@ -377,6 +396,32 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
           ))}
         </View>
 
+        {/* Route Treatment selector when map backdrop is active */}
+        {bg === 'map' && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginRight: 4 }}>ROUTE:</TText>
+            {[
+              { id: 'signature', label: 'Signature' },
+              { id: 'pace-gradient', label: 'Pacing Heatmap' },
+              { id: 'plain', label: 'Plain' },
+            ].map((t) => (
+              <Pressable
+                key={t.id}
+                onPress={() => setRouteTreatment(t.id as RouteTreatment)}
+                style={{
+                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
+                  backgroundColor: routeTreatment === t.id ? c.ink : c.paper2,
+                  borderWidth: 1, borderColor: routeTreatment === t.id ? c.ink : c.line,
+                }}
+              >
+                <TText style={{ fontSize: 11, color: routeTreatment === t.id ? c.paper : c.ink2, fontWeight: '500' }}>
+                  {t.label}
+                </TText>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         {/* Canvas */}
         <View style={{ paddingHorizontal: CANVAS_PADDING, paddingTop: 20, alignItems: 'center' }}>
           <View ref={canvasRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
@@ -447,7 +492,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
             backgroundColor: c.ink, position: 'relative'
           }}>
             {/* Background layer */}
-            {bg === 'map' && <RouteMap rawLatLng={realRawLatLng} width={canvasW} height={canvasH} style="dark" accent={c.accent} routeStrokeWidth={4} />}
+            {bg === 'map' && <RouteMap rawLatLng={realRawLatLng} width={canvasW} height={canvasH} style="dark" accent={activeAccent} routeStrokeWidth={4} treatment={routeTreatment} pace={realPace} />}
             {bg === 'photo' && (
               photoUri ? (
                 <Image source={{ uri: photoUri }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" />
@@ -464,7 +509,7 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
                 </Pressable>
               )
             )}
-            {bg === 'solid' && <View style={{ position: 'absolute', inset: 0, backgroundColor: c.accent }} />}
+            {bg === 'solid' && <View style={{ position: 'absolute', inset: 0, backgroundColor: (useAutoPalette && autoPalette) ? autoPalette.dominant : c.accent }} />}
 
             {/* Vignette */}
             <View pointerEvents="none" style={{ position: 'absolute', inset: 0, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }} />
@@ -592,6 +637,54 @@ export function EditorScreen({ route, navigation }: RootStackProps<'Editor'>) {
               {photoUri && (
                 <View style={{ marginTop: 12, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: c.line }}>
                   <Image source={{ uri: photoUri }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
+                </View>
+              )}
+
+              {photoUri && (
+                <View style={{ marginTop: 14, padding: 14, borderRadius: 12, backgroundColor: c.paper2, borderWidth: 1, borderColor: c.line }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TText style={{ fontSize: 13, fontWeight: '600', color: c.ink }}>Auto-Color Matching</TText>
+                      <View style={{ backgroundColor: c.ink, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <TText variant="mono" style={{ fontSize: 9, color: c.paper, fontWeight: '600' }}>AI</TText>
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={() => setUseAutoPalette((v) => !v)}
+                      style={{
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+                        backgroundColor: useAutoPalette ? c.ink : c.paper3,
+                        borderWidth: 1, borderColor: c.line,
+                      }}
+                    >
+                      <TText variant="mono" style={{ fontSize: 11, color: useAutoPalette ? c.paper : c.ink2, fontWeight: '500' }}>
+                        {useAutoPalette ? 'ACTIVE' : 'OFF'}
+                      </TText>
+                    </Pressable>
+                  </View>
+
+                  {extractingPalette ? (
+                    <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>Extracting photo color palette…</TText>
+                  ) : autoPalette ? (
+                    <View style={{ gap: 10 }}>
+                      <TText style={{ fontSize: 11, color: c.ink3, lineHeight: 15 }}>
+                        Harmonized color palette sampled from photo:
+                      </TText>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {[
+                          { label: 'Vibrant Accent', color: autoPalette.vibrant },
+                          { label: 'Dominant Tone', color: autoPalette.dominant },
+                          { label: 'Muted Tone', color: autoPalette.muted },
+                          { label: 'Text Contrast', color: autoPalette.textOnDominant },
+                        ].map((swatch) => (
+                          <View key={swatch.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+                            <View style={{ width: '100%', height: 28, borderRadius: 6, backgroundColor: swatch.color, borderWidth: 1, borderColor: c.line }} />
+                            <TText variant="mono" style={{ fontSize: 8, color: c.ink2 }}>{swatch.color.toUpperCase()}</TText>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
               )}
 

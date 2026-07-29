@@ -344,17 +344,39 @@ export function RouteMap({
           <AnimatedCircle cx={ex} cy={ey} r={5} fill={a} animatedProps={endDotAnimatedProps} />
         </>
       )}
-      {!isEmpty && treatment === 'pace-gradient' && paceSegments.map((seg, i) => (
-        <Path
-          key={i}
-          d={seg.d}
-          fill="none"
-          stroke={seg.color}
-          strokeWidth={routeStrokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
+      {!isEmpty && treatment === 'pace-gradient' && (
+        <>
+          {/* Casing stroke halo so gradient line pops on any background */}
+          <Path
+            d={pathD}
+            fill="none"
+            stroke={resolvedStyle === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'}
+            strokeWidth={routeStrokeWidth * 2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {paceSegments.map((seg, i) => (
+            <Path
+              key={i}
+              d={seg.d}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={routeStrokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+          <Circle cx={sx} cy={sy} r={5} fill="#fff" stroke={paceSegments[0]?.color ?? a} strokeWidth={2} />
+          <Circle cx={ex} cy={ey} r={5} fill={paceSegments[paceSegments.length - 1]?.color ?? a} />
+
+          {/* Pace Heatmap Legend Badge */}
+          <G transform={`translate(12, ${height - 18})`}>
+            <Rect x={0} y={0} width={80} height={12} rx={4} fill={resolvedStyle === 'dark' ? 'rgba(20,17,13,0.85)' : 'rgba(243,237,226,0.9)'} />
+            <SvgText x={6} y={9} fontSize={7} fontWeight="bold" fill={resolvedStyle === 'dark' ? '#4a6b3a' : '#3a5430'} fontFamily="System">FAST</SvgText>
+            <SvgText x={74} y={9} fontSize={7} fontWeight="bold" fill={resolvedStyle === 'dark' ? '#e85d2f' : '#c44a1e'} textAnchor="end" fontFamily="System">SLOW</SvgText>
+          </G>
+        </>
+      )}
       {!flat && (
         <G transform={`translate(${width - 26},20)`}>
           <SvgText x={0} y={0} fontSize={9} fill={compassFill} textAnchor="middle">
