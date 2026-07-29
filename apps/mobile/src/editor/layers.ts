@@ -154,6 +154,56 @@ export function posterPreset(): LayerStack {
   };
 }
 
+export function silhouettePreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 1.15 },
+    scrim: { mode: 'bottom', strength: 0.88 },
+  };
+}
+
+export function vellumPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 0.9 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function medalPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 0.85 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function ribbonPreset(): LayerStack {
+  return {
+    base: 'ink',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'full' },
+    map: { enabled: false, opacity: 1, style: 'dark' },
+    route: { enabled: true, opacity: 1, treatment: 'signature', strokeScale: 0.9 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
+export function almanacPreset(): LayerStack {
+  return {
+    base: 'paper',
+    photo: { enabled: true, opacity: 1, duotone: false, placement: 'region-top' },
+    map: { enabled: false, opacity: 1, style: 'light' },
+    route: { enabled: false, opacity: 1, treatment: 'signature', strokeScale: 0.85 },
+    scrim: { mode: 'none', strength: 0 },
+  };
+}
+
 // Existing templates + 'none' derive their layer stack from FrameSpec so they
 // render as before: map leads, route on, no photo. A frame whose scrim is
 // 'transparent' (paper-forward layouts) maps to scrim 'none'.
@@ -191,6 +241,11 @@ export const LAYER_PRESETS: Record<LayoutId, LayerStack> = {
   bib: bibPreset(),
   tag: tagPreset(),
   poster: posterPreset(),
+  silhouette: silhouettePreset(),
+  vellum: vellumPreset(),
+  medal: medalPreset(),
+  ribbon: ribbonPreset(),
+  almanac: almanacPreset(),
   postage: frameSpecToLayers(FRAMES.postage),
   postmark: frameSpecToLayers(FRAMES.postmark),
   boarding: frameSpecToLayers(FRAMES.boarding),

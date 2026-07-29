@@ -16,6 +16,11 @@ import { ExhibitScaffolding } from './scaffolding/ExhibitScaffolding';
 import { BibScaffolding } from './scaffolding/BibScaffolding';
 import { TagScaffolding } from './scaffolding/TagScaffolding';
 import { PosterScaffolding } from './scaffolding/PosterScaffolding';
+import { SilhouetteScaffolding } from './scaffolding/SilhouetteScaffolding';
+import { VellumScaffolding } from './scaffolding/VellumScaffolding';
+import { MedalScaffolding } from './scaffolding/MedalScaffolding';
+import { RibbonScaffolding } from './scaffolding/RibbonScaffolding';
+import { AlmanacScaffolding } from './scaffolding/AlmanacScaffolding';
 import { PostageScaffolding } from './scaffolding/PostageScaffolding';
 import { PostmarkScaffolding } from './scaffolding/PostmarkScaffolding';
 import { BoardingScaffolding } from './scaffolding/BoardingScaffolding';
@@ -44,6 +49,11 @@ const SCAFFOLDING_BY_ID: Record<LayoutId, Layout['Scaffolding']> = {
   bib: BibScaffolding,
   tag: TagScaffolding,
   poster: PosterScaffolding,
+  silhouette: SilhouetteScaffolding,
+  vellum: VellumScaffolding,
+  medal: MedalScaffolding,
+  ribbon: RibbonScaffolding,
+  almanac: AlmanacScaffolding,
   postage: PostageScaffolding,
   postmark: PostmarkScaffolding,
   boarding: BoardingScaffolding,

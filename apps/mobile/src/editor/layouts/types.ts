@@ -27,7 +27,12 @@ export type LayoutId =
   | 'exhibit'
   | 'bib'
   | 'tag'
-  | 'poster';
+  | 'poster'
+  | 'silhouette'
+  | 'vellum'
+  | 'medal'
+  | 'ribbon'
+  | 'almanac';
 
 export type StickerKey =
   | 'distance' | 'pace' | 'time' | 'hr' | 'elev' | 'cal'
