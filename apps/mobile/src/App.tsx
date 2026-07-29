@@ -23,6 +23,7 @@ import { HealthProvider } from './state/HealthContext';
 import { PrivacyZonesProvider } from './state/usePrivacyZones';
 import { ThemeCtx, paletteFor } from './design/theme';
 import { useAppFonts } from './design/fonts';
+import { WidgetDataSync } from './lib/widgets/WidgetDataSync';
 import { RootNavigator } from './nav/RootNavigator';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 
@@ -44,6 +45,7 @@ export default function App() {
               <ActivitiesProvider>
                 <PrivacyZonesProvider>
                   <HealthProvider>
+                    <WidgetDataSync />
                     <Shell />
                   </HealthProvider>
                 </PrivacyZonesProvider>

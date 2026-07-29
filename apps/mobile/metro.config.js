@@ -13,5 +13,11 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules')
 ];
+// Local Expo module JS entry — native side autolinks; this teaches Metro
+// where the TypeScript surface lives.
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules ?? {}),
+  'widget-bridge': path.resolve(projectRoot, 'modules/widget-bridge')
+};
 
 module.exports = config;

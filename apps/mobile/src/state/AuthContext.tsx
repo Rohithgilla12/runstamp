@@ -123,6 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // best-effort; ignore
     }
+    try {
+      const { clearWidgetData } = await import('../lib/widgets');
+      clearWidgetData();
+    } catch {
+      // Widget bridge may be absent pre-prebuild; never block sign-out.
+    }
     await firebaseAuth.signOut();
   }, []);
 
