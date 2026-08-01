@@ -77,7 +77,11 @@ export function RoutineScreen({ navigation, route }: RootStackProps<'Routine'>) 
       <View style={{ paddingHorizontal: 16, paddingTop: 22 }}>
         {routine.items.map((item, i) => (
           <View key={`${item.exerciseId}-${i}`} style={{ paddingVertical: 5 }}>
-            <ExerciseRow item={item} index={i + 1} />
+            <ExerciseRow
+              item={item}
+              index={i + 1}
+              onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.exerciseId })}
+            />
           </View>
         ))}
       </View>
@@ -100,43 +104,50 @@ export function RoutineScreen({ navigation, route }: RootStackProps<'Routine'>) 
   );
 }
 
-function ExerciseRow({ item, index }: { item: RoutineItem; index: number }) {
+function ExerciseRow({ item, index, onPress }: { item: RoutineItem; index: number; onPress: () => void }) {
   const c = useColors();
   const ex = getExercise(item.exerciseId);
   if (!ex) return null;
   return (
-    <Card padded={false} style={{ backgroundColor: c.paper2 }}>
-      <View style={{ flexDirection: 'row' }}>
-        <Image
-          source={{ uri: exerciseGif(ex) }}
-          accessibilityLabel={`${ex.name} demonstration`}
-          style={{ width: 92, height: 92, backgroundColor: c.paper3 }}
-          resizeMode="cover"
-        />
-        <View style={{ flex: 1, padding: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>{String(index).padStart(2, '0')}</TText>
-            <TText style={{ flex: 1, fontSize: 14, fontWeight: '500', color: c.ink }}>
-              {ex.name}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${ex.name} — full demo and instructions`}
+    >
+      <Card padded={false} style={{ backgroundColor: c.paper2 }}>
+        <View style={{ flexDirection: 'row' }}>
+          <Image
+            source={{ uri: exerciseGif(ex) }}
+            accessibilityLabel={`${ex.name} demonstration`}
+            style={{ width: 92, height: 92, backgroundColor: c.paper3 }}
+            resizeMode="cover"
+          />
+          <View style={{ flex: 1, padding: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>{String(index).padStart(2, '0')}</TText>
+              <TText style={{ flex: 1, fontSize: 14, fontWeight: '500', color: c.ink }}>
+                {ex.name}
+              </TText>
+              <Icon.chevR size={16} color={c.ink3} />
+            </View>
+            <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2, textTransform: 'capitalize' }}>
+              {ex.target} · {ex.equipment}
             </TText>
-          </View>
-          <TText variant="mono" style={{ fontSize: 10, color: c.ink3, marginTop: 2, textTransform: 'capitalize' }}>
-            {ex.target} · {ex.equipment}
-          </TText>
 
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 8, gap: 6 }}>
-            <TText variant="monoMedium" style={{ fontSize: 14, letterSpacing: -0.3, color: c.ink }}>
-              {item.sets} × {item.reps}
-            </TText>
-            <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>· rest {item.restSec}s</TText>
-          </View>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 8, gap: 6 }}>
+              <TText variant="monoMedium" style={{ fontSize: 14, letterSpacing: -0.3, color: c.ink }}>
+                {item.sets} × {item.reps}
+              </TText>
+              <TText variant="mono" style={{ fontSize: 11, color: c.ink3 }}>· rest {item.restSec}s</TText>
+            </View>
 
-          {item.note && (
-            <TText style={{ fontSize: 11.5, color: c.ink2, marginTop: 6, lineHeight: 16 }}>{item.note}</TText>
-          )}
+            {item.note && (
+              <TText style={{ fontSize: 11.5, color: c.ink2, marginTop: 6, lineHeight: 16 }}>{item.note}</TText>
+            )}
+          </View>
         </View>
-      </View>
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 

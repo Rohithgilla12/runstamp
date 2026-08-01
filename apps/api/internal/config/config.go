@@ -50,6 +50,15 @@ type Config struct {
 	// WaitlistIPSalt is mixed into the SHA-256 hash of caller IPs before
 	// storage. 16+ random bytes (hex-encoded). Required in production.
 	WaitlistIPSalt string
+
+	// AscendRapidAPIKey authenticates against AscendAPI's ExerciseDB (RapidAPI).
+	// A secret — stays server-side. When blank the /v1/exercises routes return
+	// 503 and the mobile app falls back to its bundled dataset.
+	// AscendBaseURL / AscendHost override the RapidAPI endpoint if the plan or
+	// host changes; blank uses the exercisedb package defaults.
+	AscendRapidAPIKey string
+	AscendBaseURL     string
+	AscendHost        string
 }
 
 // Load reads required values from env and fails fast on missing secrets when
@@ -69,14 +78,14 @@ func Load() (*Config, error) {
 	}
 
 	c := &Config{
-		Port:               envInt("RUNSTAMP_PORT", 8080),
-		StravaClientID:     os.Getenv("STRAVA_CLIENT_ID"),
-		StravaClientSecret: os.Getenv("STRAVA_CLIENT_SECRET"),
-		StravaWebhookToken: os.Getenv("STRAVA_WEBHOOK_VERIFY_TOKEN"),
-		AllowedOrigins:     splitCSV(envDefault("RUNSTAMP_ALLOWED_ORIGINS", "http://localhost:8081,exp://*")),
-		DatabaseURL:        envDefault("DATABASE_URL", "postgres://runstamp:runstamp@localhost:5432/runstamp?sslmode=disable"),
-		TokenEncKeyHex:     tokenKey,
-		PublicBaseURL:      envDefault("RUNSTAMP_PUBLIC_BASE_URL", "http://localhost:8080"),
+		Port:                  envInt("RUNSTAMP_PORT", 8080),
+		StravaClientID:        os.Getenv("STRAVA_CLIENT_ID"),
+		StravaClientSecret:    os.Getenv("STRAVA_CLIENT_SECRET"),
+		StravaWebhookToken:    os.Getenv("STRAVA_WEBHOOK_VERIFY_TOKEN"),
+		AllowedOrigins:        splitCSV(envDefault("RUNSTAMP_ALLOWED_ORIGINS", "http://localhost:8081,exp://*")),
+		DatabaseURL:           envDefault("DATABASE_URL", "postgres://runstamp:runstamp@localhost:5432/runstamp?sslmode=disable"),
+		TokenEncKeyHex:        tokenKey,
+		PublicBaseURL:         envDefault("RUNSTAMP_PUBLIC_BASE_URL", "http://localhost:8080"),
 		StravaSuccessDeepLink: envDefault("STRAVA_SUCCESS_DEEPLINK", "runstamp://strava/connected"),
 		StravaFailureDeepLink: envDefault("STRAVA_FAILURE_DEEPLINK", "runstamp://strava/error"),
 
@@ -85,6 +94,10 @@ func Load() (*Config, error) {
 		FirebaseAuthOptional:    firebaseOptional,
 
 		WaitlistIPSalt: waitlistSalt,
+
+		AscendRapidAPIKey: os.Getenv("ASCEND_RAPIDAPI_KEY"),
+		AscendBaseURL:     os.Getenv("ASCEND_BASE_URL"),
+		AscendHost:        os.Getenv("ASCEND_HOST"),
 	}
 
 	isProd := os.Getenv("RUNSTAMP_ENV") == "production"
